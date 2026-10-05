@@ -341,7 +341,7 @@ class P2PTransport private constructor(
         }
 
         val fileBytes = filePacket.encode() ?: run {
-            Log.e(TAG, "sendMedia: failed to encode ZemzemeFilePacket")
+            Log.e(TAG, "sendMedia: failed to encode VuzolFilePacket")
             return@withContext false
         }
 

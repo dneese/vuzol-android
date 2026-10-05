@@ -100,6 +100,16 @@ class NotificationManager(
                 description = dmDescriptionText
                 enableVibration(true)
                 setShowBadge(true)
+                // A channel with no sound is a silent channel: Android plays
+                // nothing for it, whatever the notification says.
+                val sound = android.media.RingtoneManager.getDefaultUri(
+                    android.media.RingtoneManager.TYPE_NOTIFICATION
+                )
+                val audioAttributes = android.media.AudioAttributes.Builder()
+                    .setUsage(android.media.AudioAttributes.USAGE_NOTIFICATION_EVENT)
+                    .setContentType(android.media.AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                    .build()
+                setSound(sound, audioAttributes)
             }
             systemNotificationManager.createNotificationChannel(dmChannel)
 
@@ -111,6 +121,16 @@ class NotificationManager(
                 description = geohashDescriptionText
                 enableVibration(true)
                 setShowBadge(true)
+                // A channel with no sound is a silent channel: Android plays
+                // nothing for it, whatever the notification says.
+                val sound = android.media.RingtoneManager.getDefaultUri(
+                    android.media.RingtoneManager.TYPE_NOTIFICATION
+                )
+                val audioAttributes = android.media.AudioAttributes.Builder()
+                    .setUsage(android.media.AudioAttributes.USAGE_NOTIFICATION_EVENT)
+                    .setContentType(android.media.AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                    .build()
+                setSound(sound, audioAttributes)
             }
             systemNotificationManager.createNotificationChannel(geohashChannel)
         }

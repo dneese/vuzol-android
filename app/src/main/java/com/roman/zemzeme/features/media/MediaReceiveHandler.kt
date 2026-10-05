@@ -41,7 +41,7 @@ object MediaReceiveHandler {
     ): ZemzemeMessage? {
         val file = ZemzemeFilePacket.decode(fileBytes)
         if (file == null) {
-            Log.w(TAG, "Failed to decode ZemzemeFilePacket from $senderKey")
+            Log.w(TAG, "Failed to decode VuzolFilePacket from $senderKey")
             return null
         }
 

@@ -29,11 +29,11 @@ class MeshForegroundService : Service() {
         private const val CHANNEL_ID = "bitchat_mesh_service"
         private const val NOTIFICATION_ID = 10001
 
-        const val ACTION_START = "com.roman.zemzeme.service.START"
-        const val ACTION_STOP = "com.roman.zemzeme.service.STOP"
-        const val ACTION_QUIT = "com.roman.zemzeme.service.QUIT"
-        const val ACTION_UPDATE_NOTIFICATION = "com.roman.zemzeme.service.UPDATE_NOTIFICATION"
-        const val ACTION_NOTIFICATION_PERMISSION_GRANTED = "com.roman.zemzeme.action.NOTIFICATION_PERMISSION_GRANTED"
+        const val ACTION_START = "com.roman.vuzol.service.START"
+        const val ACTION_STOP = "com.roman.vuzol.service.STOP"
+        const val ACTION_QUIT = "com.roman.vuzol.service.QUIT"
+        const val ACTION_UPDATE_NOTIFICATION = "com.roman.vuzol.service.UPDATE_NOTIFICATION"
+        const val ACTION_NOTIFICATION_PERMISSION_GRANTED = "com.roman.vuzol.action.NOTIFICATION_PERMISSION_GRANTED"
 
         fun start(context: Context) {
             val intent = Intent(context, MeshForegroundService::class.java).apply { action = ACTION_START }

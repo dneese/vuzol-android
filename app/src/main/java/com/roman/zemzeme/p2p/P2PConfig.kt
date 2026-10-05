@@ -56,7 +56,7 @@ class P2PConfig(private val context: Context) {
 
         private const val DEFAULT_BLE_ENABLED = true
         private const val DEFAULT_P2P_ENABLED = true
-        private const val DEFAULT_NOSTR_ENABLED = false
+        private const val DEFAULT_NOSTR_ENABLED = true
 
         private val transportFlowLock = Any()
         private var transportPrefs: SharedPreferences? = null

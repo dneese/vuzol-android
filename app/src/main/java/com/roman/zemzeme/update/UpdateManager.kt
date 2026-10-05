@@ -64,7 +64,7 @@ class UpdateManager private constructor(private val context: Context) {
 
     companion object {
         private const val TAG = "UpdateManager"
-        const val ACTION_UPDATE_STATUS = "com.roman.zemzeme.UPDATE_STATUS"
+        const val ACTION_UPDATE_STATUS = "com.roman.vuzol.UPDATE_STATUS"
         const val EXTRA_SESSION_ID = "session_id"
         private const val PREFS_NAME = "update_prefs"
         private const val PREF_CACHED_APK_PATH = "cached_apk_path"

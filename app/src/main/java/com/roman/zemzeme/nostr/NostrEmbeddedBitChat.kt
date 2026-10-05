@@ -14,7 +14,7 @@ import java.util.*
  */
 object NostrEmbeddedZemzeme {
 
-    private const val TAG = "NostrEmbeddedZemzeme"
+    private const val TAG = "NostrEmbeddedVuzol"
 
     /**
      * Files whose TLV encoding is smaller than this threshold are sent as a single Gift Wrap.

@@ -8,7 +8,7 @@ import kotlin.random.Random
 internal object IconSwitcher {
 
     const val ALIAS_COUNT = 100
-    private const val PACKAGE = "com.roman.zemzeme"
+    private const val PACKAGE = "app.vuzol.messenger"
 
     val NAMES = arrayOf(
         "Vuzol", "NetChat", "TalkBox", "MsgHub", "BuzzTalk",

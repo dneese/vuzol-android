@@ -31,18 +31,18 @@ data class ZemzemeFilePacket(
 
     fun encode(): ByteArray? {
         try {
-            android.util.Log.d("ZemzemeFilePacket", "🔄 Encoding: name=$fileName, size=$fileSize, mime=$mimeType")
+            android.util.Log.d("VuzolFilePacket", "🔄 Encoding: name=$fileName, size=$fileSize, mime=$mimeType")
         val nameBytes = fileName.toByteArray(Charsets.UTF_8)
         val mimeBytes = mimeType.toByteArray(Charsets.UTF_8)
         // Validate bounds for 2-byte TLV lengths (per-TLV). CONTENT may exceed 65535 and will be chunked.
         if (nameBytes.size > 0xFFFF || mimeBytes.size > 0xFFFF) {
-                android.util.Log.e("ZemzemeFilePacket", "❌ TLV field too large: name=${nameBytes.size}, mime=${mimeBytes.size} (max: 65535)")
+                android.util.Log.e("VuzolFilePacket", "❌ TLV field too large: name=${nameBytes.size}, mime=${mimeBytes.size} (max: 65535)")
                 return null
             }
             if (content.size > 0xFFFF) {
-                android.util.Log.d("ZemzemeFilePacket", "📦 Content exceeds 65535 bytes (${content.size}); will be split into multiple CONTENT TLVs")
+                android.util.Log.d("VuzolFilePacket", "📦 Content exceeds 65535 bytes (${content.size}); will be split into multiple CONTENT TLVs")
             } else {
-                android.util.Log.d("ZemzemeFilePacket", "📏 TLV sizes OK: name=${nameBytes.size}, mime=${mimeBytes.size}, content=${content.size}")
+                android.util.Log.d("VuzolFilePacket", "📏 TLV sizes OK: name=${nameBytes.size}, mime=${mimeBytes.size}, content=${content.size}")
             }
         val sizeFieldLen = 4 // UInt32 for FILE_SIZE (changed from 8 bytes)
         val contentLenFieldLen = 4 // UInt32 for CONTENT TLV as requested
@@ -73,17 +73,17 @@ data class ZemzemeFilePacket(
         buf.put(content)
 
         val result = buf.array()
-            android.util.Log.d("ZemzemeFilePacket", "✅ Encoded successfully: ${result.size} bytes total")
+            android.util.Log.d("VuzolFilePacket", "✅ Encoded successfully: ${result.size} bytes total")
             return result
         } catch (e: Exception) {
-            android.util.Log.e("ZemzemeFilePacket", "❌ Encoding failed: ${e.message}", e)
+            android.util.Log.e("VuzolFilePacket", "❌ Encoding failed: ${e.message}", e)
             return null
         }
     }
 
     companion object {
         fun decode(data: ByteArray): ZemzemeFilePacket? {
-            android.util.Log.d("ZemzemeFilePacket", "🔄 Decoding ${data.size} bytes")
+            android.util.Log.d("VuzolFilePacket", "🔄 Decoding ${data.size} bytes")
             try {
                 var off = 0
                 var name: String? = null
@@ -129,10 +129,10 @@ data class ZemzemeFilePacket(
                 val s = size ?: c.size.toLong()
                 val m = mime ?: "application/octet-stream"
                 val result = ZemzemeFilePacket(n, s, m, c)
-                android.util.Log.d("ZemzemeFilePacket", "✅ Decoded: name=$n, size=$s, mime=$m, content=${c.size} bytes")
+                android.util.Log.d("VuzolFilePacket", "✅ Decoded: name=$n, size=$s, mime=$m, content=${c.size} bytes")
                 return result
             } catch (e: Exception) {
-                android.util.Log.e("ZemzemeFilePacket", "❌ Decoding failed: ${e.message}", e)
+                android.util.Log.e("VuzolFilePacket", "❌ Decoding failed: ${e.message}", e)
                 return null
             }
         }

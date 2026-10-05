@@ -354,7 +354,7 @@ class NostrTransport(
                     )
 
             val fileBytes = filePacket.encode()
-                ?: throw IllegalStateException("Failed to encode ZemzemeFilePacket")
+                ?: throw IllegalStateException("Failed to encode VuzolFilePacket")
 
             Log.d(TAG, "NostrTransport: sending media ${filePacket.fileName} (${fileBytes.size} bytes) to ${recipientHex.take(8)}...")
 
