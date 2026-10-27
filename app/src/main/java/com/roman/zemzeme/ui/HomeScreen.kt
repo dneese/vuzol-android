@@ -219,10 +219,12 @@ fun HomeScreen(
                 ConnectionDisplayData.ChannelStage.CONNECTED
             transportToggles.p2pEnabled && (topicState?.providerCount ?: 0) > 0 ->
                 ConnectionDisplayData.ChannelStage.CONNECTING
+            // Relays are connected: the channel is usable, we are only waiting
+            // for other people to show up.
+            nostrIsUp ->
+                ConnectionDisplayData.ChannelStage.NOSTR_IDLE
             transportToggles.p2pEnabled ->
                 ConnectionDisplayData.ChannelStage.SEARCHING
-            nostrIsUp && totalPeers == 0 ->
-                ConnectionDisplayData.ChannelStage.NOSTR_IDLE
             transportToggles.nostrEnabled ->
                 ConnectionDisplayData.ChannelStage.SEARCHING
             else ->

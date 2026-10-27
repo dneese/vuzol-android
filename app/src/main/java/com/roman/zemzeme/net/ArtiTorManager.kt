@@ -56,6 +56,8 @@ class ArtiTorManager private constructor() {
         private const val DEFAULT_SOCKS_PORT = AppConstants.Tor.DEFAULT_SOCKS_PORT
         private const val RESTART_DELAY_MS = AppConstants.Tor.RESTART_DELAY_MS
         private const val INACTIVITY_TIMEOUT_MS = AppConstants.Tor.INACTIVITY_TIMEOUT_MS
+        // Deadline for the initial Tor bootstrap
+        private const val BOOTSTRAP_TIMEOUT_MS = AppConstants.Tor.BOOTSTRAP_TIMEOUT_MS
         private const val MAX_RETRY_ATTEMPTS = AppConstants.Tor.MAX_RETRY_ATTEMPTS
         private const val STOP_TIMEOUT_MS = AppConstants.Tor.STOP_TIMEOUT_MS
 
@@ -366,16 +368,20 @@ class ArtiTorManager private constructor() {
         inactivityJob?.cancel()
         inactivityJob = appScope.launch {
             while (true) {
-                delay(INACTIVITY_TIMEOUT_MS)
+                val bootstrapPercent = _statusFlow.value.bootstrapPercent
+                // Bootstrapping takes much longer than the steady state timeout,
+                // use a generous deadline while Arti is still bootstrapping.
+                val timeout = if (bootstrapPercent < 100) BOOTSTRAP_TIMEOUT_MS else INACTIVITY_TIMEOUT_MS
+                delay(timeout)
                 val currentTime = System.currentTimeMillis()
                 val lastActivity = lastLogTime.get()
                 val timeSinceLastActivity = currentTime - lastActivity
 
-                if (timeSinceLastActivity > INACTIVITY_TIMEOUT_MS) {
+                if (timeSinceLastActivity > timeout) {
                     val currentMode = _statusFlow.value.mode
                     if (currentMode == TorMode.ON) {
-                        val bootstrapPercent = _statusFlow.value.bootstrapPercent
-                        if (bootstrapPercent < 100) {
+                        val currentBootstrap = _statusFlow.value.bootstrapPercent
+                        if (currentBootstrap < 100) {
                             Log.w(
                                 TAG,
                                 "Inactivity detected (${timeSinceLastActivity}ms), restarting Arti"
@@ -414,6 +420,15 @@ class ArtiTorManager private constructor() {
             }
         } else {
             Log.e(TAG, "Max retry attempts reached, giving up on Arti connection")
+            // Mark Tor as failed so the network layer can fall back to a direct
+            // connection instead of routing every request into a dead proxy.
+            _statusFlow.update {
+                it.copy(
+                    running = false,
+                    bootstrapPercent = 0,
+                    state = TorState.ERROR
+                )
+            }
         }
     }
 
@@ -438,6 +453,10 @@ class ArtiTorManager private constructor() {
     }
 
     private fun handleArtiLogLine(s: String) {
+        // Any log line proves that Arti is alive. Without this the inactivity
+        // monitor restarted Arti every few seconds and Tor never finished
+        // bootstrapping, which broke all relay connections.
+        lastLogTime.set(System.currentTimeMillis())
         val currentState = _statusFlow.value.state
         val currentLifecycle = lifecycleState
 

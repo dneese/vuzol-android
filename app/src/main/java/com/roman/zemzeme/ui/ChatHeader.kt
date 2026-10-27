@@ -317,10 +317,12 @@ fun ChatHeaderContent(
                     ConnectionDisplayData.ChannelStage.CONNECTED
                 chP2pEnabled && (topicState?.providerCount ?: 0) > 0 ->
                     ConnectionDisplayData.ChannelStage.CONNECTING
+                // Relays are connected: the channel works, we are only waiting
+                // for other people to show up.
+                chNostrConnected ->
+                    ConnectionDisplayData.ChannelStage.NOSTR_IDLE
                 chP2pEnabled ->
                     ConnectionDisplayData.ChannelStage.SEARCHING
-                chNostrConnected && !hasRecentPeers ->
-                    ConnectionDisplayData.ChannelStage.NOSTR_IDLE
                 transportToggles.nostrEnabled ->
                     ConnectionDisplayData.ChannelStage.SEARCHING
                 else ->
@@ -688,10 +690,12 @@ private fun LocationChannelsButton(
                     ConnectionDisplayData.ChannelStage.CONNECTED
                 p2pEnabled && (topicState?.providerCount ?: 0) > 0 ->
                     ConnectionDisplayData.ChannelStage.CONNECTING
+                // Relays are connected: the channel is usable, we are only
+                // waiting for other people to show up.
+                nostrIsUp ->
+                    ConnectionDisplayData.ChannelStage.NOSTR_IDLE
                 p2pEnabled ->
                     ConnectionDisplayData.ChannelStage.SEARCHING
-                nostrIsUp && !hasRecentPeers ->
-                    ConnectionDisplayData.ChannelStage.NOSTR_IDLE
                 nostrEnabled ->
                     ConnectionDisplayData.ChannelStage.SEARCHING
                 else ->

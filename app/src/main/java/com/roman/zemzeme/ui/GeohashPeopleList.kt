@@ -101,10 +101,12 @@ fun GeohashPeopleList(
             ConnectionDisplayData.ChannelStage.CONNECTED
         transportToggles.p2pEnabled && (topicState?.providerCount ?: 0) > 0 ->
             ConnectionDisplayData.ChannelStage.CONNECTING
+        // Relays are connected: the channel works, we are only waiting for
+        // other people to show up.
+        nostrConnected ->
+            ConnectionDisplayData.ChannelStage.NOSTR_IDLE
         transportToggles.p2pEnabled ->
             ConnectionDisplayData.ChannelStage.SEARCHING
-        nostrConnected && !hasRecentPeers ->
-            ConnectionDisplayData.ChannelStage.NOSTR_IDLE
         transportToggles.nostrEnabled ->
             ConnectionDisplayData.ChannelStage.SEARCHING
         else ->
