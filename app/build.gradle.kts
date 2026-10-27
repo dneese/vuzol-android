@@ -57,7 +57,7 @@ android {
                 storePassword = localProps["KEYSTORE_PASSWORD"] as String
                 keyAlias = localProps["KEY_ALIAS"] as String
                 keyPassword = localProps["KEY_PASSWORD"] as String
-                storeType = localProps["KEYSTORE_TYPE"] ?: "JKS"
+                storeType = (localProps["KEYSTORE_TYPE"] as? String) ?: "JKS"
             }
         }
     }
