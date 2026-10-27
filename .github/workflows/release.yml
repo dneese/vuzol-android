@@ -46,6 +46,7 @@ jobs:
             echo "KEY_ALIAS=$KEY_ALIAS"
             echo "KEY_PASSWORD=$KEY_PASSWORD"
             echo "KEYSTORE_TYPE=PKCS12"
+            echo "sdk.dir=$ANDROID_HOME"
           } > local.properties
           echo "Keystore configured"
 
@@ -71,32 +72,13 @@ jobs:
             [ "$f" = "$target" ] || mv "$f" "$target"
           done
 
-      - name: Upload APKs as artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: vuzol-android-release-${{ github.ref_name }}
-          path: app/build/outputs/apk/release/*.apk
-          retention-days: 3
-          if-no-files-found: error
-
-  release:
-    needs: build
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Download release artifacts
-        uses: actions/download-artifact@v5
-        with:
-          name: vuzol-android-release-${{ github.ref_name }}
-          path: release
-
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            release/vuzol-android-arm64.apk
-            release/vuzol-android-x86_64.apk
-            release/vuzol-android-universal.apk
+            app/build/outputs/apk/release/vuzol-android-arm64.apk
+            app/build/outputs/apk/release/vuzol-android-x86_64.apk
+            app/build/outputs/apk/release/vuzol-android-universal.apk
           name: Release ${{ github.ref_name }}
           body: |
             **vuzol-android-arm64.apk** - ARM64 (most phones)
