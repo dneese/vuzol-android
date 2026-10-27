@@ -467,7 +467,7 @@
     <string name="mesh_service_notification_content">Bluetooth 運行中 — %1$d 個節點</string>
     <string name="cd_settings">設定</string>
     <string name="cd_location_notes">位置筆記</string>
-    <string name="notification_action_quit_bitchat">結束 Vuzol</string>
+    <string name="notification_action_quit_vuzol">結束 Vuzol</string>
     <string name="about_background_title">在背景執行</string>
     <string name="about_background_desc">當應用程式關閉時保持網狀網路運作（前景服務）</string>
     <string name="about_p2p_subtitle">透過 P2P 直接節點連線</string>

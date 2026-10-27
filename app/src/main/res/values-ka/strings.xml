@@ -166,7 +166,7 @@
     <string name="cd_remove_bookmark">სანიშნეს წაშლა</string>
     <string name="cd_teleport">ტელეპორტი</string>
     <string name="cd_selected">მონიშნული</string>
-    <string name="notification_action_quit_bitchat">გასვლა</string>
+    <string name="notification_action_quit_vuzol">გასვლა</string>
     <string name="about_background_title">ფონში მუშაობა</string>
     <string name="about_background_desc">mesh აქტიური რჩება აპის დახურვისას (ფონური სერვისი)</string>
     <string name="about_p2p_subtitle">პირდაპირი P2P კავშირები</string>

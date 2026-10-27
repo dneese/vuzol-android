@@ -166,7 +166,7 @@
     <string name="cd_remove_bookmark">Lesezeichen entfernen</string>
     <string name="cd_teleport">Teleportieren</string>
     <string name="cd_selected">Ausgewählt</string>
-    <string name="notification_action_quit_bitchat">Vuzol beenden</string>
+    <string name="notification_action_quit_vuzol">Vuzol beenden</string>
     <string name="about_background_title">im Hintergrund ausführen</string>
     <string name="about_background_desc">Mesh aktiv halten, wenn die App geschlossen ist (Vordergrunddienst)</string>
     <string name="about_p2p_subtitle">Direkte Peer-Verbindungen über p2p</string>

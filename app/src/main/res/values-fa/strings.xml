@@ -392,7 +392,7 @@
     <string name="mesh_service_channel_desc">سرویس بلوتوث مِش را در پس‌زمینه فعال نگه می‌دارد</string>
     <string name="cd_settings">تنظیمات</string>
     <string name="cd_location_notes">یادداشت‌های مکان</string>
-    <string name="notification_action_quit_bitchat">خروج از زمزمه</string>
+    <string name="notification_action_quit_vuzol">خروج از زمزمه</string>
     <string name="about_background_title">اجرا در پس‌زمینه</string>
     <string name="about_background_desc">برای حفظ اتصال مِش پس از بستن برنامه (سرویس پیش‌زمینه)</string>
     <string name="about_p2p_subtitle">اتصال مستقیم همتابه‌همتا</string>

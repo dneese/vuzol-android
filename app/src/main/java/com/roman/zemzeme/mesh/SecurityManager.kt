@@ -54,10 +54,11 @@ class SecurityManager(private val encryptionService: EncryptionService, private 
         val currentTime = System.currentTimeMillis()
         val messageType = MessageType.fromValue(packet.type)
 
-        // Duplicate detection
+        // Duplicate detection. The check and the insert must be atomic, otherwise
+        // two threads can pass the duplicate test for the same packet.
         val messageID = generateMessageID(packet, peerID)
-        
-        if (processedMessages.contains(messageID)) {
+        val firstSeen = processedMessages.add(messageID)
+        if (!firstSeen) {
             // Check for ANNOUNCE exception: allow if it looks like a direct neighbor (max TTL)
             // This ensures we catch the "first announce" on a new connection for binding,
             // while still dropping looped/relayed duplicates.
@@ -71,8 +72,6 @@ class SecurityManager(private val encryptionService: EncryptionService, private 
             Log.d(TAG, "Allowing duplicate ANNOUNCE from direct neighbor: $messageID")
         }
 
-        // Add to processed messages
-        processedMessages.add(messageID)
         messageTimestamps[messageID] = currentTime
         
         // Enforce mandatory signature verification

@@ -464,7 +464,7 @@
     <string name="mesh_service_notification_content">Bluetooth 실행 중 — %1$d 피어</string>
     <string name="cd_settings">설정</string>
     <string name="cd_location_notes">위치 메모</string>
-    <string name="notification_action_quit_bitchat">Vuzol 종료</string>
+    <string name="notification_action_quit_vuzol">Vuzol 종료</string>
     <string name="about_background_title">백그라운드에서 실행</string>
     <string name="about_background_desc">앱이 닫혀 있어도 메시 활성 유지 (포그라운드 서비스)</string>
     <string name="about_p2p_subtitle">p2p를 통한 직접 피어 연결</string>

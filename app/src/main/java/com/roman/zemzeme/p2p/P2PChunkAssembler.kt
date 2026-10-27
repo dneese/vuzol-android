@@ -21,13 +21,15 @@ class P2PChunkAssembler {
         private const val CLEANUP_INTERVAL_MS = 10_000L
     }
 
-    private data class ChunkState(
-        val chunks: MutableMap<Int, ByteArray> = mutableMapOf(),
+    private class ChunkState(
         val contentType: String,
         val fileName: String,
-        val totalChunks: Int,
-        val timestamp: Long = System.currentTimeMillis()
-    )
+        val totalChunks: Int
+    ) {
+        val chunks: MutableMap<Int, ByteArray> = java.util.concurrent.ConcurrentHashMap()
+        @Volatile
+        var timestamp: Long = System.currentTimeMillis()
+    }
 
     // Completed result tuple: (raw bytes, contentType, fileName)
     data class AssembledMedia(val bytes: ByteArray, val contentType: String, val fileName: String)
@@ -57,11 +59,16 @@ class P2PChunkAssembler {
         fileName: String,
         chunkData: ByteArray
     ): AssembledMedia? {
-        val state = pending.getOrPut(chunkId) {
+        // computeIfAbsent is atomic, getOrPut could create two states for the
+        // same transfer and the chunks would be split between them.
+        val state = pending.computeIfAbsent(chunkId) {
             ChunkState(contentType = contentType, fileName = fileName, totalChunks = totalChunks)
         }
+        // Refresh the deadline, otherwise long transfers expire while they are
+        // still transferring.
+        state.timestamp = System.currentTimeMillis()
 
-        synchronized(state.chunks) {
+        synchronized(state) {
             state.chunks[chunkIndex] = chunkData
             Log.d(TAG, "Chunk $chunkIndex/$totalChunks received for $chunkId")
 

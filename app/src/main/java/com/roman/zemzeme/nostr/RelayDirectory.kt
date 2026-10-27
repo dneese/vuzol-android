@@ -53,6 +53,11 @@ object RelayDirectory {
         if (initialized) return
         synchronized(this) {
             if (initialized) return
+            initialized = true
+        }
+
+        // Loading the CSV touches the disk, so keep it off the main thread.
+        ioScope.launch {
             try {
                 val downloaded = getDownloadedFile(application)
                 val loadedFromDownloaded = if (downloaded.exists() && downloaded.canRead()) {
@@ -65,20 +70,16 @@ object RelayDirectory {
                     loadFromAssets(application)
                 }
 
-                initialized = true
-
                 // Trigger an immediate fetch if the data is stale (older than 24h)
-                ioScope.launch {
-                    if (isStale(application)) {
-                        fetchAndMaybeSwap(application)
-                    }
+                if (isStale(application)) {
+                    fetchAndMaybeSwap(application)
                 }
-
-                // Start periodic staleness check every minute
-                startPeriodicRefresh(application)
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to initialize RelayDirectory: ${e.message}")
             }
+
+            // Start periodic staleness check every minute
+            startPeriodicRefresh(application)
         }
     }
 
@@ -87,7 +88,11 @@ object RelayDirectory {
      */
     fun closestRelaysForGeohash(geohash: String, nRelays: Int): List<String> {
         val snapshot = synchronized(relaysLock) { relays.toList() }
-        if (snapshot.isEmpty()) return emptyList()
+        if (snapshot.isEmpty()) {
+            // The directory is still loading (or failed to load): fall back to the
+            // well-known relays so Nostr still works.
+            return NostrRelayManager.defaultRelays().take(nRelays.coerceAtLeast(0))
+        }
         val center = try {
             val c = com.roman.zemzeme.geohash.Geohash.decodeToCenter(geohash)
             c

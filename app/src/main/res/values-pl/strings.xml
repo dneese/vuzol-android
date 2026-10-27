@@ -158,7 +158,7 @@
     <string name="cd_remove_bookmark">Usuń zakładkę</string>
     <string name="cd_teleport">Teleportuj</string>
     <string name="cd_selected">Wybrano</string>
-    <string name="notification_action_quit_bitchat">Zamknij Vuzol</string>
+    <string name="notification_action_quit_vuzol">Zamknij Vuzol</string>
     <string name="about_background_title">działaj w tle</string>
     <string name="about_background_desc">utrzymuj sieć mesh aktywną, gdy aplikacja jest zamknięta (usługa pierwszoplanowa)</string>
     <string name="about_p2p_subtitle">Bezpośrednie połączenia przez p2p</string>

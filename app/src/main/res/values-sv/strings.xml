@@ -407,7 +407,7 @@
   <string name="mesh_service_channel_desc">Håller Bluetooth-meshen igång i bakgrunden</string>
   <string name="cd_settings">Inställningar</string>
   <string name="cd_location_notes">Platsanteckningar</string>
-  <string name="notification_action_quit_bitchat">Avsluta Vuzol</string>
+  <string name="notification_action_quit_vuzol">Avsluta Vuzol</string>
   <string name="about_background_title">köra i bakgrunden</string>
   <string name="about_background_desc">håll meshen aktiv när appen är stängd (förgrundsservice)</string>
   <string name="about_p2p_subtitle">Direkta peerkopplingar via p2p</string>

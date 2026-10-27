@@ -415,7 +415,7 @@
   <string name="mesh_service_channel_desc">Mantém o mesh Bluetooth em execução em segundo plano</string>
   <string name="cd_settings">Configurações</string>
   <string name="cd_location_notes">Notas de localização</string>
-  <string name="notification_action_quit_bitchat">Sair do Vuzol</string>
+  <string name="notification_action_quit_vuzol">Sair do Vuzol</string>
   <string name="about_background_title">executar em segundo plano</string>
   <string name="about_background_desc">manter o mesh ativo quando o app está fechado (serviço em primeiro plano)</string>
   <string name="about_p2p_subtitle">Conexões diretas entre pares via p2p</string>

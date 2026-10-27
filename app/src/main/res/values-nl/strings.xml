@@ -446,7 +446,7 @@
   <string name="mesh_service_channel_desc">Houdt het Bluetooth-mesh actief op de achtergrond</string>
   <string name="cd_settings">Instellingen</string>
   <string name="cd_location_notes">Locatienotities</string>
-  <string name="notification_action_quit_bitchat">Vuzol afsluiten</string>
+  <string name="notification_action_quit_vuzol">Vuzol afsluiten</string>
   <string name="about_background_title">uitvoeren op de achtergrond</string>
   <string name="about_background_desc">mesh actief houden als de app gesloten is (voorgrondservice)</string>
   <string name="about_p2p_subtitle">Directe peer-verbindingen via p2p</string>

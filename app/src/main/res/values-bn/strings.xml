@@ -166,7 +166,7 @@
     <string name="cd_remove_bookmark">বুকমার্ক সরান</string>
     <string name="cd_teleport">টেলিপোর্ট</string>
     <string name="cd_selected">নির্বাচিত</string>
-    <string name="notification_action_quit_bitchat">Vuzol বন্ধ করুন</string>
+    <string name="notification_action_quit_vuzol">Vuzol বন্ধ করুন</string>
     <string name="about_background_title">ব্যাকগ্রাউন্ডে চালান</string>
     <string name="about_background_desc">অ্যাপ বন্ধ থাকলেও মেশ সক্রিয় রাখুন (ফোরগ্রাউন্ড সেবা)</string>
     <string name="about_p2p_subtitle">p2p এর মাধ্যমে সরাসরি পিয়ার সংযোগ</string>

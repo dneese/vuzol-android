@@ -321,7 +321,7 @@ class MeshForegroundService : Service() {
             // Add an action button that appears when notification is expanded
             .addAction(
                 android.R.drawable.ic_menu_close_clear_cancel,
-                getString(R.string.notification_action_quit_bitchat),
+                getString(R.string.notification_action_quit_vuzol),
                 quitPendingIntent
             )
             .build()

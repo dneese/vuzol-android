@@ -464,7 +464,7 @@
     <string name="mesh_service_notification_content">Bluetooth 実行中 — %1$d ピア</string>
     <string name="cd_settings">設定</string>
     <string name="cd_location_notes">場所のメモ</string>
-    <string name="notification_action_quit_bitchat">Vuzolを終了</string>
+    <string name="notification_action_quit_vuzol">Vuzolを終了</string>
     <string name="about_background_title">バックグラウンドで実行</string>
     <string name="about_background_desc">アプリを閉じてもメッシュをアクティブに保つ（フォアグラウンドサービス）</string>
     <string name="about_p2p_subtitle">p2p による直接ピア接続</string>

@@ -10,6 +10,7 @@ import com.google.gson.JsonParser
 import kotlinx.coroutines.*
 import okhttp3.*
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.TimeUnit
 import kotlin.math.min
 import kotlin.math.pow
@@ -40,12 +41,13 @@ class NostrRelayManager private constructor() {
             return shared
         }
 
-        // Default relay list (same as iOS)
+        // Default relay list - keyless, publicly reachable Nostr relays
         private val DEFAULT_RELAYS = listOf(
-            "wss://relay.damus.io",
             "wss://relay.primal.net",
+            "wss://nos.lol",
             "wss://offchain.pub",
-            "wss://nostr21.com"
+            "wss://nostr21.com",
+            "wss://relay.nostr.info"
         )
         
         // Exponential backoff configuration (same as iOS)
@@ -87,7 +89,7 @@ class NostrRelayManager private constructor() {
     val isConnected: StateFlow<Boolean> = _isConnected.asStateFlow()
     
     // Internal state
-    private val relaysList = mutableListOf<Relay>()
+    private val relaysList = CopyOnWriteArrayList<Relay>()
     private val connections = ConcurrentHashMap<String, WebSocket>()
     private val subscriptions = ConcurrentHashMap<String, Set<String>>() // relay URL -> subscription IDs
     private val messageHandlers = ConcurrentHashMap<String, (NostrEvent) -> Unit>()
@@ -111,8 +113,17 @@ class NostrRelayManager private constructor() {
     private val eventDeduplicator = NostrEventDeduplicator.getInstance()
     
     // Message queue for reliability
-    private val messageQueue = mutableListOf<Pair<NostrEvent, List<String>>>()
+    private val messageQueue = mutableListOf<QueuedEvent>()
     private val messageQueueLock = Any()
+    private val maxQueuedEvents = 100
+
+    /**
+     * Event waiting to be delivered to the given relays.
+     */
+    private data class QueuedEvent(
+        val event: NostrEvent,
+        val pendingRelays: MutableSet<String>
+    )
     
     // Coroutine scope for background operations
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
@@ -252,10 +263,11 @@ class NostrRelayManager private constructor() {
         // Initialize with default relays - avoid static initialization order issues
         try {
             val defaultRelayUrls = listOf(
-                "wss://relay.damus.io",
                 "wss://relay.primal.net",
+                "wss://nos.lol",
                 "wss://offchain.pub",
-                "wss://nostr21.com"
+                "wss://nostr21.com",
+                "wss://relay.nostr.info"
             )
             relaysList.addAll(defaultRelayUrls.map { Relay(it) })
             _relays.value = relaysList.toList()
@@ -325,9 +337,12 @@ class NostrRelayManager private constructor() {
         
         val targetRelays = relayUrls ?: relaysList.map { it.url }
         
-        // Add to queue for reliability
+        // Add to queue for reliability (bounded, so a broken relay cannot grow memory forever)
         synchronized(messageQueueLock) {
-            messageQueue.add(Pair(event, targetRelays))
+            messageQueue.add(QueuedEvent(event, targetRelays.toMutableSet()))
+            while (messageQueue.size > maxQueuedEvents) {
+                messageQueue.removeAt(0)
+            }
         }
         
         // Attempt immediate send
@@ -678,8 +693,8 @@ class NostrRelayManager private constructor() {
         }
     }
     
-    private fun sendToRelay(event: NostrEvent, webSocket: WebSocket, relayUrl: String) {
-        try {
+    private fun sendToRelay(event: NostrEvent, webSocket: WebSocket, relayUrl: String): Boolean {
+        return try {
             val request = NostrRequest.Event(event)
             val message = gson.toJson(request, NostrRequest::class.java)
             
@@ -691,11 +706,33 @@ class NostrRelayManager private constructor() {
                 val relay = relaysList.find { it.url == relayUrl }
                 relay?.messagesSent = (relay?.messagesSent ?: 0) + 1
                 updateRelaysList()
+                markDelivered(event.id, relayUrl)
             } else {
                 Log.e(TAG, "❌ Failed to send event to $relayUrl: WebSocket send failed")
             }
+            success
         } catch (e: Exception) {
             Log.e(TAG, "❌ Failed to send event to $relayUrl: ${e.message}")
+            false
+        }
+    }
+
+    /**
+     * Remove a relay from the pending set of the queued event and drop the entry
+     * once every target relay has received it.
+     */
+    private fun markDelivered(eventId: String, relayUrl: String) {
+        synchronized(messageQueueLock) {
+            val iterator = messageQueue.iterator()
+            while (iterator.hasNext()) {
+                val queued = iterator.next()
+                if (queued.event.id == eventId) {
+                    queued.pendingRelays.remove(relayUrl)
+                    if (queued.pendingRelays.isEmpty()) {
+                        iterator.remove()
+                    }
+                }
+            }
         }
     }
     
@@ -782,7 +819,12 @@ class NostrRelayManager private constructor() {
     }
     
     private fun handleDisconnection(relayUrl: String, error: Throwable) {
-        connections.remove(relayUrl)
+        val socket = connections.remove(relayUrl)
+        // Release the socket resources; the old code dropped the reference without
+        // closing it, leaking a connection per failed relay.
+        try {
+            socket?.close(1000, "Closing after disconnect")
+        } catch (_: Exception) { }
         // NOTE: Don't remove subscriptions here - keep them for restoration on reconnection
         // subscriptions.remove(relayUrl)  // REMOVED - this was causing subscription loss
         
@@ -912,9 +954,15 @@ class NostrRelayManager private constructor() {
             synchronized(messageQueueLock) {
                 val iterator = messageQueue.iterator()
                 while (iterator.hasNext()) {
-                    val (event, targetRelays) = iterator.next()
-                    if (relayUrl in targetRelays) {
-                        sendToRelay(event, webSocket, relayUrl)
+                    val queued = iterator.next()
+                    if (relayUrl in queued.pendingRelays) {
+                        val sent = sendToRelay(queued.event, webSocket, relayUrl)
+                        if (sent) {
+                            queued.pendingRelays.remove(relayUrl)
+                            if (queued.pendingRelays.isEmpty()) {
+                                iterator.remove()
+                            }
+                        }
                     }
                 }
             }

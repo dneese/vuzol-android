@@ -59,6 +59,7 @@ class PowerManager(private val context: Context) : LifecycleEventObserver {
     
     private val powerScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private var dutyCycleJob: Job? = null
+    private var batteryReceiverRegistered = false
     
     var delegate: PowerManagerDelegate? = null
     
@@ -108,12 +109,25 @@ class PowerManager(private val context: Context) : LifecycleEventObserver {
     
     fun start() {
         Log.i(TAG, "Starting power management")
+        registerBatteryReceiver()
+        Handler(Looper.getMainLooper()).post {
+            try {
+                ProcessLifecycleOwner.get().lifecycle.addObserver(this)
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to register lifecycle observer: ${e.message}")
+            }
+        }
+        updatePowerMode()
         startDutyCycle()
     }
     
     fun stop() {
         Log.i(TAG, "Stopping power management")
-        powerScope.cancel()
+        // Only stop the duty cycle here. The scope must stay usable because the
+        // Bluetooth services can be stopped and started again at runtime
+        // (transport toggles). Cancelling the scope permanently left the mesh
+        // unable to restart scanning.
+        stopDutyCycle()
         unregisterBatteryReceiver()
         
         // Unregister lifecycle observer
@@ -124,6 +138,23 @@ class PowerManager(private val context: Context) : LifecycleEventObserver {
                  Log.e(TAG, "Failed to remove lifecycle observer: ${e.message}")
             }
         }
+    }
+    
+    /**
+     * Final teardown. Cancels the internal scope, only call when the owner is discarded.
+     */
+    fun shutdown() {
+        Log.i(TAG, "Shutting down power management")
+        stopDutyCycle()
+        unregisterBatteryReceiver()
+        Handler(Looper.getMainLooper()).post {
+            try {
+                ProcessLifecycleOwner.get().lifecycle.removeObserver(this)
+            } catch (e: Exception) {
+                 Log.e(TAG, "Failed to remove lifecycle observer: ${e.message}")
+            }
+        }
+        powerScope.cancel()
     }
     
     override fun onStateChanged(source: LifecycleOwner, event: Lifecycle.Event) {
@@ -262,20 +293,23 @@ class PowerManager(private val context: Context) : LifecycleEventObserver {
             // Charging in foreground may use performance
             isCharging && !isAppInBackground -> PowerMode.PERFORMANCE
 
+            // Foreground: keep scanning responsive so peers are found immediately
+            !isAppInBackground -> PowerMode.PERFORMANCE
+
             // Critical battery - force ultra low power regardless of foreground/background
             batteryLevel <= CRITICAL_BATTERY -> PowerMode.ULTRA_LOW_POWER
 
             // Low battery - prefer power saver
             batteryLevel <= LOW_BATTERY -> PowerMode.POWER_SAVER
 
-            // Otherwise balanced
+            // Background on a healthy battery: duty-cycled scanning
             else -> PowerMode.BALANCED
         }
 
         // If app is in background (including when running as a foreground service),
-        // cap the power mode to at least POWER_SAVER. Preserve ULTRA_LOW_POWER.
+        // use a duty-cycled scan. Preserve ULTRA_LOW_POWER for critical battery.
         val newMode = if (isAppInBackground) {
-            if (baseMode == PowerMode.ULTRA_LOW_POWER) PowerMode.ULTRA_LOW_POWER else PowerMode.POWER_SAVER
+            if (baseMode == PowerMode.ULTRA_LOW_POWER) PowerMode.ULTRA_LOW_POWER else PowerMode.BALANCED
         } else {
             baseMode
         }
@@ -336,6 +370,7 @@ class PowerManager(private val context: Context) : LifecycleEventObserver {
     }
     
     private fun registerBatteryReceiver() {
+        if (batteryReceiverRegistered) return
         try {
             val filter = IntentFilter().apply {
                 addAction(Intent.ACTION_BATTERY_CHANGED)
@@ -343,17 +378,20 @@ class PowerManager(private val context: Context) : LifecycleEventObserver {
                 addAction(Intent.ACTION_POWER_DISCONNECTED)
             }
             context.registerReceiver(batteryReceiver, filter)
+            batteryReceiverRegistered = true
         } catch (e: Exception) {
             Log.w(TAG, "Failed to register battery receiver: ${e.message}")
         }
     }
     
     private fun unregisterBatteryReceiver() {
+        if (!batteryReceiverRegistered) return
         try {
             context.unregisterReceiver(batteryReceiver)
         } catch (e: Exception) {
             Log.w(TAG, "Failed to unregister battery receiver: ${e.message}")
         }
+        batteryReceiverRegistered = false
     }
 }
 

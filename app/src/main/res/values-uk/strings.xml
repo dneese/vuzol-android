@@ -163,7 +163,7 @@
     <string name="cd_remove_bookmark">Видалити закладку</string>
     <string name="cd_teleport">Телепортувати</string>
     <string name="cd_selected">Вибрано</string>
-    <string name="notification_action_quit_bitchat">Закрити Vuzol</string>
+    <string name="notification_action_quit_vuzol">Закрити Vuzol</string>
     <string name="about_background_title">працювати у фоні</string>
     <string name="about_background_desc">тримати mesh активним, коли програму закрито (служба переднього плану)</string>
     <string name="about_p2p_subtitle">Прямі однорангові з\'єднання через p2p</string>

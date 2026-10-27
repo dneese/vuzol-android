@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -124,6 +125,12 @@ class P2PTopicsRepository private constructor(
     
     // Per-topic refresh jobs - prevents orphaned coroutines when switching channels (memory leak fix)
     private val refreshJobs = ConcurrentHashMap<String, Job>()
+
+    // Per-topic discovery jobs - prevents duplicated DHT discovery loops
+    private val discoveryJobs = ConcurrentHashMap<String, Job>()
+
+    // Maximum number of messages kept per topic in memory
+    private val maxTopicMessages = 500
     
     // Presence tracking to prevent broadcast storms
     private val lastPresenceBroadcast = mutableMapOf<String, Long>() // topic -> timestamp
@@ -192,11 +199,13 @@ class P2PTopicsRepository private constructor(
      */
     fun onNodeStopped() {
         // Reset all topic states to connecting for next startup
-        val states = _topicStates.value.toMutableMap()
-        states.keys.forEach { key ->
-            states[key] = TopicState(connectionState = TopicConnectionState.CONNECTING)
+        _topicStates.update { states ->
+            val updated = states.toMutableMap()
+            updated.keys.forEach { key ->
+                updated[key] = TopicState(connectionState = TopicConnectionState.CONNECTING)
+            }
+            updated
         }
-        _topicStates.value = states
     }
     
     // ============== Topic Operations ==============
@@ -284,14 +293,16 @@ class P2PTopicsRepository private constructor(
             }
             
             // Only set state to CONNECTING if not already connected with peers
-            val current = _topicStates.value.toMutableMap()
-            val state = current[topicName] ?: TopicState()
-            if (state.connectionState != TopicConnectionState.CONNECTED || state.peers.isEmpty()) {
-                current[topicName] = state.copy(
-                    connectionState = TopicConnectionState.CONNECTING,
-                    lastUpdated = System.currentTimeMillis()
-                )
-                _topicStates.value = current
+            _topicStates.update { current ->
+                val updated = current.toMutableMap()
+                val state = updated[topicName] ?: TopicState()
+                if (state.connectionState != TopicConnectionState.CONNECTED || state.peers.isEmpty()) {
+                    updated[topicName] = state.copy(
+                        connectionState = TopicConnectionState.CONNECTING,
+                        lastUpdated = System.currentTimeMillis()
+                    )
+                }
+                updated
             }
             
             Log.d(TAG, "Starting DHT discovery for topic: $topicName")
@@ -605,15 +616,25 @@ class P2PTopicsRepository private constructor(
     }
     
     private fun addMessageToTopic(topicName: String, message: TopicMessage) {
-        val current = _topicMessages.value.toMutableMap()
-        val msgs = current[topicName]?.toMutableList() ?: mutableListOf()
-        msgs.add(message)
-        current[topicName] = msgs
-        _topicMessages.value = current
+        _topicMessages.update { current ->
+            val updated = current.toMutableMap()
+            val msgs = updated[topicName]?.toMutableList() ?: mutableListOf()
+            msgs.add(message)
+            // Keep the per-topic history bounded, otherwise a long running chat
+            // grows the state map without limit.
+            while (msgs.size > maxTopicMessages) {
+                msgs.removeAt(0)
+            }
+            updated[topicName] = msgs
+            updated
+        }
     }
     
     private fun startTopicDiscovery(topicName: String) {
-        scope.launch {
+        // Cancel a previous discovery loop for the same topic, otherwise every
+        // subscribe / node restart left another loop running.
+        discoveryJobs.remove(topicName)?.cancel()
+        discoveryJobs[topicName] = scope.launch {
             try {
                 // Periodically trigger discovery and check peers
                 repeat(AppConstants.P2P.TOPIC_DISCOVERY_ITERATIONS) { iteration ->
@@ -630,6 +651,8 @@ class P2PTopicsRepository private constructor(
                 
             } catch (e: Exception) {
                 Log.w(TAG, "Topic discovery failed for $topicName: ${e.message}")
+            } finally {
+                discoveryJobs.remove(topicName)
             }
         }
     }
@@ -643,9 +666,11 @@ class P2PTopicsRepository private constructor(
             val statsJson = p2pLibraryRepository.getTopicStats(topicName)
             val providerCount = parseProviderCount(statsJson)
             
-            val current = _topicPeers.value.toMutableMap()
-            current[topicName] = peers
-            _topicPeers.value = current
+            _topicPeers.update { current ->
+                val updated = current.toMutableMap()
+                updated[topicName] = peers
+                updated
+            }
             
             // Update state with both mesh peers and provider count
             updateTopicStateWithStats(topicName, peers, providerCount)
@@ -657,26 +682,28 @@ class P2PTopicsRepository private constructor(
     }
     
     private fun updateTopicStateWithStats(topicName: String, peers: List<String>, providerCount: Int) {
-        val current = _topicStates.value.toMutableMap()
-        val state = current[topicName] ?: TopicState()
-        
-        val newConnectionState = when {
-            peers.isNotEmpty() -> TopicConnectionState.CONNECTED
-            state.connectionState == TopicConnectionState.ERROR -> TopicConnectionState.ERROR
-            else -> TopicConnectionState.CONNECTING
+        _topicStates.update { current ->
+            val updated = current.toMutableMap()
+            val state = updated[topicName] ?: TopicState()
+            
+            val newConnectionState = when {
+                peers.isNotEmpty() -> TopicConnectionState.CONNECTED
+                state.connectionState == TopicConnectionState.ERROR -> TopicConnectionState.ERROR
+                else -> TopicConnectionState.CONNECTING
+            }
+            
+            Log.d(TAG, "TopicState update for $topicName: peers=${peers.size} providers=$providerCount state=${state.connectionState}->$newConnectionState")
+            
+            updated[topicName] = state.copy(
+                connectionState = newConnectionState,
+                meshPeerCount = peers.size,
+                providerCount = providerCount,
+                peers = peers,
+                error = null,
+                lastUpdated = System.currentTimeMillis()
+            )
+            updated
         }
-        
-        Log.d(TAG, "TopicState update for $topicName: peers=${peers.size} providers=$providerCount state=${state.connectionState}->$newConnectionState")
-        
-        current[topicName] = state.copy(
-            connectionState = newConnectionState,
-            meshPeerCount = peers.size,
-            providerCount = providerCount,
-            peers = peers,
-            error = null,
-            lastUpdated = System.currentTimeMillis()
-        )
-        _topicStates.value = current
     }
     
     private fun parseProviderCount(statsJson: String): Int {

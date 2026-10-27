@@ -397,7 +397,7 @@
     <string name="cd_location_notes">Ghi chu vi tri</string>
 
     <!-- Hanh dong thong bao -->
-    <string name="notification_action_quit_bitchat">Thoat Vuzol</string>
+    <string name="notification_action_quit_vuzol">Thoat Vuzol</string>
 
     <!-- Gioi thieu -->
     <string name="about_background_title">chay nen</string>

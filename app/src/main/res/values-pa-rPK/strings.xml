@@ -392,7 +392,7 @@
     <string name="mesh_service_channel_desc">ਬੈਕਗ੍ਰਾਊਂਡ ਵਿੱਚ Bluetooth ਮੈਸ਼ ਚੱਲਦਾ ਰੱਖਦਾ ਹੈ</string>
     <string name="cd_settings">ਸੈਟਿੰਗਾਂ</string>
     <string name="cd_location_notes">ਟਿਕਾਣੇ ਦੇ ਨੋਟ</string>
-    <string name="notification_action_quit_bitchat">Vuzol ਬੰਦ ਕਰੋ</string>
+    <string name="notification_action_quit_vuzol">Vuzol ਬੰਦ ਕਰੋ</string>
     <string name="about_background_title">ਬੈਕਗ੍ਰਾਊਂਡ ਵਿੱਚ ਚਲਾਓ</string>
     <string name="about_background_desc">ਐਪ ਬੰਦ ਹੋਣ \'ਤੇ ਮੈਸ਼ ਚਾਲੂ ਰੱਖੋ (foreground service)</string>
     <string name="about_p2p_subtitle">p2p ਰਾਹੀਂ ਸਿੱਧੇ ਪੀਅਰ ਕਨੈਕਸ਼ਨ</string>

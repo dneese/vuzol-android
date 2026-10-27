@@ -407,7 +407,7 @@
   <string name="mesh_service_channel_desc">Поддерживает работу Bluetooth-сети в фоне</string>
   <string name="cd_settings">Настройки</string>
   <string name="cd_location_notes">Заметки о местоположении</string>
-  <string name="notification_action_quit_bitchat">Выйти из Vuzol</string>
+  <string name="notification_action_quit_vuzol">Выйти из Vuzol</string>
   <string name="about_background_title">работа в фоне</string>
   <string name="about_background_desc">сохранять активность сети, когда приложение закрыто (служба переднего плана)</string>
   <string name="about_p2p_subtitle">Прямые p2p-соединения с пирами</string>

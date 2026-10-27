@@ -259,6 +259,8 @@ class BluetoothConnectionManager(
 
             if (cancelScope) {
                 // Final shutdown path (service teardown). Runtime BLE toggles keep scope alive.
+                packetBroadcaster.shutdown()
+                powerManager.shutdown()
                 connectionScope.cancel()
                 Log.i(TAG, "All Bluetooth services stopped and scope cancelled")
             } else {

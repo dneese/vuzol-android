@@ -7,6 +7,7 @@ import com.roman.zemzeme.protocol.SpecialRecipients
 import kotlinx.coroutines.*
 import java.util.*
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.CopyOnWriteArrayList
 
 /**
  * Manages store-and-forward messaging for offline peers
@@ -20,6 +21,10 @@ class StoreForwardManager {
         private const val MAX_CACHED_MESSAGES = com.roman.zemzeme.util.AppConstants.StoreForward.MAX_CACHED_MESSAGES  // For regular peers
         private const val MAX_CACHED_MESSAGES_FAVORITES = com.roman.zemzeme.util.AppConstants.StoreForward.MAX_CACHED_MESSAGES_FAVORITES  // For favorites
         private const val CLEANUP_INTERVAL = com.roman.zemzeme.util.AppConstants.StoreForward.CLEANUP_INTERVAL_MS // 10 minutes
+        // Minimum delay between two cache flushes for the same peer
+        private const val CACHE_FLUSH_COOLDOWN_MS = 5_000L
+        // Constant gap between two cached messages
+        private const val CACHE_FLUSH_INTERVAL_MS = 10L
     }
     
     /**
@@ -34,9 +39,9 @@ class StoreForwardManager {
     
     // Message storage
     private val messageCache = Collections.synchronizedList(mutableListOf<StoredMessage>())
-    private val favoriteMessageQueue = ConcurrentHashMap<String, MutableList<StoredMessage>>()
+    private val favoriteMessageQueue = ConcurrentHashMap<String, CopyOnWriteArrayList<StoredMessage>>()
     private val deliveredMessages = Collections.synchronizedSet(mutableSetOf<String>())
-    private val cachedMessagesSentToPeer = Collections.synchronizedSet(mutableSetOf<String>())
+    private val cachedMessagesSentToPeer = ConcurrentHashMap<String, Long>()
     
     // Delegate for callbacks
     var delegate: StoreForwardManagerDelegate? = null
@@ -88,17 +93,15 @@ class StoreForwardManager {
         
         if (isForFavorite) {
             // Store in favorite queue
-            if (!favoriteMessageQueue.containsKey(recipientPeerID)) {
-                favoriteMessageQueue[recipientPeerID] = mutableListOf()
-            }
-            favoriteMessageQueue[recipientPeerID]?.add(storedMessage)
+            val queue = favoriteMessageQueue.computeIfAbsent(recipientPeerID) { CopyOnWriteArrayList() }
+            queue.add(storedMessage)
             
             // Limit favorite queue size
-            if (favoriteMessageQueue[recipientPeerID]?.size ?: 0 > MAX_CACHED_MESSAGES_FAVORITES) {
-                favoriteMessageQueue[recipientPeerID]?.removeAt(0)
+            if (queue.size > MAX_CACHED_MESSAGES_FAVORITES) {
+                queue.removeAt(0)
             }
             
-            Log.d(TAG, "Cached message for favorite peer $recipientPeerID (${favoriteMessageQueue[recipientPeerID]?.size} total)")
+            Log.d(TAG, "Cached message for favorite peer $recipientPeerID (${queue.size} total)")
             
         } else {
             // Store in regular cache
@@ -119,12 +122,15 @@ class StoreForwardManager {
      * Send cached messages to peer when they come online
      */
     fun sendCachedMessages(peerID: String) {
-        if (cachedMessagesSentToPeer.contains(peerID)) {
-            Log.d(TAG, "Already sent cached messages to $peerID")
-            return // Already sent cached messages to this peer
+        val now = System.currentTimeMillis()
+        synchronized(cachedMessagesSentToPeer) {
+            val lastFlush = cachedMessagesSentToPeer[peerID] ?: 0L
+            if (now - lastFlush < CACHE_FLUSH_COOLDOWN_MS) {
+                Log.d(TAG, "Recently flushed cached messages to $peerID, skipping")
+                return
+            }
+            cachedMessagesSentToPeer[peerID] = now
         }
-        
-        cachedMessagesSentToPeer.add(peerID)
         
         managerScope.launch {
             cleanupMessageCache()
@@ -132,10 +138,9 @@ class StoreForwardManager {
             val messagesToSend = mutableListOf<StoredMessage>()
             
             // Check favorite queue
-            favoriteMessageQueue[peerID]?.let { favoriteMessages ->
+            favoriteMessageQueue.remove(peerID)?.let { favoriteMessages ->
                 val undeliveredFavorites = favoriteMessages.filter { !deliveredMessages.contains(it.messageID) }
                 messagesToSend.addAll(undeliveredFavorites)
-                favoriteMessageQueue.remove(peerID)
                 Log.d(TAG, "Found ${undeliveredFavorites.size} cached favorite messages for $peerID")
             }
             
@@ -159,21 +164,28 @@ class StoreForwardManager {
                 Log.i(TAG, "Sending ${messagesToSend.size} cached messages to $peerID")
             }
             
-            // Mark as delivered
-            val messageIDsToRemove = messagesToSend.map { it.messageID }
-            deliveredMessages.addAll(messageIDsToRemove)
-            
-            // Send with delays to avoid overwhelming the connection
-            messagesToSend.forEachIndexed { index, storedMessage ->
-                delay(index * 10L) // 10ms between messages
-                delegate?.sendPacket(storedMessage.packet)
+            // Send with a constant gap to avoid overwhelming the connection.
+            // Only messages that were actually handed to the transport are marked
+            // as delivered, otherwise a failed send silently dropped the message.
+            val deliveredIDs = mutableListOf<String>()
+            messagesToSend.forEach { storedMessage ->
+                delay(CACHE_FLUSH_INTERVAL_MS)
+                val sent = try {
+                    delegate?.sendPacket(storedMessage.packet) == true
+                } catch (e: Exception) {
+                    Log.w(TAG, "Failed to send cached message to $peerID: ${e.message}")
+                    false
+                }
+                if (sent) {
+                    deliveredIDs.add(storedMessage.messageID)
+                }
             }
             
-            // Remove sent messages from cache
-            messageCache.removeAll { messageIDsToRemove.contains(it.messageID) }
+            deliveredMessages.addAll(deliveredIDs)
+            messageCache.removeAll { deliveredIDs.contains(it.messageID) }
             
             if (messagesToSend.isNotEmpty()) {
-                Log.d(TAG, "Finished sending ${messagesToSend.size} cached messages to $peerID")
+                Log.d(TAG, "Finished sending ${deliveredIDs.size}/${messagesToSend.size} cached messages to $peerID")
             }
         }
     }
@@ -312,5 +324,6 @@ class StoreForwardManager {
 interface StoreForwardManagerDelegate {
     fun isFavorite(peerID: String): Boolean
     fun isPeerOnline(peerID: String): Boolean
-    fun sendPacket(packet: ZemzemePacket)
+    /** Returns true when the packet was handed over to the transport. */
+    fun sendPacket(packet: ZemzemePacket): Boolean
 }

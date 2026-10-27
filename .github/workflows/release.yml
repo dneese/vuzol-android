@@ -12,28 +12,17 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Set up JDK
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: 17
 
       - name: Setup Gradle
-        uses: gradle/gradle-build-action@v2
-        with:
-          gradle-version: wrapper
+        uses: gradle/actions/setup-gradle@v4
 
-      - name: Cache Gradle files
-        uses: actions/cache@v3
-        with:
-          path: |
-            ~/.gradle/caches
-            ~/.gradle/wrapper
-          key: gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
-          restore-keys: |
-            gradle-${{ runner.os }}-
 
       - name: Grant execute permission for Gradlew
         run: chmod +x ./gradlew
@@ -49,18 +38,16 @@ jobs:
       - name: Rename APKs for GitHub Release
         run: |
           cd app/build/outputs/apk/release
-          [ -f "app-arm64-v8a-release-unsigned.apk" ] && mv app-arm64-v8a-release-unsigned.apk bitchat-android-arm64.apk
-          [ -f "app-x86_64-release-unsigned.apk" ] && mv app-x86_64-release-unsigned.apk bitchat-android-x86_64.apk
-          [ -f "app-universal-release-unsigned.apk" ] && mv app-universal-release-unsigned.apk bitchat-android-universal.apk
-
-      - name: DEBUG
-        run: |
-          set -x
-          pwd
-          ls -all
-          cd app/build/outputs/
-          ls -all
-          tree || ls -R
+          for f in *.apk; do
+            [ -e "$f" ] || continue
+            case "$f" in
+              *arm64-v8a*) target="vuzol-android-arm64.apk" ;;
+              *x86_64*) target="vuzol-android-x86_64.apk" ;;
+              *universal*) target="vuzol-android-universal.apk" ;;
+              *) target="vuzol-android-$f" ;;
+            esac
+            [ "$f" = "$target" ] || mv "$f" "$target"
+          done
 
       # Optional: Sign APKs (uncomment and configure secrets when ready)
       # - name: Sign APKs
@@ -75,7 +62,7 @@ jobs:
       - name: Upload APKs as artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: bitchat-android-release-${{ github.ref_name }}
+          name: vuzol-android-release-${{ github.ref_name }}
           path: app/build/outputs/apk/release/*.apk
           retention-days: 3
           if-no-files-found: error
@@ -86,22 +73,22 @@ jobs:
 
     steps:
       - name: Download release artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
-          name: bitchat-android-release-${{ github.ref_name }}
+          name: vuzol-android-release-${{ github.ref_name }}
           path: release
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            release/bitchat-android-arm64.apk
-            release/bitchat-android-x86_64.apk
-            release/bitchat-android-universal.apk
+            release/vuzol-android-arm64.apk
+            release/vuzol-android-x86_64.apk
+            release/vuzol-android-universal.apk
           name: Release ${{ github.ref_name }}
           body: |
-            **bitchat-android-arm64.apk** - ARM64 (most phones)
-            **bitchat-android-x86_64.apk** - x86_64 (Chromebooks, tablets)
-            **bitchat-android-universal.apk** - All architectures (fallback)
+            **vuzol-android-arm64.apk** - ARM64 (most phones)
+            **vuzol-android-x86_64.apk** - x86_64 (Chromebooks, tablets)
+            **vuzol-android-universal.apk** - All architectures (fallback)
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -21,16 +21,26 @@
         color: #dddddd;
         text-shadow: 0 0 2px #000000, 0 0 2px #000000, 0 0 2px #000000;
       }
+      .dark .leaflet-tile-pane {
+        filter: invert(1) hue-rotate(180deg) brightness(0.92) contrast(0.9) saturate(0.75);
+      }
+      .dark .leaflet-control-attribution {
+        background: rgba(24, 24, 24, 0.82);
+        color: #cccccc;
+      }
+      .dark .leaflet-control-attribution a { color: #8ab4f8; }
+      .no-tiles .leaflet-container { background: #e8e8e8; }
+      .dark.no-tiles .leaflet-container { background: #1c1c1e; }
       .gh-text-selected {
         color: #00C851 !important;
       }
     </style>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="leaflet/leaflet.css" />
   </head>
   <body>
     <div id="map"></div>
 
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="leaflet/leaflet.js"></script>
     <script>
       // Minimal geohash (bounds/encode/adjacent)
       (function () {
@@ -70,8 +80,72 @@
         window.__geohash = { bounds, encode, adjacent };
       })();
 
-      const map = L.map("map", { zoomControl: true, minZoom: 2, maxZoom: 21 }).setView([0, 0], 3);
-      L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png", { maxZoom: 21, attribution: "&copy; OpenStreetMap &copy; Carto", opacity: 1.0 }).addTo(map);
+      const map = L.map("map", { zoomControl: true, minZoom: 2, maxZoom: 19 }).setView([0, 0], 3);
+
+      // Tile providers that work without an API key.
+      // Carto/Mapbox style endpoints now require a key, so we use plain OpenStreetMap tiles
+      // with automatic fallback to other keyless mirrors.
+      const TILE_PROVIDERS = [
+        {
+          name: "OpenStreetMap",
+          url: "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+          maxZoom: 19,
+          attribution: "&copy; OpenStreetMap contributors"
+        },
+        {
+          name: "OpenStreetMap DE",
+          url: "https://tile.openstreetmap.de/{z}/{x}/{y}.png",
+          maxZoom: 18,
+          attribution: "&copy; OpenStreetMap contributors"
+        },
+        {
+          name: "OpenTopoMap",
+          url: "https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png",
+          maxZoom: 17,
+          attribution: "&copy; OpenStreetMap contributors, SRTM | &copy; OpenTopoMap (CC-BY-SA)"
+        }
+      ];
+
+      let providerIndex = 0;
+      let tileLayer = null;
+      let tileErrorCount = 0;
+      let tilesUnavailable = false;
+
+      function applyTileProvider(index) {
+        const provider = TILE_PROVIDERS[index];
+        if (!provider) return;
+        providerIndex = index;
+        tileErrorCount = 0;
+        if (tileLayer) {
+          map.removeLayer(tileLayer);
+        }
+        tileLayer = L.tileLayer(provider.url, {
+          maxZoom: provider.maxZoom,
+          minZoom: 2,
+          attribution: provider.attribution,
+          crossOrigin: true,
+          opacity: 1.0
+        });
+        tileLayer.on("tileerror", function () {
+          tileErrorCount++;
+          if (tileErrorCount >= 3 && providerIndex + 1 < TILE_PROVIDERS.length) {
+            const next = providerIndex + 1;
+            console.log("Tile provider failed, switching to " + TILE_PROVIDERS[next].name);
+            applyTileProvider(next);
+          } else if (tileErrorCount >= 3) {
+            tilesUnavailable = true;
+            document.body.classList.add("no-tiles");
+            console.log("No tile provider available, continuing without map tiles");
+          }
+        });
+        tileLayer.on("tileload", function () {
+          tilesUnavailable = false;
+          document.body.classList.remove("no-tiles");
+        });
+        tileLayer.addTo(map);
+      }
+
+      applyTileProvider(0);
 
       let selectedGeohash = "";
       let gridLayer = L.layerGroup().addTo(map);
@@ -203,7 +277,13 @@
       
       // Android side will call this with 'dark' or 'light'
       function setMapTheme(theme) {
-        document.body.className = theme;
+        const classes = [];
+        if (theme === "dark") classes.push("dark");
+        if (tilesUnavailable) classes.push("no-tiles");
+        document.body.className = classes.join(" ");
+        if (map && map.invalidateSize) {
+          setTimeout(function () { map.invalidateSize(); }, 50);
+        }
       }
 
       window.setCenter = setCenter;
@@ -213,6 +293,7 @@
       window.setMapTheme = setMapTheme;
 
       function cleanup() {
+        try { if (tileLayer) { map.removeLayer(tileLayer); } } catch (_) {}
         try { map.off(); } catch (_) {}
         try { gridLayer.clearLayers(); } catch (_) {}
         try { map.remove(); } catch (_) {}

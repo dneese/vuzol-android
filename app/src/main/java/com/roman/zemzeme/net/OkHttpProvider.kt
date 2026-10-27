@@ -44,11 +44,21 @@ object OkHttpProvider {
         val builder = OkHttpClient.Builder()
         val torProvider = ArtiTorManager.getInstance()
         val socks: InetSocketAddress? = torProvider.currentSocksAddress()
+        val torState = torProvider.statusFlow.value.state
         // If a SOCKS address is defined, always use it. TorProvider sets this as soon as Tor mode is ON,
         // even before bootstrap, to prevent any direct connections from occurring.
+        // The only exception is a hard Tor failure (Arti could not start): in that case every
+        // request would fail forever, so we fall back to a direct connection.
         if (socks != null) {
-            val proxy = Proxy(Proxy.Type.SOCKS, socks)
-            builder.proxy(proxy)
+            if (torState == ArtiTorManager.TorState.ERROR) {
+                android.util.Log.w(
+                    "OkHttpProvider",
+                    "Tor is in error state, falling back to a direct connection for ${'$'}{System.currentTimeMillis()}"
+                )
+            } else {
+                val proxy = Proxy(Proxy.Type.SOCKS, socks)
+                builder.proxy(proxy)
+            }
         }
         return builder
     }

@@ -162,7 +162,7 @@
   <string name="cd_remove_bookmark">Remove bookmark</string>
   <string name="cd_teleport">Teleport</string>
   <string name="cd_selected">Selected</string>
-  <string name="notification_action_quit_bitchat">Quit Vuzol</string>
+  <string name="notification_action_quit_vuzol">Quit Vuzol</string>
   <string name="about_background_title">run in background</string>
   <string name="about_background_desc">keep mesh active when app is closed (foreground service)</string>
   <string name="about_p2p_subtitle">Direct peer connections via p2p</string>
@@ -370,7 +370,7 @@
   <string name="bluetooth_needs_bullets">• Discover nearby users\n• Create mesh network connections\n• Send and receive messages\n• Work without internet or servers</string>
   <string name="enable_bluetooth">Enable Bluetooth</string>
   <string name="bluetooth_not_supported">Bluetooth Not Supported</string>
-  <string name="bluetooth_unsupported_explanation">This device doesn\'t support Bluetooth Low Energy (BLE), which is required for Vuzol to function.\n\nbVuzol needs BLE to create mesh networks and communicate with nearby devices without internet.</string>
+  <string name="bluetooth_unsupported_explanation">This device doesn\'t support Bluetooth Low Energy (BLE), which is required for Vuzol to function.\n\nVuzol needs BLE to create mesh networks and communicate with nearby devices without internet.</string>
   <string name="checking_bluetooth_status">Checking Bluetooth status...</string>
   <string name="battery_optimization_detected_title">battery optimization detected</string>
   <string name="battery_optimization_enabled_title">Battery Optimization Enabled</string>

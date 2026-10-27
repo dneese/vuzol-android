@@ -213,14 +213,22 @@ class P2PTransport private constructor(
         
         // Fall back to Nostr
         try {
-            nostrTransport.sendPrivateMessage(
+            // Use the awaiting variant: the fire-and-forget variant reports
+            // success even when the message was dropped by the relay layer.
+            val nostrResult = nostrTransport.sendPrivateMessageAwait(
                 content = content,
                 to = recipientZemzemeID,
                 recipientNickname = recipientNickname,
                 messageID = messageID
             )
-            Log.i(TAG, "Message sent via Nostr to $recipientZemzemeID")
-            Result.success(TransportUsed.NOSTR)
+            if (nostrResult.isSuccess) {
+                Log.i(TAG, "Message sent via Nostr to $recipientZemzemeID")
+                Result.success(TransportUsed.NOSTR)
+            } else {
+                val error = nostrResult.exceptionOrNull() ?: IllegalStateException("Nostr send failed")
+                Log.e(TAG, "Both P2P and Nostr send failed: ${error.message}")
+                Result.failure(error)
+            }
         } catch (e: Exception) {
             Log.e(TAG, "Both P2P and Nostr send failed", e)
             Result.failure(e)

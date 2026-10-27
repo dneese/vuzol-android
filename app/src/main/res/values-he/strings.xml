@@ -242,7 +242,7 @@
     <string name="mesh_service_notification_content">Bluetooth פועל — %1$d עמיתים</string>
 
     <!-- פעולת יציאה מהתראה -->
-    <string name="notification_action_quit_bitchat">צא מ-Vuzol</string>
+    <string name="notification_action_quit_vuzol">צא מ-Vuzol</string>
 
     <!-- PoW בכרייה -->
     <string name="pow_mining_ellipsis">כורה…</string>

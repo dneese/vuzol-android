@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.Intent
 import android.content.res.Configuration
+import android.os.Build
 import android.os.Bundle
 import android.view.ViewGroup
 import android.webkit.JavascriptInterface
@@ -38,6 +39,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.res.stringResource
+import com.roman.zemzeme.BuildConfig
 import com.roman.zemzeme.R
 import androidx.core.view.updateLayoutParams
 import com.roman.zemzeme.geohash.Geohash
@@ -107,6 +109,14 @@ class GeohashPickerActivity : OrientationAwareActivity() {
                                     settings.cacheMode = WebSettings.LOAD_DEFAULT
                                     settings.allowFileAccess = true
                                     settings.allowContentAccess = true
+                                    settings.allowFileAccessFromFileURLs = true
+                                    settings.userAgentString = buildString {
+                                        append("Vuzol/")
+                                        append(BuildConfig.VERSION_NAME)
+                                        append(" (Android ")
+                                        append(Build.VERSION.SDK_INT)
+                                        append(")")
+                                    }
                                     webChromeClient = WebChromeClient()
                                     webViewClient = object : WebViewClient() {
                                         override fun onPageFinished(view: WebView?, url: String?) {

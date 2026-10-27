@@ -7,6 +7,7 @@ import com.roman.zemzeme.model.RoutedPacket
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.channels.actor
+import java.util.concurrent.ConcurrentHashMap
 
 /**
  * Processes incoming packets and routes them to appropriate handlers
@@ -40,7 +41,7 @@ class PacketProcessor(private val myPeerID: String) {
     // Per-peer actors to serialize packet processing
     // Each peer gets its own actor that processes packets sequentially
     // This prevents race conditions in session management
-    private val peerActors = mutableMapOf<String, CompletableDeferred<Unit>>()
+    private val peerActors = ConcurrentHashMap<String, CompletableDeferred<Unit>>()
     
     @OptIn(ObsoleteCoroutinesApi::class)
     private fun getOrCreateActorForPeer(peerID: String) = processorScope.actor<RoutedPacket>(
@@ -59,7 +60,7 @@ class PacketProcessor(private val myPeerID: String) {
     }
     
     // Cache actors to reuse them
-    private val actors = mutableMapOf<String, kotlinx.coroutines.channels.SendChannel<RoutedPacket>>()
+    private val actors = ConcurrentHashMap<String, kotlinx.coroutines.channels.SendChannel<RoutedPacket>>()
     
     init {
         // Set up the packet relay manager delegate immediately
@@ -80,7 +81,7 @@ class PacketProcessor(private val myPeerID: String) {
         }
         
         // Get or create actor for this peer
-        val actor = actors.getOrPut(peerID) { getOrCreateActorForPeer(peerID) }
+        val actor = actors.computeIfAbsent(peerID) { getOrCreateActorForPeer(it) }
         
         // Send packet to peer's dedicated actor for serialized processing
         processorScope.launch {

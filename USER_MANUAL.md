@@ -1,4 +1,4 @@
-# Zemzeme — User Manual
+# Vuzol — User Manual
 
 **Version 1.1.2**
 
@@ -25,7 +25,7 @@
 
 ## 1. Overview
 
-Zemzeme is a decentralized, privacy-focused peer-to-peer messaging application. It works without relying on any central server and supports three distinct communication modes:
+Vuzol is a decentralized, privacy-focused peer-to-peer messaging application. It works without relying on any central server and supports three distinct communication modes:
 
 - **Offline Bluetooth Mesh** — Talk to nearby people with no internet at all.
 - **Location Channels** — Connect with people in your geographic area over the internet.
@@ -48,12 +48,12 @@ All private messages are end-to-end encrypted using the Noise protocol with Curv
 
 ### First Launch & Onboarding
 
-When you open Zemzeme for the first time, the app will guide you through a short setup:
+When you open Vuzol for the first time, the app will guide you through a short setup:
 
 1. **Bluetooth Check** — The app verifies your device supports Bluetooth Low Energy. If Bluetooth is off, you will be prompted to enable it.
 2. **Location Permission** — Android requires location permission for BLE scanning. Grant precise location access when prompted.
 3. **Background Location** *(optional)* — Granting background location improves mesh reliability when the app is in the background.
-4. **Battery Optimization** — You will be asked to disable battery optimization for Zemzeme. This allows the mesh service to run persistently in the background and receive messages while the screen is off.
+4. **Battery Optimization** — You will be asked to disable battery optimization for Vuzol. This allows the mesh service to run persistently in the background and receive messages while the screen is off.
 5. **Notification Permission** — Allow notifications to be alerted about incoming messages.
 6. **Initialization** — The app starts the mesh network. A loading screen shows progress. Once complete, you are taken to the main chat screen.
 
@@ -82,7 +82,7 @@ Location channels let you join public topic rooms tied to a geographic area. Eac
 
 ### Nostr Protocol (Online)
 
-Nostr is an open, censorship-resistant messaging protocol. Zemzeme connects to multiple public Nostr relays simultaneously. Messages published to your Nostr identity (npub) are signed with your Ed25519 key.
+Nostr is an open, censorship-resistant messaging protocol. Vuzol connects to multiple public Nostr relays simultaneously. Messages published to your Nostr identity (npub) are signed with your Ed25519 key.
 
 ---
 
@@ -190,7 +190,7 @@ Location notes are persistent messages attached to a specific geohash that anyon
 
 ### Your Identity
 
-Zemzeme generates a cryptographic key pair automatically on first launch. Your identity is your **public key** (displayed as a Nostr npub address). No username or password is needed.
+Vuzol generates a cryptographic key pair automatically on first launch. Your identity is your **public key** (displayed as a Nostr npub address). No username or password is needed.
 
 ### Verifying a Peer
 
@@ -243,7 +243,7 @@ Open settings by tapping the **gear icon** on the main screen.
 | **Theme** | Choose Light, Dark, or follow system setting |
 | **Proof of Work (PoW)** | Set the difficulty for outgoing Nostr messages. Higher values slow down spam bots but also slightly slow your own sending. Range: 0 (off) to extreme (very slow). |
 | **Tor** | Enable/disable Tor routing for internet connections |
-| **Battery Optimization** | Re-open Android battery settings to adjust optimization for Zemzeme |
+| **Battery Optimization** | Re-open Android battery settings to adjust optimization for Vuzol |
 | **Favorites** | View and manage your bookmarked peers and channels |
 | **Debug Settings** | Developer tools: mesh topology visualizer, connection diagnostics, raw packet logs |
 
@@ -254,7 +254,7 @@ Open settings by tapping the **gear icon** on the main screen.
 If you need to erase all app data immediately:
 
 1. Navigate to the **main screen**.
-2. **Triple-tap the app title** ("Zemzeme") at the top of the screen.
+2. **Triple-tap the app title** ("Vuzol") at the top of the screen.
 3. A confirmation dialog appears warning you this action is irreversible.
 4. Confirm to wipe all messages, cryptographic keys, identity, settings, and favorites.
 
@@ -268,7 +268,7 @@ After deletion the app restarts as if freshly installed. This feature is designe
 
 - Make sure Bluetooth is enabled.
 - Make sure Location Services are enabled — Android requires them for BLE scanning.
-- Check that battery optimization is disabled for Zemzeme (Settings → Apps → Zemzeme → Battery → Unrestricted).
+- Check that battery optimization is disabled for Vuzol (Settings → Apps → Vuzol → Battery → Unrestricted).
 - Move closer to other users — typical BLE range is 10–30 metres.
 - Restart the app to re-initialize the mesh service.
 
@@ -280,16 +280,16 @@ After deletion the app restarts as if freshly installed. This feature is designe
 
 ### App stops running in the background
 
-- Re-open the app and go to **Settings → Battery Optimization** and set Zemzeme to **Unrestricted** or **No restrictions** in your Android battery settings.
+- Re-open the app and go to **Settings → Battery Optimization** and set Vuzol to **Unrestricted** or **No restrictions** in your Android battery settings.
 - Some device manufacturers (Samsung, Xiaomi, Huawei, etc.) have aggressive background-kill policies. Look up your device model and "disable background app kill" for additional steps specific to your phone.
 
 ### Voice notes not recording
 
-- Make sure the **Microphone** permission is granted. Go to Android Settings → Apps → Zemzeme → Permissions → Microphone → Allow.
+- Make sure the **Microphone** permission is granted. Go to Android Settings → Apps → Vuzol → Permissions → Microphone → Allow.
 
 ### Cannot scan QR code for verification
 
-- Make sure the **Camera** permission is granted. Go to Android Settings → Apps → Zemzeme → Permissions → Camera → Allow.
+- Make sure the **Camera** permission is granted. Go to Android Settings → Apps → Vuzol → Permissions → Camera → Allow.
 
 ### Tor is stuck connecting
 
@@ -316,4 +316,4 @@ After deletion the app restarts as if freshly installed. This feature is designe
 
 ---
 
-*Zemzeme is open-source and community-driven. For bug reports or feature requests, visit the project repository.*
+*Vuzol is open-source and community-driven. For bug reports or feature requests, visit the project repository.*

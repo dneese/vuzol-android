@@ -62,7 +62,11 @@ class BluetoothGattClientManager(
     private var lastScanStartTime = 0L
     private var lastScanStopTime = 0L
     private var isCurrentlyScanning = false
-    private val scanRateLimit = 5000L // Minimum 5 seconds between scan start attempts
+    private val scanRateLimit = 2000L // Minimum 2 seconds between scan start attempts
+
+    // Whether scanning is currently wanted (duty cycle may pause it)
+    @Volatile
+    private var scanRequested = true
     
     // RSSI monitoring state
     private var rssiMonitoringJob: Job? = null
@@ -106,9 +110,11 @@ class BluetoothGattClientManager(
         connectionScope.launch {
             if (powerManager.shouldUseDutyCycle()) {
                 Log.i(TAG, "Using power-aware duty cycling")
-            } else {
-                startScanning()
             }
+            // Always request a scan here. In duty-cycle mode the power manager
+            // drives on/off afterwards; without this first request the mesh
+            // stayed silent until the next duty-cycle tick.
+            startScanning()
             
             // Start RSSI monitoring
             startRSSIMonitoring()
@@ -150,6 +156,7 @@ class BluetoothGattClientManager(
      * Handle scan state changes from power manager
      */
     fun onScanStateChanged(shouldScan: Boolean) {
+        scanRequested = shouldScan
         val enabled = try { com.roman.zemzeme.ui.debug.DebugSettingsManager.getInstance().gattClientEnabled.value } catch (_: Exception) { true }
         if (shouldScan && enabled) {
             startScanning()
@@ -201,6 +208,10 @@ class BluetoothGattClientManager(
         // Respect debug setting
         val enabled = try { com.roman.zemzeme.ui.debug.DebugSettingsManager.getInstance().gattClientEnabled.value } catch (_: Exception) { true }
         if (!permissionManager.hasBluetoothPermissions() || bleScanner == null || !isActive || !enabled) return
+        if (!scanRequested) {
+            Log.d(TAG, "Scan start skipped: duty cycle currently requests no scan")
+            return
+        }
         
         // Rate limit scan starts to prevent "scanning too frequently" errors
         val currentTime = System.currentTimeMillis()
@@ -217,7 +228,7 @@ class BluetoothGattClientManager(
             // Schedule delayed scan start
             connectionScope.launch {
                 delay(remainingWait)
-                if (isActive && !isCurrentlyScanning) {
+                if (isActive && !isCurrentlyScanning && scanRequested) {
                     startScanning()
                 }
             }
@@ -261,7 +272,7 @@ class BluetoothGattClientManager(
                         Log.w(TAG, "Scan failed due to rate limiting - will retry after delay")
                         connectionScope.launch {
                             delay(10000) // Wait 10 seconds before retrying
-                            if (isActive) {
+                            if (isActive && scanRequested) {
                                 startScanning()
                             }
                         }
@@ -288,7 +299,17 @@ class BluetoothGattClientManager(
      */
     @Suppress("DEPRECATION")
     private fun stopScanning() {
-        if (!permissionManager.hasBluetoothPermissions() || bleScanner == null) return
+        if (bleScanner == null) {
+            isCurrentlyScanning = false
+            return
+        }
+        if (!permissionManager.hasBluetoothPermissions()) {
+            // Without permissions the scan cannot be stopped explicitly, but the
+            // local state must not stay "scanning" or the mesh would never
+            // restart scanning after the permission is granted again.
+            isCurrentlyScanning = false
+            return
+        }
         
         if (isCurrentlyScanning) {
             try {
@@ -426,8 +447,11 @@ class BluetoothGattClientManager(
                         }
                     } else {
                         Log.d(TAG, "Client: Cleanly disconnected from $deviceAddress")
-                        connectionTracker.cleanupDeviceConnection(deviceAddress)
                     }
+
+                    // Always clean up: keeping a failed connection in the tracker
+                    // occupied a connection slot and left a stale peer binding.
+                    connectionTracker.cleanupDeviceConnection(deviceAddress)
 
                     // Notify higher layers about device disconnection to update direct flags
                     delegate?.onDeviceDisconnected(gatt.device)

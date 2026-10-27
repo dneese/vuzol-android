@@ -399,7 +399,7 @@
     <!-- مفاتيح مفقودة -->
     <string name="cd_settings">الإعدادات</string>
     <string name="cd_location_notes">ملاحظات الموقع</string>
-    <string name="notification_action_quit_bitchat">الخروج من Vuzol</string>
+    <string name="notification_action_quit_vuzol">الخروج من Vuzol</string>
     <string name="about_background_title">التشغيل في الخلفية</string>
     <string name="about_background_desc">إبقاء الشبكة المتشابكة نشطة عند إغلاق التطبيق (خدمة أمامية)</string>
     <string name="about_p2p_subtitle">اتصالات مباشرة بين الأقران عبر p2p</string>

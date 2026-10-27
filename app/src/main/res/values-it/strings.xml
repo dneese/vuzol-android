@@ -166,7 +166,7 @@
     <string name="cd_remove_bookmark">Rimuovi segnalibro</string>
     <string name="cd_teleport">Teletrasporta</string>
     <string name="cd_selected">Selezionato</string>
-    <string name="notification_action_quit_bitchat">Esci da Vuzol</string>
+    <string name="notification_action_quit_vuzol">Esci da Vuzol</string>
     <string name="about_background_title">esegui in background</string>
     <string name="about_background_desc">mantieni il mesh attivo quando l\'app è chiusa (servizio in primo piano)</string>
     <string name="about_p2p_subtitle">Connessioni dirette tra peer via p2p</string>

@@ -166,7 +166,7 @@
     <string name="cd_remove_bookmark">बुकमार्क हटाएँ</string>
     <string name="cd_teleport">टेलीपोर्ट</string>
     <string name="cd_selected">चयनित</string>
-    <string name="notification_action_quit_bitchat">Vuzol बंद करें</string>
+    <string name="notification_action_quit_vuzol">Vuzol बंद करें</string>
     <string name="about_background_title">बैकग्राउंड में चलाएँ</string>
     <string name="about_background_desc">ऐप बंद होने पर भी मेश सक्रिय रखें (फोरग्राउंड सेवा)</string>
     <string name="about_p2p_subtitle">p2p के माध्यम से सीधे पीयर कनेक्शन</string>

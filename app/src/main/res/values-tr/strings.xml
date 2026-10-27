@@ -155,7 +155,7 @@
     <string name="cd_remove_bookmark">Yer imini kaldır</string>
     <string name="cd_teleport">Teleport</string>
     <string name="cd_selected">Seçildi</string>
-    <string name="notification_action_quit_bitchat">Vuzol\'dan Çık</string>
+    <string name="notification_action_quit_vuzol">Vuzol\'dan Çık</string>
     <string name="about_background_title">arka planda çalıştır</string>
     <string name="about_background_desc">uygulama kapalıyken mesh\'i aktif tut (ön plan hizmeti)</string>
     <string name="about_p2p_subtitle">p2p üzerinden doğrudan eşler arası bağlantılar</string>

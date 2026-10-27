@@ -36,6 +36,15 @@ android {
         includeInBundle = false
     }
 
+        // Architectures to build. Can be narrowed on low-memory machines with
+    // -Pvuzol.abis=arm64-v8a
+    val configuredAbis: List<String> = (project.properties["vuzol.abis"] as? String)
+        ?.split(",")
+        ?.map { it.trim() }
+        ?.filter { it.isNotEmpty() }
+        ?.takeIf { it.isNotEmpty() }
+        ?: listOf("arm64-v8a", "x86_64", "armeabi-v7a", "x86")
+
     val hasReleaseSigning = localProps.containsKey("KEYSTORE_PATH") &&
             localProps.containsKey("KEYSTORE_PASSWORD") &&
             localProps.containsKey("KEY_ALIAS") &&
@@ -58,7 +67,7 @@ android {
             versionNameSuffix = "-debug"
             ndk {
                 // Include x86_64 for emulator support during development
-                abiFilters += listOf("arm64-v8a", "x86_64", "armeabi-v7a", "x86")
+                abiFilters += configuredAbis
             }
         }
         release {
@@ -87,7 +96,7 @@ android {
         abi {
             isEnable = enableSplits
             reset()
-            include("arm64-v8a", "x86_64", "armeabi-v7a", "x86")
+            include(*configuredAbis.toTypedArray())
             isUniversalApk = true  // For F-Droid and fallback
         }
     }

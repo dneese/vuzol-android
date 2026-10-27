@@ -29,7 +29,7 @@ class FragmentManager {
     }
     
     // Fragment storage - iOS equivalent: incomingFragments: [String: [Int: Data]]
-    private val incomingFragments = ConcurrentHashMap<String, MutableMap<Int, ByteArray>>()
+    private val incomingFragments = ConcurrentHashMap<String, ConcurrentHashMap<Int, ByteArray>>()
     // iOS equivalent: fragmentMetadata: [String: (type: UInt8, total: Int, timestamp: Date)]
     private val fragmentMetadata = ConcurrentHashMap<String, Triple<UByte, Int, Long>>() // originalType, totalFragments, timestamp
     
@@ -174,17 +174,18 @@ class FragmentManager {
             Log.d(TAG, "Received fragment ${fragmentPayload.index}/${fragmentPayload.total} for fragmentID: $fragmentIDString, originalType: ${fragmentPayload.originalType}")
             
             // iOS: if incomingFragments[fragmentID] == nil
-            if (!incomingFragments.containsKey(fragmentIDString)) {
-                incomingFragments[fragmentIDString] = mutableMapOf()
-                fragmentMetadata[fragmentIDString] = Triple(
-                    fragmentPayload.originalType, 
-                    fragmentPayload.total, 
+            val fragments = incomingFragments.computeIfAbsent(fragmentIDString) { ConcurrentHashMap() }
+            fragmentMetadata.putIfAbsent(
+                fragmentIDString,
+                Triple(
+                    fragmentPayload.originalType,
+                    fragmentPayload.total,
                     System.currentTimeMillis()
                 )
-            }
+            )
             
             // iOS: incomingFragments[fragmentID]?[index] = Data(fragmentData)
-            incomingFragments[fragmentIDString]?.put(fragmentPayload.index, fragmentPayload.data)
+            fragments[fragmentPayload.index] = fragmentPayload.data
             
             // iOS: if let fragments = incomingFragments[fragmentID], fragments.count == total
             val fragmentMap = incomingFragments[fragmentIDString]

@@ -166,7 +166,7 @@
     <string name="cd_remove_bookmark">Retirer le signet</string>
     <string name="cd_teleport">Téléporter</string>
     <string name="cd_selected">Sélectionné</string>
-    <string name="notification_action_quit_bitchat">Quitter Vuzol</string>
+    <string name="notification_action_quit_vuzol">Quitter Vuzol</string>
     <string name="about_background_title">s\'exécuter en arrière-plan</string>
     <string name="about_background_desc">garder le mesh actif quand l\'application est fermée (service de premier plan)</string>
     <string name="about_p2p_subtitle">Connexions directes entre pairs via p2p</string>

@@ -396,7 +396,7 @@
     <string name="cd_location_notes">บันทึกตำแหน่ง</string>
 
     <!-- การดำเนินการแจ้งเตือน -->
-    <string name="notification_action_quit_bitchat">ออกจาก Vuzol</string>
+    <string name="notification_action_quit_vuzol">ออกจาก Vuzol</string>
 
     <!-- เกี่ยวกับ -->
     <string name="about_background_title">ทำงานเบื้องหลัง</string>

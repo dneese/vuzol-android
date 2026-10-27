@@ -30,7 +30,7 @@ class NostrSubscriptionManager(
     fun subscribeGeohash(geohash: String, sinceMs: Long, limit: Int, id: String, handler: (NostrEvent) -> Unit) {
         scope.launch {
             val filter = NostrFilter.geohashEphemeral(geohash, sinceMs, limit)
-            relayManager.subscribeForGeohash(geohash, filter, id, handler, includeDefaults = false, nRelays = 5)
+            relayManager.subscribeForGeohash(geohash, filter, id, handler, includeDefaults = true, nRelays = 5)
         }
     }
 

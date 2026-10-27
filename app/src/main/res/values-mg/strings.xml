@@ -428,7 +428,7 @@
     <string name="mesh_service_notification_content">Mandeha ny Bluetooth — %1$d peers</string>
     <string name="mesh_service_channel_name">Serivisy Bluetooth ao ambadika</string>
     <string name="mesh_service_channel_desc">Mitazona ny Bluetooth mesh miasa ao ambadika</string>
-    <string name="notification_action_quit_bitchat">Hiala ao amin\'ny Vuzol</string>
+    <string name="notification_action_quit_vuzol">Hiala ao amin\'ny Vuzol</string>
     <string name="about_background_title">mihazakazaka ao ambadika</string>
     <string name="about_background_desc">mitazona ny mesh mavitrika rehefa voakatona ny fampiharana (serivisy aloha)</string>
     <string name="about_p2p_subtitle">Fifandraisana mivantana amin\'ny p2p</string>

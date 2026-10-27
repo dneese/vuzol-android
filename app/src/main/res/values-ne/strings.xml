@@ -171,7 +171,7 @@
     <string name="cd_remove_bookmark">बुकमार्क हटाउनुहोस्</string>
     <string name="cd_teleport">टेलिपोर्ट</string>
     <string name="cd_selected">छानिएको</string>
-    <string name="notification_action_quit_bitchat">Vuzol बन्द गर्नुहोस्</string>
+    <string name="notification_action_quit_vuzol">Vuzol बन्द गर्नुहोस्</string>
     <string name="cd_leave_channel">च्यानल छोड्नुहोस्</string>
     <string name="cd_reachable_via_nostr">Nostr बाट पहुँचयोग्य</string>
     <string name="cd_offline_favorite">मनपर्ने (अफलाइन)</string>

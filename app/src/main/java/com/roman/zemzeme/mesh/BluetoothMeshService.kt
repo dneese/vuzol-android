@@ -96,6 +96,10 @@ class BluetoothMeshService(private val context: Context) {
     private var terminated = false
     private val transportMutationLock = Mutex()
 
+    // Upper bound for the transport apply loop, protects against a spin when
+    // toggles keep changing while the settings are applied.
+    private val maxTransportApplyIterations = 5
+
     @Volatile
     private var bleTransportRunning = false
 
@@ -483,10 +487,12 @@ class BluetoothMeshService(private val context: Context) {
             override fun isPeerOnline(peerID: String): Boolean {
                 return peerManager.isPeerActive(peerID)
             }
-            
-            override fun sendPacket(packet: ZemzemePacket) {
+            override fun sendPacket(packet: ZemzemePacket): Boolean {
+                val peerReachable = peerManager.isPeerActive(peerIDForPacket(packet))
                 connectionManager.broadcastPacket(RoutedPacket(packet))
+                return peerReachable
             }
+
         }
         
         // MessageHandler delegates
@@ -898,10 +904,15 @@ class BluetoothMeshService(private val context: Context) {
 
                     try {
                         var applied: P2PConfig.TransportToggles? = null
-                        while (applied != desiredTransportToggles) {
+                        var iterations = 0
+                        while (applied != desiredTransportToggles && iterations < maxTransportApplyIterations) {
                             val target = desiredTransportToggles
                             applyTransportSettingsLocked(target, sendBleLeaveOnDisable)
                             applied = target
+                            iterations++
+                        }
+                        if (applied != desiredTransportToggles) {
+                            Log.w(TAG, "Transport settings did not converge after $iterations iterations")
                         }
 
                         if (!this@BluetoothMeshService.isActive) {
@@ -933,7 +944,7 @@ class BluetoothMeshService(private val context: Context) {
             return Result.failure(IllegalStateException("Service terminated"))
         }
 
-        val target = desiredTransportToggles.copy(bleEnabled = enabled)
+        val target = updateDesiredTransportToggles { it.copy(bleEnabled = enabled) }
         return applyTransportSettings(target)
     }
 
@@ -942,7 +953,7 @@ class BluetoothMeshService(private val context: Context) {
             return Result.failure(IllegalStateException("Service terminated"))
         }
 
-        val target = desiredTransportToggles.copy(p2pEnabled = enabled)
+        val target = updateDesiredTransportToggles { it.copy(p2pEnabled = enabled) }
         return applyTransportSettings(target)
     }
 
@@ -951,8 +962,23 @@ class BluetoothMeshService(private val context: Context) {
             return Result.failure(IllegalStateException("Service terminated"))
         }
 
-        val target = desiredTransportToggles.copy(nostrEnabled = enabled)
+        val target = updateDesiredTransportToggles { it.copy(nostrEnabled = enabled) }
         return applyTransportSettings(target)
+    }
+
+    /**
+     * Atomically updates the desired transport toggles.
+     * Without this, two concurrent toggles could overwrite each other and one
+     * transport would stay in the wrong state.
+     */
+    private fun updateDesiredTransportToggles(
+        transform: (P2PConfig.TransportToggles) -> P2PConfig.TransportToggles
+    ): P2PConfig.TransportToggles {
+        synchronized(desiredTransportToggles) {
+            val updated = transform(desiredTransportToggles)
+            desiredTransportToggles = updated
+            return updated
+        }
     }
     
     /**
@@ -1636,6 +1662,13 @@ class BluetoothMeshService(private val context: Context) {
         }
         
         return result
+    }
+    
+    /**
+     * Extract the recipient peer id from a packet
+     */
+    private fun peerIDForPacket(packet: ZemzemePacket): String {
+        return packet.recipientID?.let { String(it).replace("\u0000", "") } ?: ""
     }
     
     /**

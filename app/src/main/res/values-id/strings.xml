@@ -439,7 +439,7 @@
     <string name="mesh_service_channel_desc">Menjaga mesh Bluetooth tetap berjalan di latar belakang</string>
     <string name="cd_settings">Pengaturan</string>
     <string name="cd_location_notes">Catatan lokasi</string>
-    <string name="notification_action_quit_bitchat">Keluar dari Vuzol</string>
+    <string name="notification_action_quit_vuzol">Keluar dari Vuzol</string>
     <string name="about_background_title">jalankan di latar belakang</string>
     <string name="about_background_desc">jaga mesh tetap aktif saat aplikasi ditutup (layanan foreground)</string>
     <string name="about_p2p_subtitle">Koneksi langsung antar-peer via p2p</string>

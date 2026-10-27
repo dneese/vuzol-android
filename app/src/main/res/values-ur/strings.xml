@@ -401,7 +401,7 @@
     <string name="mesh_service_channel_desc">بلوٹوتھ میش کو بیک گراؤنڈ میں چلاتا رہتا ہے</string>
     <string name="cd_settings">ترتیبات</string>
     <string name="cd_location_notes">مقام کے نوٹس</string>
-    <string name="notification_action_quit_bitchat">Vuzol بند کریں</string>
+    <string name="notification_action_quit_vuzol">Vuzol بند کریں</string>
     <string name="about_background_title">بیک گراؤنڈ میں چلائیں</string>
     <string name="about_background_desc">ایپ بند ہونے پر بھی میش کو فعال رکھیں (فورگراؤنڈ سروس)</string>
     <string name="about_p2p_subtitle">p2p کے ذریعے براہ راست پیئر کنکشن</string>

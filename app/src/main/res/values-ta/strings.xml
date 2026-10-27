@@ -158,7 +158,7 @@
     <string name="cd_remove_bookmark">புக்மார்க் நீக்கு</string>
     <string name="cd_teleport">டெலிபோர்ட்</string>
     <string name="cd_selected">தேர்ந்தெடுக்கப்பட்டது</string>
-    <string name="notification_action_quit_bitchat">Vuzol வெளியேறு</string>
+    <string name="notification_action_quit_vuzol">Vuzol வெளியேறு</string>
     <string name="about_background_title">பின்னணியில் இயக்கு</string>
     <string name="about_background_desc">பயன்பாடு மூடப்படும்போது mesh செயலில் வைக்கவும் (முன்னணி சேவை)</string>
     <string name="about_p2p_subtitle">p2p வழியாக நேரடி peer இணைப்புகள்</string>

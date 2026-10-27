@@ -142,7 +142,7 @@
     <string name="close_plain">Tutup</string>
     <string name="cd_privacy_protected">Privasi Dilindungi</string>
     <string name="cancel_lower">batal</string>
-    <string name="notification_action_quit_bitchat">Keluar Vuzol</string>
+    <string name="notification_action_quit_vuzol">Keluar Vuzol</string>
     <string name="about_background_title">jalankan di latar belakang</string>
     <string name="about_background_desc">kekalkan mesh aktif apabila apl ditutup (perkhidmatan latar depan)</string>
     <string name="about_p2p_subtitle">Sambungan rakan terus melalui p2p</string>

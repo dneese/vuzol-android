@@ -427,7 +427,7 @@
     <string name="mesh_service_notification_content">Tumatakbo ang Bluetooth — %1$d na peer</string>
     <string name="mesh_service_channel_name">Serbisyo ng Bluetooth sa Background</string>
     <string name="mesh_service_channel_desc">Pinapanatili ang Bluetooth mesh na tumatakbo sa background</string>
-    <string name="notification_action_quit_bitchat">Isara ang Vuzol</string>
+    <string name="notification_action_quit_vuzol">Isara ang Vuzol</string>
     <string name="about_background_title">patakbuhin sa background</string>
     <string name="about_background_desc">panatilihing aktibo ang mesh kapag nakasara ang app (foreground service)</string>
     <string name="about_p2p_subtitle">Direktang peer-to-peer na koneksyon</string>

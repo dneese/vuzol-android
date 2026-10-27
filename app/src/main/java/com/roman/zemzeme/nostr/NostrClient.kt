@@ -38,7 +38,9 @@ class NostrClient private constructor(private val context: Context) {
     val currentNpub: StateFlow<String?> = _currentNpub.asStateFlow()
     
     // Message processing
-    private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
+    // Crypto (ECDH, NIP-44, Ed25519 signing) is CPU heavy, so it must not run
+    // on the main thread. Handlers are dispatched back to the main thread.
+    private val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
     
     init {
         Log.d(TAG, "Initializing Nostr client")

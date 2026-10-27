@@ -464,7 +464,7 @@
     <string name="mesh_service_notification_content">蓝牙运行中 — %1$d 个节点</string>
     <string name="cd_settings">设置</string>
     <string name="cd_location_notes">位置笔记</string>
-    <string name="notification_action_quit_bitchat">退出 Vuzol</string>
+    <string name="notification_action_quit_vuzol">退出 Vuzol</string>
     <string name="about_background_title">后台运行</string>
     <string name="about_background_desc">关闭应用时保持 Mesh 活跃（前台服务）</string>
     <string name="about_p2p_subtitle">通过 p2p 直连节点</string>
