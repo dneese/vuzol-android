@@ -53,6 +53,7 @@ class P2PConfig(private val context: Context) {
         private const val KEY_DHT_SERVER_MODE = "dht_server_mode"
         private const val KEY_PREFER_P2P = "prefer_p2p"
         private const val KEY_AUTO_START = "auto_start"
+        private const val KEY_P2P_DEFAULT_OFF_MIGRATED = "p2p_default_off_migrated"
 
         private const val DEFAULT_BLE_ENABLED = true
         // P2P (libp2p/DHT) needs reachable bootstrap nodes and does not work
@@ -103,7 +104,23 @@ class P2PConfig(private val context: Context) {
 
     init {
         registerTransportListenerIfNeeded()
+        applyP2pDefaultOffMigration()
         publishTransportToggles()
+    }
+
+    /**
+     * P2P is off by default now. Existing installs that still have it enabled
+     * from the old default get it switched off once, so the internet transport
+     * (Nostr) is used unless the user turns P2P back on.
+     */
+    private fun applyP2pDefaultOffMigration() {
+        try {
+            if (prefs.getBoolean(KEY_P2P_DEFAULT_OFF_MIGRATED, false)) return
+            if (prefs.contains(KEY_P2P_ENABLED)) {
+                prefs.edit().putBoolean(KEY_P2P_ENABLED, false).apply()
+            }
+            prefs.edit().putBoolean(KEY_P2P_DEFAULT_OFF_MIGRATED, true).apply()
+        } catch (_: Exception) {}
     }
 
     private fun registerTransportListenerIfNeeded() {
@@ -140,7 +157,7 @@ class P2PConfig(private val context: Context) {
     
     /**
      * Whether P2P networking is enabled.
-     * Default: true
+     * Default: false
      */
     var p2pEnabled: Boolean
         get() = getTransportToggles().p2pEnabled
