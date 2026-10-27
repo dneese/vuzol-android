@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- App core -->
-    <string name="app_name">ஜெம்ஜெமே</string>
+    <string name="app_name">Vuzol</string>
     <string name="permission_bluetooth_rationale">இணையம் இல்லாமல் நேர்நிலை செய்தி அனுப்புவதற்கு Bluetooth அனுமதி தேவை.</string>
     <string name="permission_location_rationale">Bluetooth மூலம் அருகிலுள்ள சாதனங்களைக் கண்டுபிடிக்க இருப்பிட அனுமதி தேவை.</string>
     <string name="permission_notification_rationale">புதிய செய்திகள் பற்றி உங்களுக்கு அறிவிக்க அறிவிப்பு அனுமதி தேவை.</string>
@@ -43,7 +43,7 @@
     <string name="notification_summary_more">மேலும் %1$d</string>
     <string name="notification_messages_from_people">%2$d நபர்களிடமிருந்து %1$d செய்திகள்</string>
     <string name="notification_more_conversations">மேலும் %1$d உரையாடல்கள்</string>
-    <string name="notification_active_peers_title">👥 zemzemers அருகில் உள்ளனர்!</string>
+    <string name="notification_active_peers_title">👥 Vuzol பயனர்கள் அருகில் உள்ளனர்!</string>
     <string name="notification_active_peers_one">1 நபர் அருகில்</string>
     <string name="notification_active_peers_many">%1$d நபர்கள் அருகில்</string>
     <string name="notification_new_messages">புதிய செய்திகள்</string>

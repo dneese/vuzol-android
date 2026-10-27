@@ -45,9 +45,10 @@ class NostrRelayManager private constructor() {
         private val DEFAULT_RELAYS = listOf(
             "wss://relay.primal.net",
             "wss://nos.lol",
-            "wss://offchain.pub",
             "wss://nostr21.com",
-            "wss://relay.nostr.info"
+            "wss://relay.nostr.info",
+            "wss://relay.damus.io",
+            "wss://nostr.wine"
         )
         
         // Exponential backoff configuration (same as iOS)
@@ -265,9 +266,10 @@ class NostrRelayManager private constructor() {
             val defaultRelayUrls = listOf(
                 "wss://relay.primal.net",
                 "wss://nos.lol",
-                "wss://offchain.pub",
                 "wss://nostr21.com",
-                "wss://relay.nostr.info"
+                "wss://relay.nostr.info",
+                "wss://relay.damus.io",
+                "wss://nostr.wine"
             )
             relaysList.addAll(defaultRelayUrls.map { Relay(it) })
             _relays.value = relaysList.toList()

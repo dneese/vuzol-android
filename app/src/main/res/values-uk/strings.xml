@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- App core -->
-    <string name="app_name">Земземе</string>
+    <string name="app_name">Vuzol</string>
     <string name="permission_bluetooth_rationale">Дозвіл на Bluetooth необхідний для однорангового обміну повідомленнями без інтернету.</string>
     <string name="permission_location_rationale">Дозвіл на місцеположення необхідний для виявлення сусідніх пристроїв через Bluetooth.</string>
     <string name="permission_notification_rationale">Дозвіл на сповіщення необхідний для отримання сповіщень про нові повідомлення.</string>

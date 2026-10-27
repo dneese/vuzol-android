@@ -498,7 +498,8 @@ class ArtiTorManager private constructor() {
                 startInactivityMonitoring()
             }
 
-            s.contains("We have found that guard [scrubbed] is usable.", ignoreCase = true) -> {
+            s.contains("is usable", ignoreCase = true) &&
+                    (s.contains("guard", ignoreCase = true) || s.contains("circuit", ignoreCase = true)) -> {
                 if (currentLifecycle != LifecycleState.RUNNING) {
                     Log.w(TAG, "Ignoring guard discovery log (lifecycle: $currentLifecycle)")
                     return
@@ -511,6 +512,24 @@ class ArtiTorManager private constructor() {
                     )
                 }
                 completeWaitersIf(TorState.RUNNING)
+                resetNetworkConnections()
+            }
+
+            s.contains("Bootstrapped", ignoreCase = true) &&
+                    !s.contains("Sufficiently", ignoreCase = true) -> {
+                if (currentLifecycle != LifecycleState.RUNNING) {
+                    Log.w(TAG, "Ignoring stale 'bootstrapped' log (lifecycle: $currentLifecycle)")
+                    return
+                }
+                _statusFlow.update {
+                    it.copy(
+                        state = TorState.RUNNING,
+                        bootstrapPercent = 100,
+                        running = true
+                    )
+                }
+                completeWaitersIf(TorState.RUNNING)
+                resetNetworkConnections()
             }
 
             s.contains("AMEx: state changed to Stopping", ignoreCase = true) -> {

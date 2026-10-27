@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">澤姆澤梅</string>
+    <string name="app_name">Vuzol</string>
 
     <!-- 權限說明 -->
     <string name="permission_bluetooth_rationale">點對點無網路傳訊需要藍牙權限。</string>
