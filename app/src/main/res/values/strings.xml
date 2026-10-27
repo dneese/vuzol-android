@@ -794,7 +794,8 @@
         <item quantity="one">%1$d peer connected</item>
         <item quantity="other">%1$d peers connected</item>
     </plurals>
-    <string name="connection_no_new_messages">Connected - no new messages</string>
+    <string name="connection_no_new_messages">Relays connected</string>
+    <string name="connection_relay_connected">Relays connected - waiting for people</string>
     <string name="connection_error">Connection error</string>
     <string name="connection_direct">Direct</string>
     <string name="connection_connected">Connected</string>

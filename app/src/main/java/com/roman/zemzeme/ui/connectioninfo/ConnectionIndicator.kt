@@ -70,7 +70,7 @@ fun ChannelConnectionIndicator(
         ConnectionDisplayData.ChannelStage.CONNECTED ->
             GreenConnected to pluralStringResource(R.plurals.connection_peers_connected, data.peerCount, data.peerCount)
         ConnectionDisplayData.ChannelStage.NOSTR_IDLE ->
-            BlueConnecting to stringResource(R.string.connection_no_new_messages)
+            GreenConnected to stringResource(R.string.connection_relay_connected)
         ConnectionDisplayData.ChannelStage.ERROR ->
             RedError to stringResource(R.string.connection_error)
     }

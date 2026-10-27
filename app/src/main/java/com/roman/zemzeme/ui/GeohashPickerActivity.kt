@@ -14,44 +14,109 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Remove
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontFamily
-import com.roman.zemzeme.ui.theme.NunitoFontFamily
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
-import androidx.compose.ui.res.stringResource
 import com.roman.zemzeme.BuildConfig
-import com.roman.zemzeme.R
 import androidx.core.view.updateLayoutParams
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import java.net.URLEncoder
+import java.util.concurrent.TimeUnit
 import com.roman.zemzeme.geohash.Geohash
 import com.roman.zemzeme.geohash.LocationChannelManager
-import com.roman.zemzeme.ui.theme.BASE_FONT_SIZE
 
-@OptIn(ExperimentalMaterial3Api::class)
 class GeohashPickerActivity : OrientationAwareActivity() {
 
     companion object {
         const val EXTRA_INITIAL_GEOHASH = "initial_geohash"
         const val EXTRA_RESULT_GEOHASH = "result_geohash"
+        private const val COUNTRIES_ASSET = "countries.json"
+        private const val NOMINATIM_URL = "https://nominatim.openstreetmap.org/search"
+    }
+
+    private var webView: WebView? = null
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+    private val httpClient = OkHttpClient.Builder()
+        .connectTimeout(10, TimeUnit.SECONDS)
+        .readTimeout(15, TimeUnit.SECONDS)
+        .build()
+
+    override fun onDestroy() {
+        scope.cancel()
+        webView = null
+        super.onDestroy()
+    }
+
+    private fun countriesJson(): String {
+        return try {
+            assets.open(COUNTRIES_ASSET).use { it.readBytes().toString(Charsets.UTF_8) }
+        } catch (_: Throwable) {
+            "[]"
+        }
+    }
+
+    /**
+     * Resolve a place name to coordinates with OpenStreetMap (Nominatim).
+     * The result is passed back to the map as a JSON array.
+     */
+    private fun searchPlaces(query: String, countryCode: String) {
+        scope.launch {
+            val trimmed = query.trim()
+            if (trimmed.isEmpty() && countryCode.isEmpty()) return@launch
+            val searchTerm = if (trimmed.isNotEmpty()) trimmed else countryCode
+            val countryParam = if (countryCode.isNotEmpty()) {
+                "&countrycodes=" + URLEncoder.encode(countryCode.lowercase(), "UTF-8")
+            } else {
+                ""
+            }
+            val url = "$NOMINATIM_URL?q=" +
+                    URLEncoder.encode(searchTerm, "UTF-8") +
+                    countryParam +
+                    "&format=jsonv2&limit=12&addressdetails=1"
+            val raw = withContext(Dispatchers.IO) {
+                runCatching {
+                    val request = Request.Builder()
+                        .url(url)
+                        .header("User-Agent", "Vuzol/${BuildConfig.VERSION_NAME} (Android)")
+                        .header("Accept", "application/json")
+                        .build()
+                    httpClient.newCall(request).execute().use { response ->
+                        if (!response.isSuccessful) "" else response.body?.string().orEmpty()
+                    }
+                }.getOrDefault("")
+            }
+            if (raw.isBlank()) return@launch
+            val places = try {
+                val array = org.json.JSONArray(raw)
+                val out = org.json.JSONArray()
+                for (i in 0 until array.length()) {
+                    val item = array.optJSONObject(i) ?: continue
+                    val lat = item.optString("lat").toDoubleOrNull() ?: continue
+                    val lon = item.optString("lon").toDoubleOrNull() ?: continue
+                    val label = item.optString("display_name").ifBlank { item.optString("name") }
+                    val entry = org.json.JSONObject()
+                    entry.put("label", label)
+                    entry.put("lat", lat)
+                    entry.put("lon", lon)
+                    entry.put("precision", 5)
+                    out.put(entry)
+                }
+                out.toString()
+            } catch (_: Throwable) {
+                "[]"
+            }
+            val view = webView ?: return@launch
+            view.evaluateJavascript("window.showPlaces && window.showPlaces($places)", null)
+        }
     }
 
     @SuppressLint("SetJavaScriptEnabled")
@@ -86,210 +151,113 @@ class GeohashPickerActivity : OrientationAwareActivity() {
             }
         }
 
-        val initialPrecision = geohashToFocus?.length ?: 5
-
         setContent {
             MaterialTheme {
                 var currentGeohash by remember { mutableStateOf(geohashToFocus ?: "") }
-                var precision by remember { mutableStateOf(initialPrecision.coerceIn(1, 12)) }
-                var webViewRef by remember { mutableStateOf<WebView?>(null) }
-
-                // iOS system-like colors used across app
-                val colorScheme = MaterialTheme.colorScheme
-                val isDark = colorScheme.background.red + colorScheme.background.green + colorScheme.background.blue < 1.5f
-                val standardGreen = if (isDark) Color(0xFF00F5FF) else Color(0xFF248A3D)
 
                 Scaffold { padding ->
-                    Box(Modifier.fillMaxSize()) {
-                        AndroidView(
-                            factory = { context ->
-                                WebView(context).apply {
-                                    settings.javaScriptEnabled = true
-                                    settings.domStorageEnabled = true
-                                    settings.cacheMode = WebSettings.LOAD_DEFAULT
-                                    settings.allowFileAccess = true
-                                    settings.allowContentAccess = true
-                                    settings.allowFileAccessFromFileURLs = true
-                                    settings.userAgentString = buildString {
-                                        append("Vuzol/")
-                                        append(BuildConfig.VERSION_NAME)
-                                        append(" (Android ")
-                                        append(Build.VERSION.SDK_INT)
-                                        append(")")
-                                    }
-                                    webChromeClient = WebChromeClient()
-                                    webViewClient = object : WebViewClient() {
-                                        override fun onPageFinished(view: WebView?, url: String?) {
-                                            super.onPageFinished(view, url)
-                                            // Initialize to last/initial geohash if provided, otherwise center
-                                            if (!geohashToFocus.isNullOrEmpty()) {
-                                                evaluateJavascript(
-                                                    "window.focusGeohash('${geohashToFocus}')",
-                                                    null
-                                                )
-                                            } else {
-                                                evaluateJavascript(
-                                                    "window.setCenter(${initLat}, ${initLon})",
-                                                    null
-                                                )
-                                            }
+                    AndroidView(
+                        factory = { context ->
+                            WebView(context).apply {
+                                settings.javaScriptEnabled = true
+                                settings.domStorageEnabled = true
+                                settings.cacheMode = WebSettings.LOAD_DEFAULT
+                                settings.allowFileAccess = true
+                                settings.allowContentAccess = true
+                                settings.allowFileAccessFromFileURLs = true
+                                settings.userAgentString = buildString {
+                                    append("Vuzol/")
+                                    append(BuildConfig.VERSION_NAME)
+                                    append(" (Android ")
+                                    append(Build.VERSION.SDK_INT)
+                                    append(")")
+                                }
+                                webChromeClient = WebChromeClient()
+                                webViewClient = object : WebViewClient() {
+                                    override fun onPageFinished(view: WebView?, url: String?) {
+                                        super.onPageFinished(view, url)
+                                        view?.let { this@GeohashPickerActivity.webView = it }
+                                        if (!geohashToFocus.isNullOrEmpty()) {
+                                            evaluateJavascript(
+                                                "window.focusGeohash('${geohashToFocus}')",
+                                                null
+                                            )
+                                        } else {
+                                            evaluateJavascript(
+                                                "window.setCenter(${initLat}, ${initLon})",
+                                                null
+                                            )
+                                        }
 
-                                            // Apply theme to map tiles
-                                            val nightModeFlags = resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK
-                                            val theme = if (nightModeFlags == Configuration.UI_MODE_NIGHT_YES) "dark" else "light"
-                                            evaluateJavascript("window.setMapTheme('" + theme + "')", null)
+                                        // Apply theme to map tiles
+                                        val nightModeFlags = resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK
+                                        val theme = if (nightModeFlags == Configuration.UI_MODE_NIGHT_YES) "dark" else "light"
+                                        evaluateJavascript("window.setMapTheme('" + theme + "')", null)
+                                        evaluateJavascript(
+                                            "window.setCountries && window.setCountries(${countriesJson()})",
+                                            null
+                                        )
+                                    }
+                                }
+                                addJavascriptInterface(object {
+                                    @JavascriptInterface
+                                    fun onGeohashChanged(geohash: String) {
+                                        runOnUiThread {
+                                            currentGeohash = geohash
                                         }
                                     }
-                                    addJavascriptInterface(object {
-                                        @JavascriptInterface
-                                        fun onGeohashChanged(geohash: String) {
-                                            runOnUiThread {
-                                                currentGeohash = geohash
-                                            }
-                                        }
-                                    }, "Android")
 
-                                    loadUrl("file:///android_asset/geohash_picker.html")
-                                }
-                            },
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .padding(padding),
-                            update = { webView ->
-                                webViewRef = webView
-                                // ensure it fills parent
-                                webView.updateLayoutParams<ViewGroup.LayoutParams> {
-                                    width = ViewGroup.LayoutParams.MATCH_PARENT
-                                    height = ViewGroup.LayoutParams.MATCH_PARENT
-                                }
-                            },
-                            onRelease = { webView ->
-                                // Best-effort cleanup to avoid leaks and timers
-                                try { webView.evaluateJavascript("window.cleanup && window.cleanup()", null) } catch (_: Throwable) {}
-                                try { webView.stopLoading() } catch (_: Throwable) {}
-                                try { webView.clearHistory() } catch (_: Throwable) {}
-                                try { webView.clearCache(true) } catch (_: Throwable) {}
-                                try { webView.loadUrl("about:blank") } catch (_: Throwable) {}
-                                try { webView.removeAllViews() } catch (_: Throwable) {}
-                                try { webView.destroy() } catch (_: Throwable) {}
-                            }
-                        )
-
-                        // Floating info pill
-                        Surface(
-                            modifier = Modifier
-                                .align(Alignment.TopCenter)
-                                .padding(top = 20.dp)
-                                .fillMaxWidth(0.75f),
-                            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.85f),
-                            shape = RoundedCornerShape(12.dp),
-                            tonalElevation = 3.dp,
-                            shadowElevation = 6.dp
-                        ) {
-                            Text(
-                                text = stringResource(R.string.pan_zoom_instruction),
-                                fontSize = 12.sp,
-                                textAlign = TextAlign.Center,
-                                fontFamily = NunitoFontFamily,
-                                color = MaterialTheme.colorScheme.onSurface,
-                                modifier = Modifier
-                                    .padding(horizontal = 14.dp, vertical = 10.dp)
-                            )
-                        }
-
-                        // Floating bottom controls
-                        Column(
-                            modifier = Modifier
-                                .align(Alignment.BottomCenter)
-                                .padding(bottom = 20.dp, start = 16.dp, end = 16.dp),
-                            verticalArrangement = Arrangement.spacedBy(10.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            // Geohash label (monospace, app style)
-                            Surface(
-                                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.85f),
-                                shape = RoundedCornerShape(12.dp),
-                                tonalElevation = 3.dp,
-                                shadowElevation = 6.dp
-                            ) {
-                                Text(
-                                    text = if (currentGeohash.isNotEmpty()) "#${currentGeohash}" else "select location",
-                                    fontSize = BASE_FONT_SIZE.sp,
-                                    fontFamily = NunitoFontFamily,
-                                    fontWeight = FontWeight.Medium,
-                                    color = MaterialTheme.colorScheme.onSurface,
-                                    modifier = Modifier
-                                        .padding(horizontal = 14.dp, vertical = 10.dp)
-                                )
-                            }
-
-                            // Button row
-                            Row(
-                                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                // Decrease precision
-                                Button(
-                                    onClick = {
-                                        precision = (precision - 1).coerceAtLeast(1)
-                                        webViewRef?.evaluateJavascript("window.setPrecision($precision)", null)
-                                    },
-                                    colors = ButtonDefaults.buttonColors(
-                                        containerColor = standardGreen.copy(alpha = 0.12f),
-                                        contentColor = standardGreen
-                                    )
-                                ) {
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Icon(Icons.Filled.Remove, contentDescription = stringResource(R.string.cd_decrease_precision))
-                                    }
-                                }
-
-                                // Increase precision
-                                Button(
-                                    onClick = {
-                                        precision = (precision + 1).coerceAtMost(12)
-                                        webViewRef?.evaluateJavascript("window.setPrecision($precision)", null)
-                                    },
-                                    colors = ButtonDefaults.buttonColors(
-                                        containerColor = standardGreen.copy(alpha = 0.12f),
-                                        contentColor = standardGreen
-                                    )
-                                ) {
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Icon(Icons.Filled.Add, contentDescription = stringResource(R.string.cd_increase_precision))
-                                    }
-                                }
-
-                                // Select button
-                                Button(
-                                    onClick = {
-                                        webViewRef?.evaluateJavascript("window.getGeohash()") { value ->
-                                            val gh = value?.trim('"') ?: currentGeohash
+                                    @JavascriptInterface
+                                    fun selectGeohash(geohash: String) {
+                                        runOnUiThread {
+                                            val gh = geohash.trim().ifBlank { currentGeohash }
                                             val result = Intent().apply { putExtra(EXTRA_RESULT_GEOHASH, gh) }
                                             setResult(Activity.RESULT_OK, result)
                                             finish()
                                         }
-                                    },
-                                    colors = ButtonDefaults.buttonColors(
-                                        containerColor = MaterialTheme.colorScheme.secondary.copy(alpha = 0.12f),
-                                        contentColor = MaterialTheme.colorScheme.onSurface
-                                    )
-                                ) {
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Icon(Icons.Filled.Check, contentDescription = stringResource(R.string.cd_select_geohash))
-                                        Spacer(Modifier.width(6.dp))
-                                        Text(
-                                            text = stringResource(R.string.select),
-                                            fontSize = (BASE_FONT_SIZE - 2).sp,
-                                            fontFamily = NunitoFontFamily
+                                    }
+
+                                    @JavascriptInterface
+                                    fun searchPlaces(query: String?, countryCode: String?) {
+                                        this@GeohashPickerActivity.searchPlaces(
+                                            query.orEmpty(),
+                                            countryCode.orEmpty()
                                         )
                                     }
-                                }
+
+                                    @JavascriptInterface
+                                    fun getCountriesJson(): String = countriesJson()
+                                }, "Android")
+
+                                loadUrl("file:///android_asset/geohash_picker.html")
                             }
+                        },
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(padding),
+                        update = { webView ->
+                            this@GeohashPickerActivity.webView = webView
+                            // ensure it fills parent
+                            webView.updateLayoutParams<ViewGroup.LayoutParams> {
+                                width = ViewGroup.LayoutParams.MATCH_PARENT
+                                height = ViewGroup.LayoutParams.MATCH_PARENT
+                            }
+                        },
+                        onRelease = { webView ->
+                            // Best-effort cleanup to avoid leaks and timers
+                            try { webView.evaluateJavascript("window.cleanup && window.cleanup()", null) } catch (_: Throwable) {}
+                            try { webView.stopLoading() } catch (_: Throwable) {}
+                            try { webView.clearHistory() } catch (_: Throwable) {}
+                            try { webView.clearCache(true) } catch (_: Throwable) {}
+                            try { webView.loadUrl("about:blank") } catch (_: Throwable) {}
+                            try { webView.removeAllViews() } catch (_: Throwable) {}
+                            try { webView.destroy() } catch (_: Throwable) {}
+                            this@GeohashPickerActivity.webView = null
                         }
-                    }
+                    )
                 }
             }
         }
+
     }
 }

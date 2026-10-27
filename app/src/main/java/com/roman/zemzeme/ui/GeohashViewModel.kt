@@ -334,7 +334,8 @@ class GeohashViewModel(
     private suspend fun broadcastPresence(geohash: String) {
         try {
             val identity = NostrIdentityBridge.deriveIdentity(geohash, getApplication())
-            val event = NostrProtocol.createGeohashPresenceEvent(geohash, identity)
+            val nickname = state.getNicknameValue()
+            val event = NostrProtocol.createGeohashPresenceEvent(geohash, identity, nickname)
             val relayManager = NostrRelayManager.getInstance(getApplication())
             // Presence is lightweight, send to geohash relays
             relayManager.sendEventToGeohash(event, geohash, includeDefaults = true, nRelays = 5)

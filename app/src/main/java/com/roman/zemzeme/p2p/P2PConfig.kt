@@ -55,7 +55,10 @@ class P2PConfig(private val context: Context) {
         private const val KEY_AUTO_START = "auto_start"
 
         private const val DEFAULT_BLE_ENABLED = true
-        private const val DEFAULT_P2P_ENABLED = true
+        // P2P (libp2p/DHT) needs reachable bootstrap nodes and does not work
+        // everywhere. It stays off by default so the internet transport (Nostr)
+        // connects immediately; it can be enabled in the transport settings.
+        private const val DEFAULT_P2P_ENABLED = false
         private const val DEFAULT_NOSTR_ENABLED = true
 
         private val transportFlowLock = Any()

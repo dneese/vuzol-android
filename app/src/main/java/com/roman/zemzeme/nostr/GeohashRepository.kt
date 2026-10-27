@@ -203,12 +203,17 @@ class GeohashRepository(
             val cached = nicknamesSnapshot[pubkeyHex.lowercase()]
             val base = when {
                 myHex != null && myHex.equals(pubkeyHex, true) -> myNickname
-                cached != null -> cached
+                cached != null && cached.isNotBlank() -> cached
                 isP2P -> {
                     val peerIdPart = pubkeyHex.removePrefix("p2p:")
                     "anon${peerIdPart.takeLast(4)}"
                 }
-                else -> "anon"
+                else -> {
+                    // Several people can share the same fallback name, so add a
+                    // short id suffix to tell them apart.
+                    val idPart = pubkeyHex.takeLast(4)
+                    if (idPart.isNotEmpty()) "anon$idPart" else "anon"
+                }
             }
             GeoPerson(
                 id = if (isP2P) pubkeyHex else pubkeyHex.lowercase(),

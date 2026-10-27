@@ -120,14 +120,19 @@ object NostrProtocol {
 
     /**
      * Create a geohash-scoped presence event (kind 20001)
-     * Has no content and no nickname, used for participant counting
+     * The nickname is published as an "n" tag so other people in the channel
+     * see a name instead of "anon".
      */
     suspend fun createGeohashPresenceEvent(
         geohash: String,
-        senderIdentity: NostrIdentity
+        senderIdentity: NostrIdentity,
+        nickname: String? = null
     ): NostrEvent = withContext(Dispatchers.Default) {
         val tags = mutableListOf<List<String>>()
         tags.add(listOf("g", geohash))
+        if (!nickname.isNullOrEmpty()) {
+            tags.add(listOf("n", nickname))
+        }
 
         val event = NostrEvent(
             pubkey = senderIdentity.publicKeyHex,

@@ -689,7 +689,8 @@
         <item quantity="one">%1$d пір підключений</item>
         <item quantity="other">%1$d пірів підключено</item>
     </plurals>
-    <string name="connection_no_new_messages">Підключено – немає нових повідомлень</string>
+    <string name="connection_no_new_messages">Релеї підключено</string>
+    <string name="connection_relay_connected">Релеї підключено – чекаємо людей</string>
     <string name="connection_error">Помилка з\'єднання</string>
     <string name="connection_direct">Пряме</string>
     <string name="connection_connected">Підключено</string>
