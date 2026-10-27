@@ -427,6 +427,12 @@ fun AboutSheet(
                             horizontalAlignment = Alignment.CenterHorizontally,
                             verticalArrangement = Arrangement.spacedBy(4.dp)
                         ) {
+                            androidx.compose.foundation.Image(
+                                painter = androidx.compose.ui.res.painterResource(R.drawable.ic_vuzol_logo),
+                                contentDescription = stringResource(R.string.app_name),
+                                modifier = Modifier.size(140.dp)
+                            )
+
                             Text(
                                 text = stringResource(R.string.app_name),
                                 style = TextStyle(
@@ -437,7 +443,6 @@ fun AboutSheet(
                                 ),
                                 color = colorScheme.onBackground
                             )
-
                             // Version
                             Text(
                                 text = stringResource(R.string.version_prefix, versionName ?: ""),
