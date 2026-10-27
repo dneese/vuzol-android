@@ -27,6 +27,28 @@ jobs:
       - name: Grant execute permission for Gradlew
         run: chmod +x ./gradlew
 
+      - name: Set up release signing
+        env:
+          SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_STORE_PASSWORD: ${{ secrets.KEY_STORE_PASSWORD }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          if [ -z "$SIGNING_KEY" ]; then
+            echo "No signing key configured, building unsigned APKs"
+            exit 0
+          fi
+          mkdir -p "$RUNNER_TEMP/keystore"
+          echo "$SIGNING_KEY" | base64 --decode > "$RUNNER_TEMP/keystore/release.jks"
+          {
+            echo "KEYSTORE_PATH=$RUNNER_TEMP/keystore/release.jks"
+            echo "KEYSTORE_PASSWORD=$KEY_STORE_PASSWORD"
+            echo "KEY_ALIAS=$KEY_ALIAS"
+            echo "KEY_PASSWORD=$KEY_PASSWORD"
+            echo "KEYSTORE_TYPE=PKCS12"
+          } > local.properties
+          echo "Keystore configured"
+
       - name: Build Release APKs (with architecture splits)
         run: ./gradlew assembleRelease --no-daemon --stacktrace
 
@@ -48,16 +70,6 @@ jobs:
             esac
             [ "$f" = "$target" ] || mv "$f" "$target"
           done
-
-      # Optional: Sign APKs (uncomment and configure secrets when ready)
-      # - name: Sign APKs
-      #   uses: r0adkll/sign-android-release@v1
-      #   with:
-      #     releaseDirectory: app/build/outputs/apk/release
-      #     signingKeyBase64: ${{ secrets.SIGNING_KEY }}
-      #     alias: ${{ secrets.ALIAS }}
-      #     keyStorePassword: ${{ secrets.KEY_STORE_PASSWORD }}
-      #     keyPassword: ${{ secrets.KEY_PASSWORD }}
 
       - name: Upload APKs as artifacts
         uses: actions/upload-artifact@v4
