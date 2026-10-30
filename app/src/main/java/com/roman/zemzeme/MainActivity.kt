@@ -725,6 +725,9 @@ class MainActivity : OrientationAwareActivity() {
     
     override fun onResume() {
         super.onResume()
+        // The app is in the foreground: messages that arrive now are visible
+        // on screen, notifications are only for other channels.
+        try { chatViewModel.setAppBackgroundState(false) } catch (_: Exception) { }
         // Check Bluetooth and Location status on resume and handle accordingly
         if (mainViewModel.onboardingState.value == OnboardingState.COMPLETE) {
             // Reattach mesh delegate to new ChatViewModel instance after Activity recreation
@@ -767,6 +770,8 @@ class MainActivity : OrientationAwareActivity() {
 
     override fun onPause() {
         super.onPause()
+        // The app is no longer visible: notify (and play a sound) about new messages.
+        try { chatViewModel.setAppBackgroundState(true) } catch (_: Exception) { }
         // Only set background state if app is fully initialized
         if (mainViewModel.onboardingState.value == OnboardingState.COMPLETE) {
             // Detach UI delegate so the foreground service can own DM notifications while UI is closed

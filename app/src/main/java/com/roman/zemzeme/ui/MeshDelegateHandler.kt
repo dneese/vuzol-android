@@ -87,6 +87,11 @@ class MeshDelegateHandler(
                         currentUnread[channel] = (currentUnread[channel] ?: 0) + 1
                         state.setUnreadChannelMessages(currentUnread)
                     }
+                    // A message in a location channel is notified like any other
+                    // geohash message, otherwise the user hears nothing.
+                    if (channel.startsWith("geo:")) {
+                        notifyGeohashMessage(channel.removePrefix("geo:"), message)
+                    }
                 }
             } else {
                 // Public mesh message: AppStateStore is the source of truth; avoid double-adding to UI state
@@ -210,6 +215,26 @@ class MeshDelegateHandler(
      */
     private fun unifyChatsIntoPeer(targetPeerID: String, keysToMerge: List<String>) {
         com.roman.zemzeme.services.ConversationAliasResolver.unifyChatsIntoPeer(state, targetPeerID, keysToMerge)
+    }
+
+    /**
+     * Notify about a new message in a location (geohash) channel.
+     */
+    private fun notifyGeohashMessage(geohash: String, message: com.roman.zemzeme.model.ZemzemeMessage) {
+        try {
+            val senderNickname = message.sender.takeIf { it.isNotBlank() } ?: "anon"
+            val preview = NotificationTextUtils.buildPrivateMessagePreview(message)
+            val myNickname = state.getNicknameValue()
+            val isMention = !myNickname.isNullOrBlank() &&
+                message.content.contains("@$myNickname", ignoreCase = true)
+            notificationManager.showGeohashNotification(
+                geohash = geohash,
+                senderNickname = senderNickname,
+                messageContent = preview,
+                isMention = isMention,
+                messageId = message.id
+            )
+        } catch (_: Throwable) {}
     }
 
     override fun didReceiveChannelLeave(channel: String, fromPeer: String) {

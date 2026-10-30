@@ -1072,6 +1072,14 @@ class ChatViewModel(
         return meshService.getDebugStatus()
     }
     
+    /**
+     * Tell the notification manager that the app went to the background or
+     * came back, so messages are notified (and heard) at the right moments.
+     */
+    fun setAppBackgroundState(inBackground: Boolean) {
+        notificationManager.setAppBackgroundState(inBackground)
+    }
+
     fun setCurrentPrivateChatPeer(peerID: String?) {
         notificationManager.setCurrentPrivateChatPeer(peerID)
     }

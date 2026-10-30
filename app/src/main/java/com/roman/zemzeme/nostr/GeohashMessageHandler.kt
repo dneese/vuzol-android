@@ -23,7 +23,8 @@ class GeohashMessageHandler(
     private val messageManager: MessageManager,
     private val repo: GeohashRepository,
     private val scope: CoroutineScope,
-    private val dataManager: com.roman.zemzeme.ui.DataManager
+    private val dataManager: com.roman.zemzeme.ui.DataManager,
+    private val notificationManager: com.roman.zemzeme.ui.NotificationManager? = null
 ) {
     companion object {
         private const val TAG = "GeohashMessageHandler"
@@ -50,6 +51,40 @@ class GeohashMessageHandler(
             seen.remove(old)
         }
         return false
+    }
+
+    /**
+     * Notify about a new message in a geohash channel. The same message can
+     * arrive over several transports, so the message id keeps it to one sound.
+     */
+    private fun notifyGeohashMessage(
+        geohash: String,
+        senderNickname: String,
+        content: String,
+        messageId: String
+    ) {
+        val manager = notificationManager ?: return
+        try {
+            val preview = com.roman.zemzeme.ui.NotificationTextUtils.buildPrivateMessagePreview(
+                com.roman.zemzeme.model.ZemzemeMessage(
+                    id = messageId,
+                    sender = senderNickname,
+                    content = content,
+                    timestamp = Date(),
+                    isRelay = false
+                )
+            )
+            val myNickname = state.getNicknameValue()
+            val isMention = !myNickname.isNullOrBlank() &&
+                content.contains("@$myNickname", ignoreCase = true)
+            manager.showGeohashNotification(
+                geohash = geohash,
+                senderNickname = senderNickname,
+                messageContent = preview,
+                isMention = isMention,
+                messageId = messageId
+            )
+        } catch (_: Throwable) {}
     }
 
     fun onEvent(event: NostrEvent, subscribedGeohash: String) {
@@ -125,7 +160,10 @@ class GeohashMessageHandler(
                                 senderPeerID = "nostr:${event.pubkey.take(8)}",
                                 channel = "#$subscribedGeohash"
                             )
-                            withContext(Dispatchers.Main) { messageManager.addChannelMessage("geo:$subscribedGeohash", mediaMsg) }
+                            withContext(Dispatchers.Main) {
+                                messageManager.addChannelMessage("geo:$subscribedGeohash", mediaMsg)
+                                notifyGeohashMessage(subscribedGeohash, senderName, mediaMsg.content, event.id)
+                            }
                             return@launch
                         }
                     }
@@ -148,7 +186,10 @@ class GeohashMessageHandler(
                         if (hasNonce) NostrProofOfWork.calculateDifficulty(event.id).takeIf { it > 0 } else null
                     } catch (_: Exception) { null }
                 )
-                withContext(Dispatchers.Main) { messageManager.addChannelMessage("geo:$subscribedGeohash", msg) }
+                withContext(Dispatchers.Main) {
+                    messageManager.addChannelMessage("geo:$subscribedGeohash", msg)
+                    notifyGeohashMessage(subscribedGeohash, senderName, msg.content, event.id)
+                }
             } catch (e: Exception) {
                 Log.e(TAG, "onEvent error: ${e.message}")
             }

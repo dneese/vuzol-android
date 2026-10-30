@@ -55,7 +55,8 @@ class GeohashViewModel(
         messageManager = messageManager,
         repo = repo,
         scope = viewModelScope,
-        dataManager = dataManager
+        dataManager = dataManager,
+        notificationManager = notificationManager
     )
     private val dmHandler = NostrDirectMessageHandler(
         application = application,
@@ -933,6 +934,7 @@ class GeohashViewModel(
 
             withContext(Dispatchers.Main) {
                 messageManager.addChannelMessage("geo:$geohash", zemzemeMessage)
+                notifyGeohashMessage(geohash, displayName, messageContent, messageId)
             }
 
             repo.updateParticipant(geohash, participantId, Date(timestamp))
@@ -974,7 +976,10 @@ class GeohashViewModel(
                     senderPeerID = "p2p:$rawPeerID",
                     channel = "#$geohash"
                 )
-                withContext(Dispatchers.Main) { messageManager.addChannelMessage("geo:$geohash", mediaMsg) }
+                withContext(Dispatchers.Main) {
+                    messageManager.addChannelMessage("geo:$geohash", mediaMsg)
+                    notifyGeohashMessage(geohash, displayName, filePacket.fileName, messageId)
+                }
                 repo.updateParticipant(geohash, participantId, Date(timestamp))
             } else {
                 Log.w(TAG, "Failed to decode P2P geohash media from $displayName")
@@ -997,7 +1002,41 @@ class GeohashViewModel(
 
         withContext(Dispatchers.Main) {
             messageManager.addChannelMessage("geo:$geohash", zemzemeMessage)
+            notifyGeohashMessage(geohash, displayName, rawContent, messageId)
         }
         repo.updateParticipant(geohash, participantId, Date(timestamp))
+    }
+
+    /**
+     * Notify about a new message in a geohash channel so the user hears it
+     * when the app is in the background.
+     */
+    private fun notifyGeohashMessage(
+        geohash: String,
+        senderNickname: String,
+        content: String,
+        messageId: String
+    ) {
+        try {
+            val preview = com.roman.zemzeme.ui.NotificationTextUtils.buildPrivateMessagePreview(
+                com.roman.zemzeme.model.ZemzemeMessage(
+                    id = messageId,
+                    sender = senderNickname,
+                    content = content,
+                    timestamp = Date(),
+                    isRelay = false
+                )
+            )
+            val myNickname = state.getNicknameValue()
+            val isMention = !myNickname.isNullOrBlank() &&
+                content.contains("@$myNickname", ignoreCase = true)
+            notificationManager.showGeohashNotification(
+                geohash = geohash,
+                senderNickname = senderNickname,
+                messageContent = preview,
+                isMention = isMention,
+                messageId = messageId
+            )
+        } catch (_: Throwable) {}
     }
 }

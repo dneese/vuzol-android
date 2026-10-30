@@ -58,6 +58,10 @@ class NotificationManager(
     private val pendingNotifications = ConcurrentHashMap<String, MutableList<PendingNotification>>()
     private val pendingGeohashNotifications = ConcurrentHashMap<String, MutableList<GeohashNotification>>()
 
+    // Message ids already notified about: the same message can arrive over
+    // more than one transport (mesh, P2P, Nostr) and must notify only once.
+    private val notifiedMessageIds = java.util.Collections.synchronizedSet(mutableSetOf<String>())
+
     // Track app background state
     @Volatile
     private var isAppInBackground = false
@@ -95,45 +99,53 @@ class NotificationManager(
             // DM notifications channel
             val dmName = context.getString(R.string.notification_channel_direct_messages)
             val dmDescriptionText = context.getString(R.string.notification_channel_dm_desc)
-            val dmImportance = NotificationManager.IMPORTANCE_HIGH
-            val dmChannel = NotificationChannel(CHANNEL_ID, dmName, dmImportance).apply {
-                description = dmDescriptionText
-                enableVibration(true)
-                setShowBadge(true)
-                // A channel with no sound is a silent channel: Android plays
-                // nothing for it, whatever the notification says.
-                val sound = android.media.RingtoneManager.getDefaultUri(
-                    android.media.RingtoneManager.TYPE_NOTIFICATION
-                )
-                val audioAttributes = android.media.AudioAttributes.Builder()
-                    .setUsage(android.media.AudioAttributes.USAGE_NOTIFICATION_EVENT)
-                    .setContentType(android.media.AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                    .build()
-                setSound(sound, audioAttributes)
-            }
-            systemNotificationManager.createNotificationChannel(dmChannel)
+            createChannelWithSound(CHANNEL_ID, dmName, dmDescriptionText, NotificationManager.IMPORTANCE_HIGH)
 
             // Geohash notifications channel
             val geohashName = context.getString(R.string.notification_channel_geohash_chats)
             val geohashDescriptionText = context.getString(R.string.notification_channel_geohash_desc)
-            val geohashImportance = NotificationManager.IMPORTANCE_HIGH
-            val geohashChannel = NotificationChannel(GEOHASH_CHANNEL_ID, geohashName, geohashImportance).apply {
-                description = geohashDescriptionText
-                enableVibration(true)
-                setShowBadge(true)
-                // A channel with no sound is a silent channel: Android plays
-                // nothing for it, whatever the notification says.
-                val sound = android.media.RingtoneManager.getDefaultUri(
-                    android.media.RingtoneManager.TYPE_NOTIFICATION
-                )
-                val audioAttributes = android.media.AudioAttributes.Builder()
-                    .setUsage(android.media.AudioAttributes.USAGE_NOTIFICATION_EVENT)
-                    .setContentType(android.media.AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                    .build()
-                setSound(sound, audioAttributes)
-            }
-            systemNotificationManager.createNotificationChannel(geohashChannel)
+            createChannelWithSound(GEOHASH_CHANNEL_ID, geohashName, geohashDescriptionText, NotificationManager.IMPORTANCE_HIGH)
         }
+    }
+
+    /**
+     * Create a notification channel that plays the default notification sound.
+     *
+     * Android never changes the sound of a channel that already exists, so a
+     * channel created by an older version of the app (without a sound) stays
+     * silent forever. Such a channel is deleted and created again, which is
+     * the only way to give it a sound.
+     */
+    private fun createChannelWithSound(
+        id: String,
+        name: String,
+        descriptionText: String,
+        importance: Int
+    ) {
+        try {
+            val existing = systemNotificationManager.getNotificationChannel(id)
+            if (existing != null && existing.sound == null) {
+                Log.i(TAG, "Notification channel $id has no sound, recreating it")
+                systemNotificationManager.deleteNotificationChannel(id)
+            }
+        } catch (_: Throwable) {}
+
+        val channel = NotificationChannel(id, name, importance).apply {
+            description = descriptionText
+            enableVibration(true)
+            setShowBadge(true)
+            // A channel with no sound is a silent channel: Android plays
+            // nothing for it, whatever the notification says.
+            val sound = android.media.RingtoneManager.getDefaultUri(
+                android.media.RingtoneManager.TYPE_NOTIFICATION
+            )
+            val audioAttributes = android.media.AudioAttributes.Builder()
+                .setUsage(android.media.AudioAttributes.USAGE_NOTIFICATION_EVENT)
+                .setContentType(android.media.AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                .build()
+            setSound(sound, audioAttributes)
+        }
+        systemNotificationManager.createNotificationChannel(channel)
     }
 
     /**
@@ -453,8 +465,20 @@ class NotificationManager(
         messageContent: String,
         isMention: Boolean = false,
         isFirstMessage: Boolean = false,
-        locationName: String? = null
+        locationName: String? = null,
+        messageId: String? = null
     ) {
+        if (messageId != null) {
+            if (!notifiedMessageIds.add(messageId)) return
+            if (notifiedMessageIds.size > 500) {
+                val iterator = notifiedMessageIds.iterator()
+                if (iterator.hasNext()) {
+                    iterator.next()
+                    iterator.remove()
+                }
+            }
+        }
+
         // Only show notifications if app is in background OR user is not viewing this specific geohash
         val shouldNotify = isAppInBackground || (!isAppInBackground && currentGeohash != geohash)
 
