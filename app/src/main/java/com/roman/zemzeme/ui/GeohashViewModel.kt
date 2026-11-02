@@ -503,15 +503,15 @@ class GeohashViewModel(
                 val messageID = java.util.UUID.randomUUID().toString().uppercase()
 
                 // Shrink photos so they actually make it through the relays
-                val file = com.roman.zemzeme.features.media.ImageCompressor
+                val sendFile = com.roman.zemzeme.features.media.ImageCompressor
                     .compressIfImage(getApplication(), filePath, mimeType)
-                val effectiveMime = if (file.absolutePath != filePath) "image/jpeg" else mimeType
+                val effectiveMime = if (sendFile.absolutePath != filePath) "image/jpeg" else mimeType
 
                 // Show locally immediately
                 val localMsg = com.roman.zemzeme.model.ZemzemeMessage(
                     id = messageID,
                     sender = nickname ?: myPeerID,
-                    content = file.absolutePath,
+                    content = sendFile.absolutePath,
                     type = msgType,
                     timestamp = java.util.Date(),
                     isRelay = false,
@@ -524,10 +524,10 @@ class GeohashViewModel(
 
                 // Encode as ZemzemeFilePacket TLV
                 val filePacket = com.roman.zemzeme.model.ZemzemeFilePacket(
-                    fileName = file.name,
-                    fileSize = file.length(),
+                    fileName = sendFile.name,
+                    fileSize = sendFile.length(),
                     mimeType = effectiveMime,
-                    content = file.readBytes()
+                    content = sendFile.readBytes()
                 )
                 val fileBytes = filePacket.encode() ?: run {
                     Log.e(TAG, "sendGeohashMedia: failed to encode file packet")
@@ -547,7 +547,7 @@ class GeohashViewModel(
                     try {
                         val topicName = p2pMainTopicName(channel.geohash)
                         p2pTopicsRepository.publishToTopic(topicName, eventContent, nickname)
-                        Log.d(TAG, "📤 Published geohash media via P2P topic: ${file.name} (${fileBytes.size} bytes)")
+                        Log.d(TAG, "📤 Published geohash media via P2P topic: ${sendFile.name} (${fileBytes.size} bytes)")
                         sentViaP2P = true
                     } catch (e: Exception) {
                         Log.w(TAG, "P2P topic media publish failed, trying Nostr: ${e.message}")
@@ -566,7 +566,7 @@ class GeohashViewModel(
                     )
                     val relayManager = NostrRelayManager.getInstance(getApplication())
                     relayManager.sendEventToGeohash(event, channel.geohash, includeDefaults = true, nRelays = 5)
-                    if (!sentViaP2P) Log.d(TAG, "📤 Sent geohash media via Nostr only: ${file.name}")
+                    if (!sentViaP2P) Log.d(TAG, "📤 Sent geohash media via Nostr only: ${sendFile.name}")
                 } else if (!sentViaP2P) {
                     Log.w(TAG, "sendGeohashMedia: no transport available")
                 }
