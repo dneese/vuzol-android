@@ -416,6 +416,71 @@ class GeohashViewModel(
         }
     }
 
+    private var lastTypingSentAt = 0L
+
+    /**
+     * Toggle an emoji reaction on a geohash message and broadcast it to the channel.
+     */
+    fun sendReaction(
+        targetMessageId: String,
+        emoji: String,
+        channel: com.roman.zemzeme.geohash.GeohashChannel,
+        nickname: String?
+    ) {
+        val myName = nickname ?: "me"
+        val alreadyReacted = com.roman.zemzeme.ui.ReactionsStore.toggle(
+            targetMessageId, emoji, myName
+        )
+        // Removals are local-only; only new reactions are broadcast.
+        if (alreadyReacted) return
+        if (!p2pConfig.nostrEnabled) return
+
+        viewModelScope.launch {
+            try {
+                val identity = NostrIdentityBridge.deriveIdentity(
+                    forGeohash = channel.geohash, context = getApplication()
+                )
+                val event = NostrProtocol.createGeohashReactionEvent(
+                    targetEventId = targetMessageId,
+                    emoji = emoji,
+                    geohash = channel.geohash,
+                    senderIdentity = identity,
+                    nickname = nickname
+                )
+                NostrRelayManager.getInstance(getApplication())
+                    .sendEventToGeohash(event, channel.geohash, includeDefaults = true, nRelays = 5)
+            } catch (e: Exception) {
+                Log.w(TAG, "sendReaction failed: ${e.message}")
+            }
+        }
+    }
+
+    /**
+     * Broadcast a throttled "is typing" hint for the given channel.
+     */
+    fun sendTyping(channel: com.roman.zemzeme.geohash.GeohashChannel, nickname: String?) {
+        val now = System.currentTimeMillis()
+        if (now - lastTypingSentAt < 3_000L) return
+        lastTypingSentAt = now
+        if (!p2pConfig.nostrEnabled) return
+
+        viewModelScope.launch {
+            try {
+                val identity = NostrIdentityBridge.deriveIdentity(
+                    forGeohash = channel.geohash, context = getApplication()
+                )
+                val event = NostrProtocol.createGeohashTypingEvent(
+                    geohash = channel.geohash,
+                    senderIdentity = identity,
+                    nickname = nickname
+                )
+                NostrRelayManager.getInstance(getApplication())
+                    .sendEventToGeohash(event, channel.geohash, includeDefaults = true, nRelays = 3)
+            } catch (_: Exception) {
+            }
+        }
+    }
+
     fun sendGeohashMedia(
         filePath: String,
         mimeType: String,

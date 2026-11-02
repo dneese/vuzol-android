@@ -36,7 +36,12 @@ data class NostrFilter(
          */
         fun geohashEphemeral(geohash: String, since: Long? = null, limit: Int = 1000): NostrFilter {
             return NostrFilter(
-                kinds = listOf(NostrKind.EPHEMERAL_EVENT, NostrKind.GEOHASH_PRESENCE),
+                kinds = listOf(
+                    NostrKind.EPHEMERAL_EVENT,
+                    NostrKind.GEOHASH_PRESENCE,
+                    NostrKind.GEOHASH_REACTION,
+                    NostrKind.GEOHASH_TYPING
+                ),
                 since = since?.let { (it / 1000).toInt() },
                 tagFilters = mapOf("g" to listOf(geohash)),
                 limit = limit

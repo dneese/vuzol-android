@@ -1,6 +1,10 @@
 package com.roman.zemzeme.ui
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -31,6 +35,7 @@ fun ChatUserSheet(
     targetNickname: String,
     selectedMessage: ZemzemeMessage? = null,
     onReply: ((ZemzemeMessage) -> Unit)? = null,
+    onReact: ((String) -> Unit)? = null,
     viewModel: ChatViewModel,
     modifier: Modifier = Modifier
 ) {
@@ -70,6 +75,30 @@ fun ChatUserSheet(
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                 )
                 
+                // Quick emoji reactions
+                if (selectedMessage != null && onReact != null) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceEvenly,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        ReactionsStore.SUPPORTED.forEach { emoji ->
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(MaterialTheme.colorScheme.secondary.copy(alpha = 0.10f))
+                                    .clickable {
+                                        onReact.invoke(emoji)
+                                        onDismiss()
+                                    }
+                                    .padding(horizontal = 10.dp, vertical = 8.dp)
+                            ) {
+                                Text(text = emoji, fontSize = 22.sp)
+                            }
+                        }
+                    }
+                }
+
                 // Action list (iOS-style plain list)
                 LazyColumn(
                     modifier = Modifier.fillMaxWidth()

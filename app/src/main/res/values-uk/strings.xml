@@ -241,6 +241,8 @@
     <string name="replying_to">відповідь для %1$s</string>
     <string name="chat_today">сьогодні</string>
     <string name="chat_yesterday">учора</string>
+    <string name="typing_one">%1$s друкує…</string>
+    <string name="typing_many">%1$d особи друкують…</string>
 
     <!-- Notification settings -->
     <string name="notif_sound_title">звук сповіщень</string>

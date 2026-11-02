@@ -240,6 +240,8 @@
   <string name="replying_to">replying to %1$s</string>
   <string name="chat_today">today</string>
   <string name="chat_yesterday">yesterday</string>
+  <string name="typing_one">%1$s is typing…</string>
+  <string name="typing_many">%1$d people are typing…</string>
 
   <!-- Notification settings -->
   <string name="notif_sound_title">notification sound</string>

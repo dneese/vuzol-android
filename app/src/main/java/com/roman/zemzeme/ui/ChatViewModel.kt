@@ -1088,6 +1088,24 @@ class ChatViewModel(
         notificationManager.setCurrentGeohash(geohash)
     }
 
+    /** Toggle an emoji reaction on a message in the current geohash channel. */
+    fun sendReaction(messageId: String, emoji: String) {
+        val loc = state.selectedLocationChannel.value
+        if (loc is com.roman.zemzeme.geohash.ChannelID.Location) {
+            geohashViewModel.sendReaction(
+                messageId, emoji, loc.channel, state.getNicknameValue()
+            )
+        }
+    }
+
+    /** Tell the current channel that the user is typing (throttled downstream). */
+    fun notifyTyping() {
+        val loc = state.selectedLocationChannel.value
+        if (loc is com.roman.zemzeme.geohash.ChannelID.Location) {
+            geohashViewModel.sendTyping(loc.channel, state.getNicknameValue())
+        }
+    }
+
     /**
      * Remove a message from this device only (no network delete is sent).
      */

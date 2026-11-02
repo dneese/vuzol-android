@@ -35,6 +35,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.delay
 import com.roman.zemzeme.geohash.isMeshView
 import com.roman.zemzeme.BuildConfig
 import com.roman.zemzeme.model.ZemzemeMessage
@@ -220,7 +221,8 @@ fun ChatScreen(viewModel: ChatViewModel, isBluetoothEnabled: Boolean = true, onB
                     initialViewerIndex = initialIndex
                     showFullScreenImageViewer = true
                 },
-                onReply = { msg -> replyTo = msg }
+                onReply = { msg -> replyTo = msg },
+                onReact = { msg, emoji -> viewModel.sendReaction(msg.id, emoji) }
             )
             // Input area - stays at bottom
         // Bridge file share from lower-level input to ViewModel
@@ -230,12 +232,48 @@ fun ChatScreen(viewModel: ChatViewModel, isBluetoothEnabled: Boolean = true, onB
         }
     }
 
+    // "X is typing..." for the current geohash channel
+    val typingSnapshot by TypingStore.typing.collectAsState()
+    val typingGeohash = (selectedLocationChannel as? com.roman.zemzeme.geohash.ChannelID.Location)
+        ?.channel?.geohash
+    var typingTick by remember { mutableStateOf(0L) }
+    LaunchedEffect(Unit) {
+        while (true) {
+            delay(1_500)
+            TypingStore.prune()
+            typingTick = System.currentTimeMillis()
+        }
+    }
+    val typingNames = remember(typingSnapshot, typingGeohash, typingTick) {
+        val now = System.currentTimeMillis()
+        typingGeohash?.let { geo ->
+            typingSnapshot[geo].orEmpty()
+                .filterValues { now - it < TypingStore.TTL_MS }
+                .keys
+                .filter { it != nickname }
+                .sorted()
+        }.orEmpty()
+    }
+    if (typingNames.isNotEmpty()) {
+        Text(
+            text = if (typingNames.size == 1) {
+                stringResource(com.roman.zemzeme.R.string.typing_one, typingNames.first())
+            } else {
+                stringResource(com.roman.zemzeme.R.string.typing_many, typingNames.size)
+            },
+            fontSize = 12.sp,
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+            modifier = Modifier.padding(start = 16.dp, bottom = 2.dp)
+        )
+    }
+
     ChatInputSection(
         messageText = messageText,
         onMessageTextChange = { newText: TextFieldValue ->
             messageText = newText
             viewModel.updateCommandSuggestions(newText.text)
             viewModel.updateMentionSuggestions(newText.text)
+            if (newText.text.isNotBlank()) viewModel.notifyTyping()
         },
         onSend = {
             val trimmed = messageText.text.trim()
@@ -851,6 +889,7 @@ private fun ChatDialogs(
             targetNickname = selectedUserForSheet,
             selectedMessage = selectedMessageForSheet,
             onReply = onReply,
+            onReact = { emoji -> selectedMessageForSheet?.let { viewModel.sendReaction(it.id, emoji) } },
             viewModel = viewModel
         )
     }

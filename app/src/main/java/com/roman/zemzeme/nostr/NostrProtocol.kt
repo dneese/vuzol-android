@@ -207,6 +207,55 @@ object NostrProtocol {
         
         return@withContext senderIdentity.signEvent(event)
     }
+
+    /** Emoji reaction to a geohash message (kind 20002, ephemeral). */
+    suspend fun createGeohashReactionEvent(
+        targetEventId: String,
+        emoji: String,
+        geohash: String,
+        senderIdentity: NostrIdentity,
+        nickname: String? = null
+    ): NostrEvent = withContext(Dispatchers.Default) {
+        val tags = mutableListOf<List<String>>()
+        tags.add(listOf("g", geohash))
+        tags.add(listOf("e", targetEventId))
+        if (!nickname.isNullOrEmpty()) {
+            tags.add(listOf("n", nickname))
+        }
+
+        val event = NostrEvent(
+            pubkey = senderIdentity.publicKeyHex,
+            createdAt = (System.currentTimeMillis() / 1000).toInt(),
+            kind = NostrKind.GEOHASH_REACTION,
+            tags = tags,
+            content = emoji
+        )
+
+        return@withContext senderIdentity.signEvent(event)
+    }
+
+    /** "Is typing" hint for a geohash channel (kind 20003, ephemeral). */
+    suspend fun createGeohashTypingEvent(
+        geohash: String,
+        senderIdentity: NostrIdentity,
+        nickname: String? = null
+    ): NostrEvent = withContext(Dispatchers.Default) {
+        val tags = mutableListOf<List<String>>()
+        tags.add(listOf("g", geohash))
+        if (!nickname.isNullOrEmpty()) {
+            tags.add(listOf("n", nickname))
+        }
+
+        val event = NostrEvent(
+            pubkey = senderIdentity.publicKeyHex,
+            createdAt = (System.currentTimeMillis() / 1000).toInt(),
+            kind = NostrKind.GEOHASH_TYPING,
+            tags = tags,
+            content = ""
+        )
+
+        return@withContext senderIdentity.signEvent(event)
+    }
     
     // MARK: - Private Methods
     

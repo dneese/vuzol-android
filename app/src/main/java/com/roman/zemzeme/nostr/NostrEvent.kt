@@ -216,6 +216,8 @@ object NostrKind {
     const val GIFT_WRAP = 1059       // NIP-17 gift wrap
     const val EPHEMERAL_EVENT = 20000 // For geohash channels
     const val GEOHASH_PRESENCE = 20001 // For geohash presence heartbeat
+    const val GEOHASH_REACTION = 20002 // Emoji reaction to a geohash message
+    const val GEOHASH_TYPING = 20003   // "is typing" hint for geohash channels
 }
 
 /**

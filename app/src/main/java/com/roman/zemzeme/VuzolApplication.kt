@@ -43,6 +43,9 @@ class VuzolApplication : Application() {
                 try {
                     val history = com.roman.zemzeme.services.ChatHistoryStore.loadAll()
                     com.roman.zemzeme.services.AppStateStore.hydrate(history)
+                    com.roman.zemzeme.ui.ReactionsStore.load(
+                        com.roman.zemzeme.services.ChatHistoryStore.loadReactions()
+                    )
                 } catch (_: Exception) { }
             }, "vuzol-history-load").apply { isDaemon = true }.start()
         } catch (_: Exception) { }

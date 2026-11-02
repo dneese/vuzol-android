@@ -78,7 +78,8 @@ fun MessagesList(
     onMessageLongPress: ((ZemzemeMessage) -> Unit)? = null,
     onCancelTransfer: ((ZemzemeMessage) -> Unit)? = null,
     onImageClick: ((String, List<String>, Int) -> Unit)? = null,
-    onReply: ((ZemzemeMessage) -> Unit)? = null
+    onReply: ((ZemzemeMessage) -> Unit)? = null,
+    onReact: ((ZemzemeMessage, String) -> Unit)? = null
 ) {
     val listState = rememberLazyListState()
 
@@ -150,7 +151,8 @@ fun MessagesList(
                     onMessageLongPress = onMessageLongPress,
                     onCancelTransfer = onCancelTransfer,
                     onImageClick = onImageClick,
-                    onReply = onReply
+                    onReply = onReply,
+                    onReact = onReact
                 )
             }
         }
@@ -172,7 +174,8 @@ fun MessageItem(
     onMessageLongPress: ((ZemzemeMessage) -> Unit)? = null,
     onCancelTransfer: ((ZemzemeMessage) -> Unit)? = null,
     onImageClick: ((String, List<String>, Int) -> Unit)? = null,
-    onReply: ((ZemzemeMessage) -> Unit)? = null
+    onReply: ((ZemzemeMessage) -> Unit)? = null,
+    onReact: ((ZemzemeMessage, String) -> Unit)? = null
 ) {
     val colorScheme = MaterialTheme.colorScheme
     val timeFormatter = remember { SimpleDateFormat("HH:mm", Locale.getDefault()) }
@@ -310,6 +313,54 @@ fun MessageItem(
                     onCancelTransfer = onCancelTransfer,
                     onImageClick = onImageClick
                 )
+
+                val allReactions by ReactionsStore.reactions.collectAsState()
+                val messageReactions = allReactions[message.id].orEmpty()
+                if (messageReactions.isNotEmpty()) {
+                    ReactionChips(
+                        reactions = messageReactions,
+                        myName = currentUserNickname,
+                        onToggle = { emoji -> onReact?.invoke(message, emoji) }
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ReactionChips(
+    reactions: Map<String, Set<String>>,
+    myName: String,
+    onToggle: (String) -> Unit
+) {
+    Row(
+        modifier = Modifier.padding(top = 3.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        reactions.forEach { (emoji, senders) ->
+            val mine = senders.contains(myName)
+            Row(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(
+                        if (mine) MaterialTheme.colorScheme.primary.copy(alpha = 0.22f)
+                        else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f)
+                    )
+                    .clickable { onToggle(emoji) }
+                    .padding(horizontal = 7.dp, vertical = 2.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(text = emoji, fontSize = 12.sp)
+                if (senders.size > 1) {
+                    Spacer(modifier = Modifier.width(3.dp))
+                    Text(
+                        text = senders.size.toString(),
+                        fontSize = 11.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
         }
     }

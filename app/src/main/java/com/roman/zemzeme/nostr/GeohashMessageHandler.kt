@@ -90,7 +90,11 @@ class GeohashMessageHandler(
     fun onEvent(event: NostrEvent, subscribedGeohash: String) {
         scope.launch(Dispatchers.Default) {
             try {
-                if (event.kind != NostrKind.EPHEMERAL_EVENT && event.kind != NostrKind.GEOHASH_PRESENCE) return@launch
+                if (event.kind != NostrKind.EPHEMERAL_EVENT &&
+                    event.kind != NostrKind.GEOHASH_PRESENCE &&
+                    event.kind != NostrKind.GEOHASH_REACTION &&
+                    event.kind != NostrKind.GEOHASH_TYPING
+                ) return@launch
                 val tagGeo = event.tags.firstOrNull { it.size >= 2 && it[0] == "g" }?.getOrNull(1)
                 if (tagGeo == null || !tagGeo.equals(subscribedGeohash, true)) return@launch
                 if (dedupe(event.id)) return@launch
@@ -137,6 +141,26 @@ class GeohashMessageHandler(
                 val isTeleportPresence = event.tags.any { it.size >= 2 && it[0] == "t" && it[1] == "teleport" } &&
                                          event.content.trim().isEmpty()
                 if (isTeleportPresence) return@launch
+
+                // Reactions and typing hints are transparent to the message list
+                if (event.kind == NostrKind.GEOHASH_REACTION) {
+                    val targetId = event.tags
+                        .firstOrNull { it.size >= 2 && it[0] == "e" }
+                        ?.getOrNull(1)
+                    val emoji = event.content.trim()
+                    if (!targetId.isNullOrBlank() && emoji.isNotBlank()) {
+                        com.roman.zemzeme.ui.ReactionsStore.apply(
+                            targetId, emoji, repo.displayNameForNostrPubkeyUI(event.pubkey)
+                        )
+                    }
+                    return@launch
+                }
+                if (event.kind == NostrKind.GEOHASH_TYPING) {
+                    com.roman.zemzeme.ui.TypingStore.mark(
+                        subscribedGeohash, repo.displayNameForNostrPubkeyUI(event.pubkey)
+                    )
+                    return@launch
+                }
 
                 val senderName = repo.displayNameForNostrPubkeyUI(event.pubkey)
 
