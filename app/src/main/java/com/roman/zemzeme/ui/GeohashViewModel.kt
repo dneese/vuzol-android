@@ -502,11 +502,16 @@ class GeohashViewModel(
                 }
                 val messageID = java.util.UUID.randomUUID().toString().uppercase()
 
+                // Shrink photos so they actually make it through the relays
+                val file = com.roman.zemzeme.features.media.ImageCompressor
+                    .compressIfImage(getApplication(), filePath, mimeType)
+                val effectiveMime = if (file.absolutePath != filePath) "image/jpeg" else mimeType
+
                 // Show locally immediately
                 val localMsg = com.roman.zemzeme.model.ZemzemeMessage(
                     id = messageID,
                     sender = nickname ?: myPeerID,
-                    content = filePath,
+                    content = file.absolutePath,
                     type = msgType,
                     timestamp = java.util.Date(),
                     isRelay = false,
@@ -521,7 +526,7 @@ class GeohashViewModel(
                 val filePacket = com.roman.zemzeme.model.ZemzemeFilePacket(
                     fileName = file.name,
                     fileSize = file.length(),
-                    mimeType = mimeType,
+                    mimeType = effectiveMime,
                     content = file.readBytes()
                 )
                 val fileBytes = filePacket.encode() ?: run {
