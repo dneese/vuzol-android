@@ -234,6 +234,12 @@
   <string name="action_block_title">block %1$s</string>
   <string name="action_block_subtitle">block all messages from this user</string>
 
+  <!-- Notification settings -->
+  <string name="notif_sound_title">notification sound</string>
+  <string name="notif_sound_desc">play a sound when a new message arrives</string>
+  <string name="notif_vibration_title">vibration</string>
+  <string name="notif_vibration_desc">vibrate when a new message arrives</string>
+
   <!-- Location channels sheet -->
   <string name="location_channels_title">#location channels</string>
   <string name="location_channels_desc">chat with people near you using geohash channels. only a coarse geohash is shared, never exact gps. do not screenshot or share this screen to protect your privacy.</string>

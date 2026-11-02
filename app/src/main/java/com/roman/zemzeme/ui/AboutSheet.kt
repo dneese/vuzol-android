@@ -20,6 +20,8 @@ import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.WifiOff
 import androidx.compose.material.icons.filled.AirplanemodeActive
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.NotificationsActive
+import androidx.compose.material.icons.filled.Vibration
 import androidx.compose.foundation.clickable
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -968,6 +970,40 @@ fun AboutSheet(
                                             }
                                         )
                                     }
+
+                                    HorizontalDivider(
+                                        modifier = Modifier.padding(start = 56.dp),
+                                        color = colorScheme.outline.copy(alpha = 0.12f)
+                                    )
+
+                                    // Notification sound toggle
+                                    val soundEnabled by com.roman.zemzeme.ui.NotificationPreferences.soundEnabled.collectAsState()
+                                    SettingsToggleRow(
+                                        icon = Icons.Filled.NotificationsActive,
+                                        title = stringResource(R.string.notif_sound_title),
+                                        subtitle = stringResource(R.string.notif_sound_desc),
+                                        checked = soundEnabled,
+                                        onCheckedChange = { enabled ->
+                                            com.roman.zemzeme.ui.NotificationPreferences.setSoundEnabled(enabled)
+                                        }
+                                    )
+
+                                    HorizontalDivider(
+                                        modifier = Modifier.padding(start = 56.dp),
+                                        color = colorScheme.outline.copy(alpha = 0.12f)
+                                    )
+
+                                    // Notification vibration toggle
+                                    val vibrationEnabled by com.roman.zemzeme.ui.NotificationPreferences.vibrationEnabled.collectAsState()
+                                    SettingsToggleRow(
+                                        icon = Icons.Filled.Vibration,
+                                        title = stringResource(R.string.notif_vibration_title),
+                                        subtitle = stringResource(R.string.notif_vibration_desc),
+                                        checked = vibrationEnabled,
+                                        onCheckedChange = { enabled ->
+                                            com.roman.zemzeme.ui.NotificationPreferences.setVibrationEnabled(enabled)
+                                        }
+                                    )
                                 }
                             }
                             

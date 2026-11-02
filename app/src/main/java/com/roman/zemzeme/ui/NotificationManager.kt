@@ -50,6 +50,89 @@ class NotificationManager(
         const val EXTRA_PEER_ID = "peer_id"
         const val EXTRA_SENDER_NICKNAME = "sender_nickname"
         const val EXTRA_GEOHASH = "geohash"
+
+        fun syncChannels(context: Context) {
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
+            val systemManager = context.getSystemService(Context.NOTIFICATION_SERVICE)
+                as android.app.NotificationManager ?: return
+            val soundEnabled = NotificationPreferences.soundEnabled.value
+            val vibrationEnabled = NotificationPreferences.vibrationEnabled.value
+
+            syncChannel(
+                systemManager,
+                context,
+                CHANNEL_ID,
+                context.getString(R.string.notification_channel_direct_messages),
+                context.getString(R.string.notification_channel_dm_desc),
+                soundEnabled,
+                vibrationEnabled
+            )
+            syncChannel(
+                systemManager,
+                context,
+                GEOHASH_CHANNEL_ID,
+                context.getString(R.string.notification_channel_geohash_chats),
+                context.getString(R.string.notification_channel_geohash_desc),
+                soundEnabled,
+                vibrationEnabled
+            )
+        }
+
+        private fun syncChannel(
+            systemManager: android.app.NotificationManager,
+            context: Context,
+            id: String,
+            name: String,
+            descriptionText: String,
+            soundEnabled: Boolean,
+            vibrationEnabled: Boolean
+        ) {
+            try {
+                val existing = systemManager.getNotificationChannel(id)
+                if (existing != null) {
+                    val hasSound = existing.sound != null
+                    val hasVibration = existing.shouldVibrate()
+                    if (hasSound == soundEnabled && hasVibration == vibrationEnabled) {
+                        return
+                    }
+                    Log.i(
+                        TAG,
+                        "Notification channel $id needs new settings (sound=$soundEnabled, vibration=$vibrationEnabled), recreating it"
+                    )
+                    systemManager.deleteNotificationChannel(id)
+                }
+            } catch (_: Throwable) {}
+
+            val channel = NotificationChannel(
+                id,
+                name,
+                android.app.NotificationManager.IMPORTANCE_HIGH
+            ).apply {
+                description = descriptionText
+                setShowBadge(true)
+                if (vibrationEnabled) {
+                    enableVibration(true)
+                } else {
+                    enableVibration(false)
+                    vibrationPattern = null
+                }
+                if (soundEnabled) {
+                    // A channel with no sound is a silent channel: Android plays
+                    // nothing for it, whatever the notification says.
+                    val sound = android.media.RingtoneManager.getDefaultUri(
+                        android.media.RingtoneManager.TYPE_NOTIFICATION
+                    )
+                    val audioAttributes = android.media.AudioAttributes.Builder()
+                        .setUsage(android.media.AudioAttributes.USAGE_NOTIFICATION_EVENT)
+                        .setContentType(android.media.AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                        .build()
+                    setSound(sound, audioAttributes)
+                } else {
+                    setSound(null, null)
+                }
+            }
+            systemManager.createNotificationChannel(channel)
+        }
     }
 
     private val systemNotificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
@@ -91,63 +174,18 @@ class NotificationManager(
     )
 
     init {
-        createNotificationChannel()
-    }
-
-    private fun createNotificationChannel() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            // DM notifications channel
-            val dmName = context.getString(R.string.notification_channel_direct_messages)
-            val dmDescriptionText = context.getString(R.string.notification_channel_dm_desc)
-            createChannelWithSound(CHANNEL_ID, dmName, dmDescriptionText, NotificationManager.IMPORTANCE_HIGH)
-
-            // Geohash notifications channel
-            val geohashName = context.getString(R.string.notification_channel_geohash_chats)
-            val geohashDescriptionText = context.getString(R.string.notification_channel_geohash_desc)
-            createChannelWithSound(GEOHASH_CHANNEL_ID, geohashName, geohashDescriptionText, NotificationManager.IMPORTANCE_HIGH)
-        }
+        syncChannels(context)
     }
 
     /**
-     * Create a notification channel that plays the default notification sound.
+     * Create or update the app's notification channels so they match the
+     * user's sound and vibration preferences.
      *
-     * Android never changes the sound of a channel that already exists, so a
-     * channel created by an older version of the app (without a sound) stays
-     * silent forever. Such a channel is deleted and created again, which is
-     * the only way to give it a sound.
+     * Android never changes the sound or vibration of a channel that already
+     * exists, so a channel whose settings no longer match is deleted and
+     * created again. This also repairs channels created by older versions of
+     * the app, which were silent.
      */
-    private fun createChannelWithSound(
-        id: String,
-        name: String,
-        descriptionText: String,
-        importance: Int
-    ) {
-        try {
-            val existing = systemNotificationManager.getNotificationChannel(id)
-            if (existing != null && existing.sound == null) {
-                Log.i(TAG, "Notification channel $id has no sound, recreating it")
-                systemNotificationManager.deleteNotificationChannel(id)
-            }
-        } catch (_: Throwable) {}
-
-        val channel = NotificationChannel(id, name, importance).apply {
-            description = descriptionText
-            enableVibration(true)
-            setShowBadge(true)
-            // A channel with no sound is a silent channel: Android plays
-            // nothing for it, whatever the notification says.
-            val sound = android.media.RingtoneManager.getDefaultUri(
-                android.media.RingtoneManager.TYPE_NOTIFICATION
-            )
-            val audioAttributes = android.media.AudioAttributes.Builder()
-                .setUsage(android.media.AudioAttributes.USAGE_NOTIFICATION_EVENT)
-                .setContentType(android.media.AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                .build()
-            setSound(sound, audioAttributes)
-        }
-        systemNotificationManager.createNotificationChannel(channel)
-    }
-
     /**
      * Update app background state - notifications should only be shown when app is backgrounded
      */

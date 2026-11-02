@@ -235,6 +235,12 @@
     <string name="action_block_title">заблокувати %1$s</string>
     <string name="action_block_subtitle">заблокувати всі повідомлення від цього користувача</string>
 
+    <!-- Notification settings -->
+    <string name="notif_sound_title">звук сповіщень</string>
+    <string name="notif_sound_desc">грати звук, коли надходить нове повідомлення</string>
+    <string name="notif_vibration_title">вібрація</string>
+    <string name="notif_vibration_desc">вібрувати, коли надходить нове повідомлення</string>
+
     <!-- Location channels sheet -->
     <string name="location_channels_title">#локаційні канали</string>
     <string name="location_channels_desc">спілкуйтеся з людьми поруч за допомогою каналів геохешів. поширюється лише приблизний геохеш, ніколи точні GPS-координати. не робіть знімків екрана та не поширюйте цей екран для захисту вашої конфіденційності.</string>

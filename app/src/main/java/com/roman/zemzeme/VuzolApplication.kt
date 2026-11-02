@@ -39,6 +39,9 @@ class VuzolApplication : Application() {
         // Initialize theme preference
         ThemePreferenceManager.init(this)
 
+        // Notification sound/vibration preferences (and channel setup)
+        try { com.roman.zemzeme.ui.NotificationPreferences.init(this) } catch (_: Exception) { }
+
         // Initialize debug preference manager (persists debug toggles)
         try { com.roman.zemzeme.ui.debug.DebugPreferenceManager.init(this) } catch (_: Exception) { }
 
