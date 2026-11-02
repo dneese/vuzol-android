@@ -252,6 +252,7 @@
   <string name="pinned_message">pinned message</string>
   <string name="action_pin_title">pin message</string>
   <string name="action_unpin_title">unpin message</string>
+  <string name="emoji_picker">emoji</string>
 
   <!-- Notification settings -->
   <string name="notif_sound_title">notification sound</string>

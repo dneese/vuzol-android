@@ -26,6 +26,8 @@ import com.roman.zemzeme.ui.theme.NunitoFontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.input.OffsetMapping
 import androidx.compose.ui.text.input.TransformedText
 import androidx.compose.ui.text.input.VisualTransformation
@@ -183,9 +185,19 @@ fun MessageInput(
     var isRecording by remember { mutableStateOf(false) }
     var elapsedMs by remember { mutableStateOf(0L) }
     var amplitude by remember { mutableStateOf(0) }
+    var showEmojiPicker by remember { mutableStateOf(false) }
 
+    Column(modifier = modifier) {
+    if (showEmojiPicker) {
+        EmojiPickerPanel(
+            onPick = { emoji ->
+                val newText = value.text + emoji
+                onValueChange(value.copy(text = newText, selection = TextRange(newText.length)))
+            }
+        )
+    }
     Row(
-        modifier = modifier.padding(horizontal = 12.dp, vertical = 8.dp), // Reduced padding
+        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp), // Reduced padding
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
@@ -255,7 +267,20 @@ fun MessageInput(
         }
         
         Spacer(modifier = Modifier.width(8.dp)) // Reduced spacing
-        
+
+        // Emoji picker toggle
+        IconButton(
+            onClick = { showEmojiPicker = !showEmojiPicker },
+            modifier = Modifier.size(32.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Filled.EmojiEmotions,
+                contentDescription = stringResource(id = R.string.emoji_picker),
+                tint = colorScheme.primary.copy(alpha = 0.8f),
+                modifier = Modifier.size(22.dp)
+            )
+        }
+
         // Voice and image buttons when no text (only visible in Mesh chat)
         if (value.text.isEmpty() && showMediaButtons && enabled) {
             // Hold-to-record microphone
@@ -360,9 +385,51 @@ fun MessageInput(
             }
         }
     }
+    }
 
     // Auto-stop handled inside VoiceRecordButton
 }
+
+@Composable
+private fun EmojiPickerPanel(onPick: (String) -> Unit) {
+    val colorScheme = MaterialTheme.colorScheme
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(190.dp),
+        color = colorScheme.surface,
+        tonalElevation = 2.dp
+    ) {
+        Column(
+            modifier = Modifier
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 8.dp, vertical = 6.dp)
+        ) {
+            EMOJI_PALETTE.chunked(8).forEach { row ->
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceEvenly
+                ) {
+                    row.forEach { emoji ->
+                        Text(
+                            text = emoji,
+                            fontSize = 24.sp,
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(8.dp))
+                                .clickable { onPick(emoji) }
+                                .padding(4.dp)
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+private val EMOJI_PALETTE = listOf(
+        "😀","😄","😁","😆","😅","😂","🙂","🙃","😉","😊","😇","🥰","😍","😘","😜","🤪","🤔","🤨","😐","😴","😢","😭","😤","😡","🥺","😱","🤯","😎","🤓","🥳","😏","🙄",
+        "👍","👎","👌","✌️","🤝","🙏","💪","👏","🙌","👀","❤️","🧡","💚","💙","💜","🖤","💔","❤️‍🔥","✨","🔥","🎉","🎊","⭐","🌟","💯","✅","❌","⚠️","❓","❗","💡","🚀"
+    )
 
 @Composable
 fun CommandSuggestionsBox(

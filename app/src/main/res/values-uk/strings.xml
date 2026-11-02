@@ -253,6 +253,7 @@
     <string name="pinned_message">закріплене повідомлення</string>
     <string name="action_pin_title">закріпити повідомлення</string>
     <string name="action_unpin_title">відкріпити повідомлення</string>
+    <string name="emoji_picker">емодзі</string>
 
     <!-- Notification settings -->
     <string name="notif_sound_title">звук сповіщень</string>
