@@ -26,6 +26,8 @@ object ChatHistoryStore {
     private const val DB_NAME = "vuzol_history.db"
     private const val DB_VERSION = 1
     private const val MAX_MESSAGES_PER_CONVERSATION = 500
+    private const val TABLE_MESSAGES = "messages"
+    private const val TABLE_REACTIONS = "reactions"
 
     private val executor = Executors.newSingleThreadExecutor { r ->
         Thread(r, "vuzol-history").apply { isDaemon = true }
