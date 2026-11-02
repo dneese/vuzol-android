@@ -42,7 +42,8 @@ object AppStateStore {
             if (msg.timestamp.time < resetTimestamp) return
             if (seenMessageIds.contains(msg.id)) return
             seenMessageIds.add(msg.id)
-            _publicMessages.value = _publicMessages.value + msg
+            _publicMessages.value = insertChronologically(_publicMessages.value, msg)
+            ChatHistoryStore.save(ChatHistoryStore.CONVERSATION_MESH, msg)
         }
     }
 
@@ -52,9 +53,9 @@ object AppStateStore {
             if (seenMessageIds.contains(msg.id)) return
             seenMessageIds.add(msg.id)
             val map = _privateMessages.value.toMutableMap()
-            val list = (map[peerID] ?: emptyList()) + msg
-            map[peerID] = list
+            map[peerID] = insertChronologically(map[peerID] ?: emptyList(), msg)
             _privateMessages.value = map
+            ChatHistoryStore.save(ChatHistoryStore.conversationForPeer(peerID), msg)
         }
     }
 
@@ -97,10 +98,68 @@ object AppStateStore {
             if (seenMessageIds.contains(msg.id)) return
             seenMessageIds.add(msg.id)
             val map = _channelMessages.value.toMutableMap()
-            val list = (map[channel] ?: emptyList()) + msg
-            map[channel] = list
+            map[channel] = insertChronologically(map[channel] ?: emptyList(), msg)
             _channelMessages.value = map
+            ChatHistoryStore.save(ChatHistoryStore.conversationForChannel(channel), msg)
         }
+    }
+
+    /**
+     * Restores persisted history into the in-memory store. Called once at startup.
+     * Existing (live) messages win, so late relay traffic is never overwritten.
+     */
+    fun hydrate(history: Map<String, List<ZemzemeMessage>>) {
+        if (history.isEmpty()) return
+        synchronized(this) {
+            val channels = _channelMessages.value.toMutableMap()
+            val privateChats = _privateMessages.value.toMutableMap()
+            val public = _publicMessages.value.toMutableList()
+            history.forEach { (conv, messages) ->
+                when {
+                    conv == ChatHistoryStore.CONVERSATION_MESH -> {
+                        messages.forEach { msg ->
+                            if (seenMessageIds.add(msg.id)) public.add(msg)
+                        }
+                        public.sortBy { it.timestamp.time }
+                    }
+                    conv.startsWith("ch:") -> {
+                        val key = conv.removePrefix("ch:")
+                        val list = (channels[key] ?: emptyList()).toMutableList()
+                        messages.forEach { msg ->
+                            if (seenMessageIds.add(msg.id)) list.add(msg)
+                        }
+                        list.sortBy { it.timestamp.time }
+                        channels[key] = list
+                    }
+                    conv.startsWith("dm:") -> {
+                        val key = conv.removePrefix("dm:")
+                        val list = (privateChats[key] ?: emptyList()).toMutableList()
+                        messages.forEach { msg ->
+                            if (seenMessageIds.add(msg.id)) list.add(msg)
+                        }
+                        list.sortBy { it.timestamp.time }
+                        privateChats[key] = list
+                    }
+                }
+            }
+            _publicMessages.value = public
+            _channelMessages.value = channels
+            _privateMessages.value = privateChats
+        }
+    }
+
+    private fun insertChronologically(
+        existing: List<ZemzemeMessage>,
+        msg: ZemzemeMessage
+    ): List<ZemzemeMessage> {
+        val last = existing.lastOrNull()
+        if (last == null || msg.timestamp.time >= last.timestamp.time) {
+            return existing + msg
+        }
+        val out = existing.toMutableList()
+        val index = out.indexOfFirst { it.timestamp.time > msg.timestamp.time }
+        if (index < 0) out.add(msg) else out.add(index, msg)
+        return out
     }
 
     // Clear all in-memory state and set reset timestamp to reject old messages from mesh
@@ -112,6 +171,7 @@ object AppStateStore {
             _publicMessages.value = emptyList()
             _privateMessages.value = emptyMap()
             _channelMessages.value = emptyMap()
+            ChatHistoryStore.clearAll()
         }
     }
 }

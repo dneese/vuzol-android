@@ -297,6 +297,7 @@ class MessageManager(private val state: ChatState) {
 
     // Remove a message from all locations (main timeline, private chats, channels)
     fun removeMessageById(messageID: String) {
+        try { com.roman.zemzeme.services.ChatHistoryStore.delete(messageID) } catch (_: Exception) { }
         // Main timeline
         run {
             val list = state.getMessagesValue().toMutableList()

@@ -1,6 +1,10 @@
 package com.roman.zemzeme.ui
 
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
@@ -24,9 +28,12 @@ import com.roman.zemzeme.ui.theme.NunitoFontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlin.math.roundToInt
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import android.content.Intent
@@ -171,6 +178,15 @@ fun MessageItem(
     val timeFormatter = remember { SimpleDateFormat("HH:mm", Locale.getDefault()) }
     val haptic = LocalHapticFeedback.current
 
+    // Swipe-to-reply (drag horizontally, release past the threshold).
+    val maxSwipePx = with(LocalDensity.current) { 72.dp.toPx() }
+    var swipeOffset by remember { mutableStateOf(0f) }
+    val animatedSwipe by animateFloatAsState(
+        targetValue = swipeOffset,
+        animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
+        label = "swipeToReply"
+    )
+
     // Determine if this message was sent by self
     val isSelf = message.senderPeerID == meshService.myPeerID ||
                  message.sender == currentUserNickname ||
@@ -207,6 +223,24 @@ fun MessageItem(
         modifier = modifier
             .fillMaxWidth()
             .padding(vertical = 2.dp)
+            .offset { IntOffset(animatedSwipe.roundToInt(), 0) }
+            .pointerInput(onReply) {
+                if (onReply == null) return@pointerInput
+                detectHorizontalDragGestures(
+                    onDragEnd = {
+                        if (kotlin.math.abs(swipeOffset) >= maxSwipePx * 0.6f) {
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            onReply.invoke(message)
+                        }
+                        swipeOffset = 0f
+                    },
+                    onDragCancel = { swipeOffset = 0f },
+                    onHorizontalDrag = { change, amount ->
+                        change.consume()
+                        swipeOffset = (swipeOffset + amount).coerceIn(-maxSwipePx, maxSwipePx)
+                    }
+                )
+            }
             .pointerInput(message.id) {
                 detectTapGestures(
                     onLongPress = {

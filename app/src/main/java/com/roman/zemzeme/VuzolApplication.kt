@@ -36,6 +36,17 @@ class VuzolApplication : Application() {
             com.roman.zemzeme.nostr.NostrIdentityBridge.getCurrentNostrIdentity(this)
         } catch (_: Exception) { }
 
+        // Initialize local chat history and restore it into the in-memory store
+        try {
+            com.roman.zemzeme.services.ChatHistoryStore.init(this)
+            Thread({
+                try {
+                    val history = com.roman.zemzeme.services.ChatHistoryStore.loadAll()
+                    com.roman.zemzeme.services.AppStateStore.hydrate(history)
+                } catch (_: Exception) { }
+            }, "vuzol-history-load").apply { isDaemon = true }.start()
+        } catch (_: Exception) { }
+
         // Initialize theme preference
         ThemePreferenceManager.init(this)
 
