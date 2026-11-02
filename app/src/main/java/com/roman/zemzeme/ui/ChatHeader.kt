@@ -283,7 +283,8 @@ fun ChatHeaderContent(
     onTripleClick: () -> Unit,
     onShowAppInfo: () -> Unit,
     onLocationChannelsClick: () -> Unit,
-    onLocationNotesClick: () -> Unit
+    onLocationNotesClick: () -> Unit,
+    onSearchClick: () -> Unit = {}
 ) {
     val colorScheme = MaterialTheme.colorScheme
 
@@ -505,6 +506,18 @@ private fun MainHeader(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
+            IconButton(
+                onClick = onSearchClick,
+                modifier = Modifier.size(36.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Search,
+                    contentDescription = stringResource(R.string.search_messages_title),
+                    modifier = Modifier.size(22.dp),
+                    tint = colorScheme.primary
+                )
+            }
+
             // Unread private messages badge
             if (hasUnreadPrivateMessages.isNotEmpty()) {
                 Icon(

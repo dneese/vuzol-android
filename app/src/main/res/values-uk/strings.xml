@@ -247,6 +247,12 @@
     <string name="channel_mute">вимкнути сповіщення каналу</string>
     <string name="channel_unmute">увімкнути сповіщення каналу</string>
     <string name="channel_mute_subtitle">не показувати сповіщення та звук для цього каналу</string>
+    <string name="search_messages_title">пошук повідомлень</string>
+    <string name="search_messages_hint">пошук у цьому чаті</string>
+    <string name="search_messages_count">знайдено: %1$d</string>
+    <string name="pinned_message">закріплене повідомлення</string>
+    <string name="action_pin_title">закріпити повідомлення</string>
+    <string name="action_unpin_title">відкріпити повідомлення</string>
 
     <!-- Notification settings -->
     <string name="notif_sound_title">звук сповіщень</string>

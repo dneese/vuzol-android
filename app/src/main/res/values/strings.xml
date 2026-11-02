@@ -246,6 +246,12 @@
   <string name="channel_mute">mute channel</string>
   <string name="channel_unmute">unmute channel</string>
   <string name="channel_mute_subtitle">stop notifications and sounds for this channel</string>
+  <string name="search_messages_title">search messages</string>
+  <string name="search_messages_hint">search in this chat</string>
+  <string name="search_messages_count">%1$d result(s)</string>
+  <string name="pinned_message">pinned message</string>
+  <string name="action_pin_title">pin message</string>
+  <string name="action_unpin_title">unpin message</string>
 
   <!-- Notification settings -->
   <string name="notif_sound_title">notification sound</string>

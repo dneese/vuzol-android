@@ -137,6 +137,35 @@ fun ChatUserSheet(
                             )
                         }
 
+                        // Pin / unpin in this conversation
+                        val pinConvKey = viewModel.selectedLocationChannel.value
+                            .let { loc ->
+                                if (loc is com.roman.zemzeme.geohash.ChannelID.Location) {
+                                    "geo:${loc.channel.geohash}"
+                                } else null
+                            }
+                        if (pinConvKey != null) {
+                            val pinned = com.roman.zemzeme.services.PinStore.pinned(pinConvKey) == message.id
+                            item {
+                                UserActionRow(
+                                    title = stringResource(
+                                        if (pinned) R.string.action_unpin_title
+                                        else R.string.action_pin_title
+                                    ),
+                                    subtitle = stringResource(R.string.pinned_message),
+                                    titleColor = standardGrey,
+                                    onClick = {
+                                        if (pinned) {
+                                            com.roman.zemzeme.services.PinStore.clear(pinConvKey)
+                                        } else {
+                                            com.roman.zemzeme.services.PinStore.set(pinConvKey, message.id)
+                                        }
+                                        onDismiss()
+                                    }
+                                )
+                            }
+                        }
+
                         // Delete own message (local only)
                         if (isOwnMessage) {
                             item {

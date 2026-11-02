@@ -82,6 +82,8 @@ fun ChatScreen(viewModel: ChatViewModel, isBluetoothEnabled: Boolean = true, onB
     var passwordInput by remember { mutableStateOf("") }
     var showLocationChannelsSheet by remember { mutableStateOf(false) }
     var showLocationNotesSheet by remember { mutableStateOf(false) }
+    var showMessageSearch by remember { mutableStateOf(false) }
+    val pinnedMessages by com.roman.zemzeme.services.PinStore.pins.collectAsState()
     var showUserSheet by remember { mutableStateOf(false) }
     var selectedUserForSheet by remember { mutableStateOf("") }
     var selectedMessageForSheet by remember { mutableStateOf<ZemzemeMessage?>(null) }
@@ -189,6 +191,16 @@ fun ChatScreen(viewModel: ChatViewModel, isBluetoothEnabled: Boolean = true, onB
                     isNostrEnabled = isNostrEnabled,
                     isAirplaneModeOn = isAirplaneModeOn,
                     onOpenAppSettings = { viewModel.showAppInfo() }
+                )
+            }
+
+            // Pinned message banner
+            val pinnedId = conversationKey?.let { pinnedMessages[it] }
+            val pinnedMessage = pinnedId?.let { id -> displayMessages.firstOrNull { it.id == id } }
+            if (pinnedMessage != null && conversationKey != null) {
+                PinnedMessageBanner(
+                    message = pinnedMessage,
+                    onUnpin = { com.roman.zemzeme.services.PinStore.clear(conversationKey) }
                 )
             }
 
@@ -366,7 +378,8 @@ fun ChatScreen(viewModel: ChatViewModel, isBluetoothEnabled: Boolean = true, onB
             onShowAppInfo = { viewModel.showAppInfo() },
             onPanicClear = { viewModel.panicClearAllData() },
             onLocationChannelsClick = { showLocationChannelsSheet = true },
-            onLocationNotesClick = { showLocationNotesSheet = true }
+            onLocationNotesClick = { showLocationNotesSheet = true },
+            onSearchClick = { showMessageSearch = true }
         )
 
         // Divider under header - positioned after status bar + header height
@@ -444,6 +457,9 @@ fun ChatScreen(viewModel: ChatViewModel, isBluetoothEnabled: Boolean = true, onB
         onLocationChannelsSheetDismiss = { showLocationChannelsSheet = false },
         showLocationNotesSheet = showLocationNotesSheet,
         onLocationNotesSheetDismiss = { showLocationNotesSheet = false },
+        showMessageSearch = showMessageSearch,
+        onMessageSearchDismiss = { showMessageSearch = false },
+        displayMessages = displayMessages,
         showUserSheet = showUserSheet,
         onUserSheetDismiss = { 
             showUserSheet = false
@@ -700,6 +716,48 @@ private fun ReplyComposerBar(message: ZemzemeMessage, onCancel: () -> Unit) {
 }
 
 @Composable
+private fun PinnedMessageBanner(message: ZemzemeMessage, onUnpin: () -> Unit) {
+    val colorScheme = MaterialTheme.colorScheme
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(colorScheme.surface)
+            .padding(horizontal = 12.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .width(3.dp)
+                .height(30.dp)
+                .background(colorScheme.primary)
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = stringResource(com.roman.zemzeme.R.string.pinned_message),
+                fontSize = 11.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = colorScheme.primary
+            )
+            Text(
+                text = message.content.replace("\n", " "),
+                fontSize = 13.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                color = colorScheme.onSurface.copy(alpha = 0.8f)
+            )
+        }
+        IconButton(onClick = onUnpin) {
+            Icon(
+                imageVector = Icons.Filled.Close,
+                contentDescription = stringResource(android.R.string.cancel),
+                tint = colorScheme.onSurface.copy(alpha = 0.6f)
+            )
+        }
+    }
+}
+
+@Composable
 fun ChatInputSection(
     messageText: TextFieldValue,
     onMessageTextChange: (TextFieldValue) -> Unit,
@@ -781,7 +839,8 @@ private fun ChatFloatingHeader(
     onShowAppInfo: () -> Unit,
     onPanicClear: () -> Unit,
     onLocationChannelsClick: () -> Unit,
-    onLocationNotesClick: () -> Unit
+    onLocationNotesClick: () -> Unit,
+    onSearchClick: () -> Unit = {}
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val locationManager = remember { com.roman.zemzeme.geohash.LocationChannelManager.getInstance(context) }
@@ -820,7 +879,8 @@ private fun ChatFloatingHeader(
                     // Ensure location is loaded before showing sheet
                     locationManager.refreshChannels()
                     onLocationNotesClick()
-                }
+                },
+                onSearchClick = onSearchClick
             )
         }
     }
@@ -847,6 +907,9 @@ private fun ChatDialogs(
     selectedUserForSheet: String,
     selectedMessageForSheet: ZemzemeMessage?,
     onReply: (ZemzemeMessage) -> Unit,
+    showMessageSearch: Boolean,
+    onMessageSearchDismiss: () -> Unit,
+    displayMessages: List<ZemzemeMessage>,
     viewModel: ChatViewModel,
     showVerificationSheet: Boolean,
     onVerificationSheetDismiss: () -> Unit,
@@ -890,6 +953,13 @@ private fun ChatDialogs(
         )
     }
     
+    // Message search
+    MessageSearchSheet(
+        isPresented = showMessageSearch,
+        messages = displayMessages,
+        onDismiss = onMessageSearchDismiss
+    )
+
     // Location channels sheet
     if (showLocationChannelsSheet) {
         LocationChannelsSheet(
