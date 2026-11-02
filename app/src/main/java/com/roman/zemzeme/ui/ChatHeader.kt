@@ -349,7 +349,8 @@ fun ChatHeaderContent(
             MainHeader(
                 onBackToHome = onBackToHome,
                 onSidebarClick = onSidebarClick,
-                viewModel = viewModel
+                viewModel = viewModel,
+                onSearchClick = onSearchClick
             )
         }
     }
@@ -428,7 +429,8 @@ private fun ChannelHeader(
 private fun MainHeader(
     onBackToHome: () -> Unit,
     onSidebarClick: () -> Unit,
-    viewModel: ChatViewModel
+    viewModel: ChatViewModel,
+    onSearchClick: () -> Unit = {}
 ) {
     val colorScheme = MaterialTheme.colorScheme
     val connectedPeers by viewModel.connectedPeers.collectAsStateWithLifecycle()
