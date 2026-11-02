@@ -118,7 +118,7 @@ fun MessagesList(
     LazyColumn(
         state = listState,
         contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp),
-        verticalArrangement = Arrangement.spacedBy(6.dp),
+        verticalArrangement = Arrangement.spacedBy(3.dp),
         modifier = modifier.fillMaxSize(),
         reverseLayout = true
     ) {
@@ -135,7 +135,10 @@ fun MessagesList(
                     messages = messages,
                     currentUserNickname = currentUserNickname,
                     meshService = meshService,
+                    modifier = Modifier.padding(top = if (row.showHeader) 6.dp else 0.dp),
                     showHeader = row.showHeader,
+                    showAvatar = row.isLastInGroup,
+                    showTail = row.isLastInGroup,
                     onNicknameClick = onNicknameClick,
                     onMessageLongPress = onMessageLongPress,
                     onCancelTransfer = onCancelTransfer,
@@ -154,7 +157,10 @@ fun MessageItem(
     currentUserNickname: String,
     meshService: BluetoothMeshService,
     messages: List<ZemzemeMessage> = emptyList(),
+    modifier: Modifier = Modifier,
     showHeader: Boolean = true,
+    showAvatar: Boolean = true,
+    showTail: Boolean = true,
     onNicknameClick: ((String) -> Unit)? = null,
     onMessageLongPress: ((ZemzemeMessage) -> Unit)? = null,
     onCancelTransfer: ((ZemzemeMessage) -> Unit)? = null,
@@ -198,7 +204,7 @@ fun MessageItem(
 
     // Modern message layout with avatar
     Row(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .padding(vertical = 2.dp)
             .pointerInput(message.id) {
@@ -224,7 +230,7 @@ fun MessageItem(
         ) {
             // For received messages, show avatar on the left, aligned with bubble
             if (!isSelf) {
-                if (showHeader) {
+                if (showAvatar) {
                     AvatarCircle(
                         letter = baseName.firstOrNull()?.uppercaseChar()?.toString() ?: "?",
                         color = baseColor,
@@ -264,6 +270,7 @@ fun MessageItem(
                     colorScheme = colorScheme,
                     timeFormatter = timeFormatter,
                     isSelf = isSelf,
+                    showTail = showTail,
                     onNicknameClick = onNicknameClick,
                     onMessageLongPress = onMessageLongPress,
                     onCancelTransfer = onCancelTransfer,
@@ -305,6 +312,7 @@ private fun MessageBubble(
     colorScheme: ColorScheme,
     timeFormatter: SimpleDateFormat,
     isSelf: Boolean,
+    showTail: Boolean = true,
     onNicknameClick: ((String) -> Unit)?,
     onMessageLongPress: ((ZemzemeMessage) -> Unit)?,
     onCancelTransfer: ((ZemzemeMessage) -> Unit)?,
@@ -326,7 +334,8 @@ private fun MessageBubble(
         RoundedCornerShape(
             topStart = ZemzemeShapes.MessageBubbleRadius,
             topEnd = ZemzemeShapes.MessageBubbleRadius,
-            bottomEnd = ZemzemeShapes.MessageBubbleRadiusSmall,
+            bottomEnd = if (showTail) ZemzemeShapes.MessageBubbleRadiusSmall
+            else ZemzemeShapes.MessageBubbleRadius,
             bottomStart = ZemzemeShapes.MessageBubbleRadius
         )
     } else {
@@ -334,7 +343,8 @@ private fun MessageBubble(
             topStart = ZemzemeShapes.MessageBubbleRadius,
             topEnd = ZemzemeShapes.MessageBubbleRadius,
             bottomEnd = ZemzemeShapes.MessageBubbleRadius,
-            bottomStart = ZemzemeShapes.MessageBubbleRadiusSmall
+            bottomStart = if (showTail) ZemzemeShapes.MessageBubbleRadiusSmall
+            else ZemzemeShapes.MessageBubbleRadius
         )
     }
 
@@ -649,7 +659,8 @@ private fun ChatDaySeparator(dayStart: Long) {
 private data class ChatRow(
     val message: ZemzemeMessage?,
     val dayStart: Long = 0L,
-    val showHeader: Boolean = true
+    val showHeader: Boolean = true,
+    val isLastInGroup: Boolean = true
 )
 
 private fun buildChatRows(messages: List<ZemzemeMessage>): List<ChatRow> {
@@ -677,7 +688,19 @@ private fun buildChatRows(messages: List<ZemzemeMessage>): List<ChatRow> {
         )
         previous = message
     }
-    return rows.asReversed()
+
+    // A bubble only keeps its "tail" (and the avatar) on the last message of a group.
+    val grouped = rows.mapIndexed { index, row ->
+        val current = row.message ?: return@mapIndexed row
+        val next = rows.getOrNull(index + 1)?.message
+        val continues = next != null &&
+            next.sender == current.sender &&
+            next.senderPeerID == current.senderPeerID &&
+            dayOf(next.timestamp.time) == dayOf(current.timestamp.time) &&
+            (next.timestamp.time - current.timestamp.time) in 0..300_000
+        row.copy(isLastInGroup = !continues)
+    }
+    return grouped.asReversed()
 }
 
 @Composable

@@ -609,7 +609,7 @@ private fun ReplyComposerBar(message: ZemzemeMessage, onCancel: () -> Unit) {
         Spacer(modifier = Modifier.width(8.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = stringResource(R.string.replying_to, sender),
+                text = stringResource(com.roman.zemzeme.R.string.replying_to, sender),
                 fontSize = 12.sp,
                 fontWeight = FontWeight.SemiBold,
                 color = colorScheme.primary,
@@ -627,7 +627,7 @@ private fun ReplyComposerBar(message: ZemzemeMessage, onCancel: () -> Unit) {
         IconButton(onClick = onCancel) {
             Icon(
                 imageVector = Icons.Filled.Close,
-                contentDescription = stringResource(R.string.cancel_lower),
+                contentDescription = stringResource(com.roman.zemzeme.R.string.cancel_lower),
                 tint = colorScheme.onSurface.copy(alpha = 0.6f)
             )
         }
