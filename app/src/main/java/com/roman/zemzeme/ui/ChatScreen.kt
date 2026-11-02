@@ -20,12 +20,15 @@ import androidx.compose.material.icons.filled.BluetoothDisabled
 import androidx.compose.material.icons.filled.WifiOff
 import androidx.compose.material.icons.filled.CloudOff
 import androidx.compose.material.icons.filled.AirplanemodeActive
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.IconButton
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.zIndex
@@ -85,6 +88,7 @@ fun ChatScreen(viewModel: ChatViewModel, isBluetoothEnabled: Boolean = true, onB
     var initialViewerIndex by remember { mutableStateOf(0) }
     var forceScrollToBottom by remember { mutableStateOf(false) }
     var isScrolledUp by remember { mutableStateOf(false) }
+    var replyTo by remember { mutableStateOf<ZemzemeMessage?>(null) }
 
     // Show password dialog when needed
     LaunchedEffect(showPasswordPrompt) {
@@ -214,7 +218,8 @@ fun ChatScreen(viewModel: ChatViewModel, isBluetoothEnabled: Boolean = true, onB
                     viewerImagePaths = allImagePaths
                     initialViewerIndex = initialIndex
                     showFullScreenImageViewer = true
-                }
+                },
+                onReply = { msg -> replyTo = msg }
             )
             // Input area - stays at bottom
         // Bridge file share from lower-level input to ViewModel
@@ -232,12 +237,19 @@ fun ChatScreen(viewModel: ChatViewModel, isBluetoothEnabled: Boolean = true, onB
             viewModel.updateMentionSuggestions(newText.text)
         },
         onSend = {
-            if (messageText.text.trim().isNotEmpty()) {
-                viewModel.sendMessage(messageText.text.trim())
+            val trimmed = messageText.text.trim()
+            if (trimmed.isNotEmpty()) {
+                val original = replyTo
+                val outgoing =
+                    if (original != null) MessageReply.encode(original, trimmed) else trimmed
+                viewModel.sendMessage(outgoing)
                 messageText = TextFieldValue("")
+                replyTo = null
                 forceScrollToBottom = !forceScrollToBottom // Toggle to trigger scroll
             }
         },
+        replyingTo = replyTo,
+        onCancelReply = { replyTo = null },
         onSendVoiceNote = { peer, onionOrChannel, path ->
             viewModel.sendVoiceNote(peer, onionOrChannel, path)
         },
@@ -374,6 +386,7 @@ fun ChatScreen(viewModel: ChatViewModel, isBluetoothEnabled: Boolean = true, onB
         },
         selectedUserForSheet = selectedUserForSheet,
         selectedMessageForSheet = selectedMessageForSheet,
+        onReply = { msg -> replyTo = msg },
         viewModel = viewModel,
         showVerificationSheet = showVerificationSheet,
         onVerificationSheetDismiss = viewModel::hideVerificationSheet,
@@ -577,6 +590,51 @@ private fun NetworkBanner(
 }
 
 @Composable
+private fun ReplyComposerBar(message: ZemzemeMessage, onCancel: () -> Unit) {
+    val colorScheme = MaterialTheme.colorScheme
+    val (sender, _) = splitSuffix(message.sender)
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(colorScheme.surface)
+            .padding(start = 12.dp, end = 4.dp, top = 8.dp, bottom = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .width(3.dp)
+                .height(34.dp)
+                .background(colorScheme.primary)
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = stringResource(R.string.replying_to, sender),
+                fontSize = 12.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = colorScheme.primary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                text = MessageReply.preview(message),
+                fontSize = 13.sp,
+                color = colorScheme.onSurface.copy(alpha = 0.7f),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+        IconButton(onClick = onCancel) {
+            Icon(
+                imageVector = Icons.Filled.Close,
+                contentDescription = stringResource(R.string.cancel_lower),
+                tint = colorScheme.onSurface.copy(alpha = 0.6f)
+            )
+        }
+    }
+}
+
+@Composable
 fun ChatInputSection(
     messageText: TextFieldValue,
     onMessageTextChange: (TextFieldValue) -> Unit,
@@ -595,7 +653,9 @@ fun ChatInputSection(
     nickname: String,
     colorScheme: ColorScheme,
     showMediaButtons: Boolean,
-    enabled: Boolean = true
+    enabled: Boolean = true,
+    replyingTo: ZemzemeMessage? = null,
+    onCancelReply: () -> Unit = {}
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
@@ -603,6 +663,10 @@ fun ChatInputSection(
     ) {
         Column {
             HorizontalDivider(color = colorScheme.outline.copy(alpha = 0.3f))
+            if (replyingTo != null) {
+                ReplyComposerBar(message = replyingTo, onCancel = onCancelReply)
+                HorizontalDivider(color = colorScheme.outline.copy(alpha = 0.2f))
+            }
             // Command suggestions box
             if (showCommandSuggestions && commandSuggestions.isNotEmpty()) {
                 CommandSuggestionsBox(
@@ -717,6 +781,7 @@ private fun ChatDialogs(
     onUserSheetDismiss: () -> Unit,
     selectedUserForSheet: String,
     selectedMessageForSheet: ZemzemeMessage?,
+    onReply: (ZemzemeMessage) -> Unit,
     viewModel: ChatViewModel,
     showVerificationSheet: Boolean,
     onVerificationSheetDismiss: () -> Unit,
@@ -784,6 +849,7 @@ private fun ChatDialogs(
             onDismiss = onUserSheetDismiss,
             targetNickname = selectedUserForSheet,
             selectedMessage = selectedMessageForSheet,
+            onReply = onReply,
             viewModel = viewModel
         )
     }

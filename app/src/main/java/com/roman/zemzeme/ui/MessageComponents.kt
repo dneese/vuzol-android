@@ -70,7 +70,8 @@ fun MessagesList(
     onNicknameClick: ((String) -> Unit)? = null,
     onMessageLongPress: ((ZemzemeMessage) -> Unit)? = null,
     onCancelTransfer: ((ZemzemeMessage) -> Unit)? = null,
-    onImageClick: ((String, List<String>, Int) -> Unit)? = null
+    onImageClick: ((String, List<String>, Int) -> Unit)? = null,
+    onReply: ((ZemzemeMessage) -> Unit)? = null
 ) {
     val listState = rememberLazyListState()
 
@@ -112,6 +113,8 @@ fun MessagesList(
         }
     }
 
+    val chatRows = remember(messages) { buildChatRows(messages) }
+
     LazyColumn(
         state = listState,
         contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp),
@@ -120,19 +123,26 @@ fun MessagesList(
         reverseLayout = true
     ) {
         items(
-            items = messages.asReversed(),
-            key = { it.id }
-        ) { message ->
+            items = chatRows,
+            key = { row -> row.message?.id ?: "day-${row.dayStart}" }
+        ) { row ->
+            val rowMessage = row.message
+            if (rowMessage == null) {
+                ChatDaySeparator(dayStart = row.dayStart)
+            } else {
                 MessageItem(
-                    message = message,
+                    message = rowMessage,
                     messages = messages,
                     currentUserNickname = currentUserNickname,
                     meshService = meshService,
+                    showHeader = row.showHeader,
                     onNicknameClick = onNicknameClick,
                     onMessageLongPress = onMessageLongPress,
                     onCancelTransfer = onCancelTransfer,
-                    onImageClick = onImageClick
+                    onImageClick = onImageClick,
+                    onReply = onReply
                 )
+            }
         }
     }
 }
@@ -144,10 +154,12 @@ fun MessageItem(
     currentUserNickname: String,
     meshService: BluetoothMeshService,
     messages: List<ZemzemeMessage> = emptyList(),
+    showHeader: Boolean = true,
     onNicknameClick: ((String) -> Unit)? = null,
     onMessageLongPress: ((ZemzemeMessage) -> Unit)? = null,
     onCancelTransfer: ((ZemzemeMessage) -> Unit)? = null,
-    onImageClick: ((String, List<String>, Int) -> Unit)? = null
+    onImageClick: ((String, List<String>, Int) -> Unit)? = null,
+    onReply: ((ZemzemeMessage) -> Unit)? = null
 ) {
     val colorScheme = MaterialTheme.colorScheme
     val timeFormatter = remember { SimpleDateFormat("HH:mm", Locale.getDefault()) }
@@ -194,6 +206,12 @@ fun MessageItem(
                     onLongPress = {
                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                         onMessageLongPress?.invoke(message)
+                    },
+                    onDoubleTap = {
+                        if (onReply != null) {
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            onReply.invoke(message)
+                        }
                     }
                 )
             },
@@ -206,19 +224,23 @@ fun MessageItem(
         ) {
             // For received messages, show avatar on the left, aligned with bubble
             if (!isSelf) {
-                AvatarCircle(
-                    letter = baseName.firstOrNull()?.uppercaseChar()?.toString() ?: "?",
-                    color = baseColor,
-                    modifier = Modifier.padding(end = 8.dp)
-                )
+                if (showHeader) {
+                    AvatarCircle(
+                        letter = baseName.firstOrNull()?.uppercaseChar()?.toString() ?: "?",
+                        color = baseColor,
+                        modifier = Modifier.padding(end = 8.dp)
+                    )
+                } else {
+                    Spacer(modifier = Modifier.width(44.dp))
+                }
             }
 
             // Message content column - wraps content width
             Column(
                 horizontalAlignment = if (isSelf) Alignment.End else Alignment.Start
             ) {
-                // Sender name (only for received messages)
-                if (!isSelf) {
+                // Sender name (only for the first message of a group)
+                if (!isSelf && showHeader) {
                     Text(
                         text = truncateNickname(baseName) + suffix,
                         fontSize = 13.sp,
@@ -457,9 +479,13 @@ private fun MessageBubbleContent(
             modifier = Modifier.fillMaxWidth()
         )
     } else {
-        // Normal text message
+        // Normal text message. Replies prefix the content with a "> quote" block,
+        // which is rendered separately above the message body.
+        val (replyQuote, replyBody) = MessageReply.split(message.content)
+        val contentMessage =
+            if (replyQuote != null && replyBody.isNotEmpty()) message.copy(content = replyBody) else message
         val annotatedText = formatMessageContentOnly(
-            message = message,
+            message = contentMessage,
             currentUserNickname = currentUserNickname,
             colorScheme = colorScheme,
             isSelf = isSelf
@@ -469,12 +495,16 @@ private fun MessageBubbleContent(
         val context = LocalContext.current
         var textLayoutResult by remember { mutableStateOf<TextLayoutResult?>(null) }
 
+        Column(modifier = Modifier.widthIn(max = 280.dp)) {
+        if (replyQuote != null) {
+            ReplyQuoteBlock(text = replyQuote)
+            Spacer(modifier = Modifier.height(4.dp))
+        }
         Text(
             text = annotatedText,
             modifier = Modifier
-                .widthIn(max = 280.dp)
                 .wrapContentWidth()
-                .pointerInput(message) {
+                .pointerInput(contentMessage) {
                     detectTapGestures(
                         onTap = { position ->
                             val layout = textLayoutResult ?: return@detectTapGestures
@@ -547,7 +577,107 @@ private fun MessageBubbleContent(
             color = colorScheme.onSurface,
             onTextLayout = { result -> textLayoutResult = result }
         )
+        }
     }
+}
+
+@Composable
+private fun ReplyQuoteBlock(text: String) {
+    val colorScheme = MaterialTheme.colorScheme
+    Row(
+        modifier = Modifier
+            .widthIn(max = 280.dp)
+            .clip(RoundedCornerShape(6.dp))
+            .background(colorScheme.primary.copy(alpha = 0.10f)),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .width(3.dp)
+                .height(32.dp)
+                .background(colorScheme.primary)
+        )
+        Text(
+            text = text,
+            fontSize = 12.sp,
+            lineHeight = 15.sp,
+            maxLines = 3,
+            overflow = TextOverflow.Ellipsis,
+            color = colorScheme.primary.copy(alpha = 0.9f),
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp)
+        )
+    }
+}
+
+@Composable
+private fun ChatDaySeparator(dayStart: Long) {
+    val zone = remember { java.time.ZoneId.systemDefault() }
+    val date = remember(dayStart) {
+        java.time.Instant.ofEpochMilli(dayStart).atZone(zone).toLocalDate()
+    }
+    val today = remember { java.time.LocalDate.now(zone) }
+    val label = when (date) {
+        today -> stringResource(R.string.chat_today)
+        today.minusDays(1) -> stringResource(R.string.chat_yesterday)
+        else -> remember(date) {
+            java.time.format.DateTimeFormatter
+                .ofPattern("d MMMM", Locale.getDefault())
+                .format(date)
+        }
+    }
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp),
+        horizontalArrangement = Arrangement.Center
+    ) {
+        Surface(
+            shape = RoundedCornerShape(12.dp),
+            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
+        ) {
+            Text(
+                text = label,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 10.dp, vertical = 3.dp)
+            )
+        }
+    }
+}
+
+private data class ChatRow(
+    val message: ZemzemeMessage?,
+    val dayStart: Long = 0L,
+    val showHeader: Boolean = true
+)
+
+private fun buildChatRows(messages: List<ZemzemeMessage>): List<ChatRow> {
+    val zone = java.time.ZoneId.systemDefault()
+    fun dayOf(ms: Long) = java.time.Instant.ofEpochMilli(ms).atZone(zone).toLocalDate()
+
+    val rows = mutableListOf<ChatRow>()
+    var previous: ZemzemeMessage? = null
+    for (message in messages) {
+        val prev = previous
+        val newDay = prev == null || dayOf(prev.timestamp.time) != dayOf(message.timestamp.time)
+        if (newDay) {
+            rows.add(ChatRow(message = null, dayStart = message.timestamp.time))
+        }
+        val sameSender = prev != null &&
+            prev.sender == message.sender &&
+            prev.senderPeerID == message.senderPeerID
+        val closeInTime = prev != null &&
+            (message.timestamp.time - prev.timestamp.time) in 0..300_000
+        rows.add(
+            ChatRow(
+                message = message,
+                showHeader = newDay || !sameSender || !closeInTime
+            )
+        )
+        previous = message
+    }
+    return rows.asReversed()
 }
 
 @Composable

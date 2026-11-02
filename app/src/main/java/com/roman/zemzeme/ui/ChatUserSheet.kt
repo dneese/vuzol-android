@@ -30,6 +30,7 @@ fun ChatUserSheet(
     onDismiss: () -> Unit,
     targetNickname: String,
     selectedMessage: ZemzemeMessage? = null,
+    onReply: ((ZemzemeMessage) -> Unit)? = null,
     viewModel: ChatViewModel,
     modifier: Modifier = Modifier
 ) {
@@ -73,8 +74,26 @@ fun ChatUserSheet(
                 LazyColumn(
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    // Copy message action (only show if we have a message)
                     selectedMessage?.let { message ->
+                        val (baseSender, _) = splitSuffix(message.sender)
+                        val isOwnMessage = baseSender == viewModel.nickname.value
+
+                        // Reply action
+                        if (onReply != null) {
+                            item {
+                                UserActionRow(
+                                    title = stringResource(R.string.action_reply_title),
+                                    subtitle = stringResource(R.string.action_reply_subtitle),
+                                    titleColor = MaterialTheme.colorScheme.primary,
+                                    onClick = {
+                                        onReply.invoke(message)
+                                        onDismiss()
+                                    }
+                                )
+                            }
+                        }
+
+                        // Copy message action
                         item {
                             UserActionRow(
                                 title = stringResource(R.string.action_copy_message_title),
@@ -86,6 +105,21 @@ fun ChatUserSheet(
                                     onDismiss()
                                 }
                             )
+                        }
+
+                        // Delete own message (local only)
+                        if (isOwnMessage) {
+                            item {
+                                UserActionRow(
+                                    title = stringResource(R.string.action_delete_title),
+                                    subtitle = stringResource(R.string.action_delete_subtitle),
+                                    titleColor = standardRed,
+                                    onClick = {
+                                        viewModel.deleteMessageLocally(message)
+                                        onDismiss()
+                                    }
+                                )
+                            }
                         }
                     }
                     

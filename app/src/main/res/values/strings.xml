@@ -233,6 +233,13 @@
   <string name="action_hug_subtitle">send a friendly hug message</string>
   <string name="action_block_title">block %1$s</string>
   <string name="action_block_subtitle">block all messages from this user</string>
+  <string name="action_reply_title">reply</string>
+  <string name="action_reply_subtitle">reply to this message</string>
+  <string name="action_delete_title">delete message</string>
+  <string name="action_delete_subtitle">remove only on this device</string>
+  <string name="replying_to">replying to %1$s</string>
+  <string name="chat_today">today</string>
+  <string name="chat_yesterday">yesterday</string>
 
   <!-- Notification settings -->
   <string name="notif_sound_title">notification sound</string>

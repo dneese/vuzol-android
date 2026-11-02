@@ -234,6 +234,13 @@
     <string name="action_hug_subtitle">надіслати дружнє повідомлення про обіймання</string>
     <string name="action_block_title">заблокувати %1$s</string>
     <string name="action_block_subtitle">заблокувати всі повідомлення від цього користувача</string>
+    <string name="action_reply_title">відповісти</string>
+    <string name="action_reply_subtitle">відповісти на це повідомлення</string>
+    <string name="action_delete_title">видалити повідомлення</string>
+    <string name="action_delete_subtitle">видалити лише на цьому пристрої</string>
+    <string name="replying_to">відповідь для %1$s</string>
+    <string name="chat_today">сьогодні</string>
+    <string name="chat_yesterday">учора</string>
 
     <!-- Notification settings -->
     <string name="notif_sound_title">звук сповіщень</string>

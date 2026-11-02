@@ -1088,6 +1088,13 @@ class ChatViewModel(
         notificationManager.setCurrentGeohash(geohash)
     }
 
+    /**
+     * Remove a message from this device only (no network delete is sent).
+     */
+    fun deleteMessageLocally(message: ZemzemeMessage) {
+        messageManager.removeMessageById(message.id)
+    }
+
     fun clearNotificationsForSender(peerID: String) {
         notificationManager.clearNotificationsForSender(peerID)
     }
