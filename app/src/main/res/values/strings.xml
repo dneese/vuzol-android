@@ -242,6 +242,10 @@
   <string name="chat_yesterday">yesterday</string>
   <string name="typing_one">%1$s is typing…</string>
   <string name="typing_many">%1$d people are typing…</string>
+  <string name="chat_new_messages">new messages</string>
+  <string name="channel_mute">mute channel</string>
+  <string name="channel_unmute">unmute channel</string>
+  <string name="channel_mute_subtitle">stop notifications and sounds for this channel</string>
 
   <!-- Notification settings -->
   <string name="notif_sound_title">notification sound</string>

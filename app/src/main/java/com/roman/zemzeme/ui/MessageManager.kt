@@ -293,6 +293,7 @@ class MessageManager(private val state: ChatState) {
             }
         }
         state.setChannelMessages(updatedChannelMessages)
+        try { com.roman.zemzeme.services.AppStateStore.updateChannelMessageStatus(messageID, status) } catch (_: Exception) { }
     }
 
     // Remove a message from all locations (main timeline, private chats, channels)

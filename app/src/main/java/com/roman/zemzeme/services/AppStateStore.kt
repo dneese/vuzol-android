@@ -92,6 +92,26 @@ object AppStateStore {
         }
     }
 
+    fun updateChannelMessageStatus(messageID: String, status: DeliveryStatus) {
+        synchronized(this) {
+            val map = _channelMessages.value.toMutableMap()
+            var changed = false
+            map.keys.toList().forEach { channel ->
+                val list = map[channel]?.toMutableList() ?: return@forEach
+                val idx = list.indexOfFirst { it.id == messageID }
+                if (idx >= 0) {
+                    val current = list[idx].deliveryStatus
+                    if (statusPriority(status) >= statusPriority(current)) {
+                        list[idx] = list[idx].copy(deliveryStatus = status)
+                        map[channel] = list
+                        changed = true
+                    }
+                }
+            }
+            if (changed) _channelMessages.value = map
+        }
+    }
+
     fun addChannelMessage(channel: String, msg: ZemzemeMessage) {
         synchronized(this) {
             if (msg.timestamp.time < resetTimestamp) return

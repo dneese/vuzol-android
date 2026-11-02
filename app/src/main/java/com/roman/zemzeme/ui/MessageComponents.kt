@@ -79,7 +79,8 @@ fun MessagesList(
     onCancelTransfer: ((ZemzemeMessage) -> Unit)? = null,
     onImageClick: ((String, List<String>, Int) -> Unit)? = null,
     onReply: ((ZemzemeMessage) -> Unit)? = null,
-    onReact: ((ZemzemeMessage, String) -> Unit)? = null
+    onReact: ((ZemzemeMessage, String) -> Unit)? = null,
+    lastReadAt: Long = 0L
 ) {
     val listState = rememberLazyListState()
 
@@ -121,7 +122,7 @@ fun MessagesList(
         }
     }
 
-    val chatRows = remember(messages) { buildChatRows(messages) }
+    val chatRows = remember(messages, lastReadAt) { buildChatRows(messages, lastReadAt) }
 
     LazyColumn(
         state = listState,
@@ -132,10 +133,18 @@ fun MessagesList(
     ) {
         items(
             items = chatRows,
-            key = { row -> row.message?.id ?: "day-${row.dayStart}" }
+            key = { row ->
+                when {
+                    row.isUnreadDivider -> "unread-divider"
+                    row.message != null -> row.message.id
+                    else -> "day-${row.dayStart}"
+                }
+            }
         ) { row ->
             val rowMessage = row.message
-            if (rowMessage == null) {
+            if (row.isUnreadDivider) {
+                UnreadDivider()
+            } else if (rowMessage == null) {
                 ChatDaySeparator(dayStart = row.dayStart)
             } else {
                 MessageItem(
@@ -486,7 +495,7 @@ private fun MessageBubble(
                 }
 
                 // Delivery status for private messages
-                if (message.isPrivate && isSelf) {
+                if (isSelf && message.deliveryStatus != null) {
                     message.deliveryStatus?.let { status ->
                         Spacer(modifier = Modifier.width(4.dp))
                         DeliveryStatusIcon(status = status)
@@ -705,6 +714,32 @@ private fun ReplyQuoteBlock(text: String) {
 }
 
 @Composable
+private fun UnreadDivider() {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        HorizontalDivider(
+            modifier = Modifier.weight(1f),
+            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)
+        )
+        Text(
+            text = stringResource(R.string.chat_new_messages),
+            fontSize = 11.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.padding(horizontal = 8.dp)
+        )
+        HorizontalDivider(
+            modifier = Modifier.weight(1f),
+            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)
+        )
+    }
+}
+
+@Composable
 private fun ChatDaySeparator(dayStart: Long) {
     val zone = remember { java.time.ZoneId.systemDefault() }
     val date = remember(dayStart) {
@@ -745,10 +780,11 @@ private data class ChatRow(
     val message: ZemzemeMessage?,
     val dayStart: Long = 0L,
     val showHeader: Boolean = true,
-    val isLastInGroup: Boolean = true
+    val isLastInGroup: Boolean = true,
+    val isUnreadDivider: Boolean = false
 )
 
-private fun buildChatRows(messages: List<ZemzemeMessage>): List<ChatRow> {
+private fun buildChatRows(messages: List<ZemzemeMessage>, lastReadAt: Long = 0L): List<ChatRow> {
     val zone = java.time.ZoneId.systemDefault()
     fun dayOf(ms: Long) = java.time.Instant.ofEpochMilli(ms).atZone(zone).toLocalDate()
 
@@ -785,7 +821,21 @@ private fun buildChatRows(messages: List<ZemzemeMessage>): List<ChatRow> {
             (next.timestamp.time - current.timestamp.time) in 0..300_000
         row.copy(isLastInGroup = !continues)
     }
-    return grouped.asReversed()
+
+    // Insert a "new messages" divider above the first unread message.
+    val withDivider = if (lastReadAt > 0L) {
+        val unreadIndex = grouped.indexOfFirst { row ->
+            val msg = row.message
+            msg != null && msg.timestamp.time > lastReadAt && msg.sender != "system"
+        }
+        if (unreadIndex >= 0) {
+            val out = grouped.toMutableList()
+            out.add(unreadIndex, ChatRow(message = null, isUnreadDivider = true))
+            out
+        } else grouped
+    } else grouped
+
+    return withDivider.asReversed()
 }
 
 @Composable

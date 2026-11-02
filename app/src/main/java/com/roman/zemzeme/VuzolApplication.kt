@@ -50,6 +50,11 @@ class VuzolApplication : Application() {
             }, "vuzol-history-load").apply { isDaemon = true }.start()
         } catch (_: Exception) { }
 
+        // Notification sound/vibration preferences, drafts, read state and mutes
+        try { com.roman.zemzeme.services.DraftStore.init(this) } catch (_: Exception) { }
+        try { com.roman.zemzeme.services.ReadStateStore.init(this) } catch (_: Exception) { }
+        try { com.roman.zemzeme.services.MuteStore.init(this) } catch (_: Exception) { }
+
         // Initialize theme preference
         ThemePreferenceManager.init(this)
 

@@ -102,6 +102,22 @@ fun ChatScreen(viewModel: ChatViewModel, isBluetoothEnabled: Boolean = true, onB
 
     // Get location channel info for timeline switching
     val selectedLocationChannel by viewModel.selectedLocationChannel.collectAsStateWithLifecycle()
+    val conversationKey: String? = when {
+        currentChannel != null -> "ch:$currentChannel"
+        else -> (selectedLocationChannel as? com.roman.zemzeme.geohash.ChannelID.Location)
+            ?.let { "geo:${it.channel.geohash}" }
+    }
+    val initialLastRead = remember(conversationKey) {
+        conversationKey?.let { com.roman.zemzeme.services.ReadStateStore.lastRead(it) } ?: 0L
+    }
+    LaunchedEffect(conversationKey) {
+        if (conversationKey != null) {
+            val draft = com.roman.zemzeme.services.DraftStore.get(conversationKey)
+            if (draft.isNotEmpty() && messageText.text.isEmpty()) {
+                messageText = TextFieldValue(draft, selection = TextRange(draft.length))
+            }
+        }
+    }
     val transportToggles by com.roman.zemzeme.p2p.P2PConfig.transportTogglesFlow.collectAsStateWithLifecycle()
     val isBleSettingEnabled = transportToggles.bleEnabled
     val isP2PEnabled = transportToggles.p2pEnabled
@@ -121,6 +137,13 @@ fun ChatScreen(viewModel: ChatViewModel, isBluetoothEnabled: Boolean = true, onB
             } else {
                 messages // Mesh timeline
             }
+        }
+    }
+
+    LaunchedEffect(conversationKey, displayMessages.size) {
+        if (conversationKey != null && displayMessages.isNotEmpty()) {
+            delay(1_000)
+            com.roman.zemzeme.services.ReadStateStore.markRead(conversationKey)
         }
     }
 
@@ -222,7 +245,8 @@ fun ChatScreen(viewModel: ChatViewModel, isBluetoothEnabled: Boolean = true, onB
                     showFullScreenImageViewer = true
                 },
                 onReply = { msg -> replyTo = msg },
-                onReact = { msg, emoji -> viewModel.sendReaction(msg.id, emoji) }
+                onReact = { msg, emoji -> viewModel.sendReaction(msg.id, emoji) },
+                lastReadAt = initialLastRead
             )
             // Input area - stays at bottom
         // Bridge file share from lower-level input to ViewModel
@@ -273,6 +297,7 @@ fun ChatScreen(viewModel: ChatViewModel, isBluetoothEnabled: Boolean = true, onB
             messageText = newText
             viewModel.updateCommandSuggestions(newText.text)
             viewModel.updateMentionSuggestions(newText.text)
+            conversationKey?.let { com.roman.zemzeme.services.DraftStore.set(it, newText.text) }
             if (newText.text.isNotBlank()) viewModel.notifyTyping()
         },
         onSend = {
@@ -282,6 +307,7 @@ fun ChatScreen(viewModel: ChatViewModel, isBluetoothEnabled: Boolean = true, onB
                 val outgoing =
                     if (original != null) MessageReply.encode(original, trimmed) else trimmed
                 viewModel.sendMessage(outgoing)
+                conversationKey?.let { com.roman.zemzeme.services.DraftStore.clear(it) }
                 messageText = TextFieldValue("")
                 replyTo = null
                 forceScrollToBottom = !forceScrollToBottom // Toggle to trigger scroll

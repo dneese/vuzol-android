@@ -243,6 +243,10 @@
     <string name="chat_yesterday">учора</string>
     <string name="typing_one">%1$s друкує…</string>
     <string name="typing_many">%1$d особи друкують…</string>
+    <string name="chat_new_messages">нові повідомлення</string>
+    <string name="channel_mute">вимкнути сповіщення каналу</string>
+    <string name="channel_unmute">увімкнути сповіщення каналу</string>
+    <string name="channel_mute_subtitle">не показувати сповіщення та звук для цього каналу</string>
 
     <!-- Notification settings -->
     <string name="notif_sound_title">звук сповіщень</string>

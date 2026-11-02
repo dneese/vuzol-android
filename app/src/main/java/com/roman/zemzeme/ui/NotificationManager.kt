@@ -506,6 +506,11 @@ class NotificationManager(
         locationName: String? = null,
         messageId: String? = null
     ) {
+        if (com.roman.zemzeme.services.MuteStore.isMuted(geohash)) {
+            Log.d(TAG, "Skipping geohash notification - channel $geohash is muted")
+            return
+        }
+
         if (messageId != null) {
             if (!notifiedMessageIds.add(messageId)) return
             if (notifiedMessageIds.size > 500) {

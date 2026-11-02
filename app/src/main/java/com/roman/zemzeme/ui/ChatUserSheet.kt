@@ -153,6 +153,26 @@ fun ChatUserSheet(
                         }
                     }
                     
+                    // Mute / unmute the current geohash channel
+                    val locationChannel = viewModel.selectedLocationChannel.value
+                    if (locationChannel is com.roman.zemzeme.geohash.ChannelID.Location) {
+                        val geohash = locationChannel.channel.geohash
+                        val muted = com.roman.zemzeme.services.MuteStore.isMuted(geohash)
+                        item {
+                            UserActionRow(
+                                title = stringResource(
+                                    if (muted) R.string.channel_unmute else R.string.channel_mute
+                                ),
+                                subtitle = stringResource(R.string.channel_mute_subtitle),
+                                titleColor = standardGrey,
+                                onClick = {
+                                    com.roman.zemzeme.services.MuteStore.setMuted(geohash, !muted)
+                                    onDismiss()
+                                }
+                            )
+                        }
+                    }
+
                     // Only show user actions for other users' messages or when no message is selected
                     if (selectedMessage?.sender != viewModel.nickname.value) {
                         // Block action

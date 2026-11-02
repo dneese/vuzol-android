@@ -359,6 +359,7 @@ class GeohashViewModel(
                     isRelay = false,
                     senderPeerID = "geohash:${channel.geohash}",
                     channel = "#${channel.geohash}",
+                    deliveryStatus = com.roman.zemzeme.model.DeliveryStatus.Sending,
                     powDifficulty = if (pow.enabled) pow.difficulty else null
                 )
                 messageManager.addChannelMessage("geo:${channel.geohash}", localMsg)
@@ -390,6 +391,9 @@ class GeohashViewModel(
                         val event = NostrProtocol.createEphemeralGeohashEvent(content, channel.geohash, identity, nickname, teleported)
                         val relayManager = NostrRelayManager.getInstance(getApplication())
                         relayManager.sendEventToGeohash(event, channel.geohash, includeDefaults = true, nRelays = 5)
+                        messageManager.updateMessageDeliveryStatus(
+                            tempId, com.roman.zemzeme.model.DeliveryStatus.Sent
+                        )
                         if (!sentViaP2P) {
                             Log.d(TAG, "📡 Sent geohash message via Nostr only")
                         }
