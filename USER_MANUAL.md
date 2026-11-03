@@ -113,6 +113,47 @@ Private messages are encrypted before leaving your device. The recipient sees th
 
 Blocked users cannot send you messages and will not appear in your peer list.
 
+### Replying, Reacting and Forwarding
+
+- **Reply** — swipe a message to the right, double-tap it, or long-press → **Reply**.
+- **React** — long-press a message and pick an emoji; reactions appear under the bubble.
+- **Forward** — long-press → **Forward** and pick another channel.
+- **Save** — long-press → **Save**; the message is stored in **Saved Messages** on the home screen.
+- **Edit** — long-press one of your own messages → **Edit**. The new text is broadcast to the channel (Nostr kind 20004) and marked as *edited*.
+- **Delete** — swipe your own message to the left, or long-press → **Delete**.
+
+### Message Effects
+
+Sending a single emoji (❤️, 🔥, 👍, 😍, 🎉, 😂, 💯, 🚀, 👏, 🙏) triggers a small
+animation in the chat.
+
+### Auto-delete (Disappearing Messages)
+
+1. Open a location channel and long-press any message.
+2. Tap **Auto-delete messages**.
+3. Pick a lifetime: off, 2 seconds, 1 hour, 24 hours or 7 days.
+
+Messages older than the selected lifetime are removed from the chat automatically.
+
+### Chat Appearance
+
+Tap the **palette icon** in the chat header to change:
+
+- **Chat color** — one of eight accent colors used for the header, your bubbles and the send button.
+- **Wallpaper** — solid, soft gradient, or your own photo (picked from the gallery).
+
+### Notifications
+
+- Notifications support an inline **Reply** field and a **Mark as read** action.
+- Sound, vibration and per-channel mute can be changed in **Settings → Notifications**.
+
+### Home Screen
+
+- Bottom navigation: **Chats / People / Settings**.
+- Use the search field to find chats and contacts quickly.
+- Long-press a chat and choose **Pin to top** to keep it in the pinned strip.
+- **Saved Messages** holds every message you bookmarked.
+
 ---
 
 ## 6. Voice Notes
@@ -240,7 +281,7 @@ Open settings by tapping the **gear icon** on the main screen.
 
 | Setting | Description |
 |---|---|
-| **Theme** | Choose Light, Dark, or follow system setting |
+| **Theme** | Choose System, Light, Dark or AMOLED (pure black) |
 | **Proof of Work (PoW)** | Set the difficulty for outgoing Nostr messages. Higher values slow down spam bots but also slightly slow your own sending. Range: 0 (off) to extreme (very slow). |
 | **Tor** | Enable/disable Tor routing for internet connections |
 | **Battery Optimization** | Re-open Android battery settings to adjust optimization for Vuzol |
