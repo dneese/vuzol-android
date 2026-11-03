@@ -1065,7 +1065,7 @@ private fun GroupRow(
                             .align(Alignment.TopEnd)
                             .offset(x = 4.dp, y = (-2).dp)
                             .defaultMinSize(minWidth = badgeSize, minHeight = badgeSize)
-                            .background(Color(0xFFFFD700), CircleShape)
+                            .background(colorScheme.primary, CircleShape)
                             .padding(2.dp),
                         contentAlignment = Alignment.Center
                     ) {
@@ -1077,7 +1077,7 @@ private fun GroupRow(
                                 fontFamily = NunitoFontFamily,
                                 lineHeight = 10.sp
                             ),
-                            color = Color.Black
+                            color = Color.White
                         )
                     }
                 }

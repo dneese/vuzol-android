@@ -2330,6 +2330,17 @@
             </intent-filter>
         </receiver>
 
+        <!-- Quick reply / mark as read from chat notifications -->
+        <receiver
+            android:name=".ui.NotificationActionReceiver"
+            android:enabled="true"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.roman.zemzeme.action.NOTIFICATION_REPLY" />
+                <action android:name="com.roman.zemzeme.action.NOTIFICATION_MARK_READ" />
+            </intent-filter>
+        </receiver>
+
         <!-- Receives PackageInstaller callbacks for self-update -->
         <receiver
             android:name=".update.UpdateReceiver"

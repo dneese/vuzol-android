@@ -551,6 +551,9 @@
     <string name="join">Приєднатися</string>
     <string name="cancel">Скасувати</string>
     <string name="action_save">Зберегти</string>
+    <string name="notification_reply_action">Відповісти</string>
+    <string name="notification_reply_hint">Повідомлення</string>
+    <string name="notification_mark_read">Прочитано</string>
     <string name="tor_not_available_in_this_build">Tor недоступний у цій збірці</string>
 
     <!-- Plurals -->

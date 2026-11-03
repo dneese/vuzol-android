@@ -51,6 +51,8 @@ import com.roman.zemzeme.ui.media.VoiceNotePlayer
 import androidx.compose.material3.Icon
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.automirrored.filled.Reply
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.shape.CircleShape
@@ -243,11 +245,32 @@ fun MessageItem(
     val (baseName, suffix) = splitSuffix(resolvedSender)
 
     // Modern message layout with avatar
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(vertical = 2.dp)
-            .offset { IntOffset(animatedSwipe.roundToInt(), 0) }
+    Box(modifier = modifier.fillMaxWidth()) {
+        // Swipe action hint revealed behind the bubble
+        if (animatedSwipe != 0f) {
+            val deleteAction = animatedSwipe < 0f && isSelf && onDelete != null
+            Row(
+                modifier = Modifier.matchParentSize(),
+                horizontalArrangement = if (isSelf) Arrangement.Start else Arrangement.End,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = if (deleteAction) Icons.Filled.Delete
+                    else Icons.AutoMirrored.Filled.Reply,
+                    contentDescription = null,
+                    tint = if (deleteAction) colorScheme.error else LocalChatAccent.current,
+                    modifier = Modifier
+                        .padding(horizontal = 22.dp)
+                        .size(22.dp)
+                )
+            }
+        }
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 2.dp)
+                .offset { IntOffset(animatedSwipe.roundToInt(), 0) }
             .pointerInput(onReply) {
                 if (onReply == null) return@pointerInput
                 detectHorizontalDragGestures(
@@ -363,6 +386,7 @@ fun MessageItem(
                     )
                 }
             }
+        }
         }
     }
 }

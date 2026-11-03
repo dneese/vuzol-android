@@ -603,6 +603,51 @@ class NotificationManager(
             .setShowWhen(true)
             .setWhen(latestNotification.timestamp)
 
+        // Quick actions: inline reply and mark as read
+        val replyIntent = Intent(context, NotificationActionReceiver::class.java).apply {
+            action = NotificationActionReceiver.ACTION_REPLY
+            putExtra(NotificationActionReceiver.EXTRA_GEOHASH, geohash)
+        }
+        val replyPendingIntent = PendingIntent.getBroadcast(
+            context,
+            GEOHASH_NOTIFICATION_REQUEST_CODE + geohash.hashCode() + 7,
+            replyIntent,
+            PendingIntent.FLAG_MUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+        )
+        val remoteInput = android.app.RemoteInput.Builder(NotificationActionReceiver.REPLY_KEY)
+            .setLabel(context.getString(R.string.notification_reply_hint))
+            .build()
+        val replyAction = NotificationCompat.Action.Builder(
+            android.R.drawable.ic_menu_send,
+            context.getString(R.string.notification_reply_action),
+            replyPendingIntent
+        )
+            .addRemoteInput(remoteInput)
+            .setAllowGeneratedReplies(true)
+            .build()
+
+        val readIntent = Intent(context, NotificationActionReceiver::class.java).apply {
+            action = NotificationActionReceiver.ACTION_MARK_READ
+            putExtra(NotificationActionReceiver.EXTRA_GEOHASH, geohash)
+        }
+        val readPendingIntent = PendingIntent.getBroadcast(
+            context,
+            GEOHASH_NOTIFICATION_REQUEST_CODE + geohash.hashCode() + 11,
+            readIntent,
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+        )
+        val readAction = NotificationCompat.Action.Builder(
+            android.R.drawable.ic_menu_view,
+            context.getString(R.string.notification_mark_read),
+            readPendingIntent
+        )
+            .setSemanticAction(NotificationCompat.Action.SEMANTIC_ACTION_MARK_AS_READ)
+            .setShowsUserInterface(false)
+            .build()
+
+        builder.addAction(replyAction)
+        builder.addAction(readAction)
+
         // Add to notification group if we have multiple geohashes
         if (pendingGeohashNotifications.size > 1) {
             builder.setGroup(GROUP_KEY_GEOHASH)

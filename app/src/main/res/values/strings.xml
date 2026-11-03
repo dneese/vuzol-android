@@ -550,6 +550,9 @@
   <string name="join">Join</string>
   <string name="cancel">Cancel</string>
   <string name="action_save">Save</string>
+  <string name="notification_reply_action">Reply</string>
+  <string name="notification_reply_hint">Message</string>
+  <string name="notification_mark_read">Read</string>
     <string name="tor_not_available_in_this_build">Tor not available in this build</string>
 
     <!-- Plurals -->
