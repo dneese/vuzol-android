@@ -517,10 +517,26 @@ private fun MessageBubble(
         )
     }
 
+    val sentBrush = if (isSelf) {
+        androidx.compose.ui.graphics.Brush.linearGradient(
+            listOf(
+                blendColors(extendedColors.sentBubble, chatAccent, 0.55f),
+                blendColors(extendedColors.sentBubble, chatAccent, 0.22f)
+            )
+        )
+    } else {
+        null
+    }
+
     Surface(
-        modifier = Modifier.wrapContentWidth(),
+        modifier = Modifier
+            .wrapContentWidth()
+            .then(
+                if (sentBrush != null) Modifier.background(sentBrush, bubbleShape)
+                else Modifier
+            ),
         shape = bubbleShape,
-        color = bubbleColor,
+        color = if (sentBrush != null) Color.Transparent else bubbleColor,
         tonalElevation = ZemzemeElevation.Low,
         shadowElevation = ZemzemeElevation.Low
     ) {

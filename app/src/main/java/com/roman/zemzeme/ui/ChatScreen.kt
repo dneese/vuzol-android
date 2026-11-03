@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.Alignment
 import android.content.Intent
@@ -160,6 +161,28 @@ fun ChatScreen(viewModel: ChatViewModel, isBluetoothEnabled: Boolean = true, onB
     val appearanceKey = conversationKey ?: "default"
     val appearances by ChatAppearanceStore.appearances.collectAsState()
     val appearance = appearances[appearanceKey] ?: ChatAppearanceStore.Appearance()
+
+    // Immersive header: peer avatar as a blurred backdrop in private chats
+    val nostrProfiles by com.roman.zemzeme.nostr.NostrProfileStore.profiles.collectAsState()
+    val peerPubkey = remember(conversationKey, displayMessages, selectedPrivatePeer) {
+        selectedPrivatePeer?.let { peer ->
+            displayMessages.lastOrNull {
+                it.senderPeerID == peer || it.sender == peer || it.sender.startsWith(peer)
+            }?.senderPubkey
+        }
+    }
+    val peerDisplayName = remember(conversationKey, displayMessages, selectedPrivatePeer) {
+        selectedPrivatePeer?.let { peer ->
+            displayMessages.lastOrNull {
+                it.senderPeerID == peer || it.sender == peer || it.sender.startsWith(peer)
+            }?.sender
+        }
+    }
+    val headerImageUrl = peerPubkey?.let { nostrProfiles[it.lowercase()]?.picture }
+    var headerImage by remember { mutableStateOf<androidx.compose.ui.graphics.ImageBitmap?>(null) }
+    LaunchedEffect(headerImageUrl) {
+        headerImage = headerImageUrl?.let { AvatarLoader.load(it) }
+    }
 
     // Use WindowInsets to handle keyboard properly
     androidx.compose.runtime.CompositionLocalProvider(LocalChatAccent provides appearance.accent) {
@@ -394,7 +417,7 @@ fun ChatScreen(viewModel: ChatViewModel, isBluetoothEnabled: Boolean = true, onB
         // Floating header - positioned absolutely at top, ignores keyboard
         ChatFloatingHeader(
             headerHeight = headerHeight,
-            selectedPrivatePeer = null,
+            selectedPrivatePeer = selectedPrivatePeer,
             currentChannel = currentChannel,
             nickname = nickname,
             viewModel = viewModel,
@@ -406,7 +429,10 @@ fun ChatScreen(viewModel: ChatViewModel, isBluetoothEnabled: Boolean = true, onB
             onLocationChannelsClick = { showLocationChannelsSheet = true },
             onLocationNotesClick = { showLocationNotesSheet = true },
             onSearchClick = { showMessageSearch = true },
-            onAppearanceClick = { showAppearanceSheet = true }
+            onAppearanceClick = { showAppearanceSheet = true },
+            headerImage = headerImage,
+            privatePeerPubkey = peerPubkey,
+            privatePeerName = peerDisplayName
         )
 
         // Divider under header - positioned after status bar + header height
@@ -433,16 +459,16 @@ fun ChatScreen(viewModel: ChatViewModel, isBluetoothEnabled: Boolean = true, onB
         ) {
             Surface(
                 shape = CircleShape,
-                color = colorScheme.background,
+                color = colorScheme.surface,
                 tonalElevation = 3.dp,
                 shadowElevation = 6.dp,
-                border = BorderStroke(2.dp, Color(0xFF00F5FF))
+                border = BorderStroke(2.dp, LocalChatAccent.current)
             ) {
                 IconButton(onClick = { forceScrollToBottom = !forceScrollToBottom }) {
                     Icon(
                         imageVector = Icons.Filled.ArrowDownward,
                         contentDescription = stringResource(com.roman.zemzeme.R.string.cd_scroll_to_bottom),
-                        tint = Color(0xFF00F5FF)
+                        tint = LocalChatAccent.current
                     )
                 }
             }
@@ -909,7 +935,10 @@ private fun ChatFloatingHeader(
     onLocationChannelsClick: () -> Unit,
     onLocationNotesClick: () -> Unit,
     onSearchClick: () -> Unit = {},
-    onAppearanceClick: (() -> Unit)? = null
+    onAppearanceClick: (() -> Unit)? = null,
+    headerImage: androidx.compose.ui.graphics.ImageBitmap? = null,
+    privatePeerPubkey: String? = null,
+    privatePeerName: String? = null
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val locationManager = remember { com.roman.zemzeme.geohash.LocationChannelManager.getInstance(context) }
@@ -919,7 +948,7 @@ private fun ChatFloatingHeader(
             .fillMaxWidth()
             .zIndex(1f)
             .windowInsetsPadding(WindowInsets.statusBars), // Extend into status bar area
-        color = colorScheme.background // Solid background color extending into status bar
+        color = if (headerImage != null) Color.Transparent else colorScheme.background
     ) {
         Box(
             modifier = Modifier
@@ -928,6 +957,21 @@ private fun ChatFloatingHeader(
                 .padding(horizontal = 4.dp),
             contentAlignment = Alignment.CenterStart
         ) {
+            if (headerImage != null) {
+                androidx.compose.foundation.Image(
+                    bitmap = headerImage,
+                    contentDescription = null,
+                    modifier = Modifier
+                        .matchParentSize()
+                        .blur(28.dp),
+                    contentScale = androidx.compose.ui.layout.ContentScale.Crop
+                )
+                Box(
+                    modifier = Modifier
+                        .matchParentSize()
+                        .background(colorScheme.background.copy(alpha = 0.62f))
+                )
+            }
             ChatHeaderContent(
                 selectedPrivatePeer = selectedPrivatePeer,
                 currentChannel = currentChannel,
@@ -950,7 +994,9 @@ private fun ChatFloatingHeader(
                     onLocationNotesClick()
                 },
                 onSearchClick = onSearchClick,
-                onAppearanceClick = onAppearanceClick
+                onAppearanceClick = onAppearanceClick,
+                privatePeerPubkey = privatePeerPubkey,
+                privatePeerName = privatePeerName
             )
         }
     }

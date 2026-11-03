@@ -285,12 +285,24 @@ fun ChatHeaderContent(
     onLocationChannelsClick: () -> Unit,
     onLocationNotesClick: () -> Unit,
     onSearchClick: () -> Unit = {},
-    onAppearanceClick: (() -> Unit)? = null
+    onAppearanceClick: (() -> Unit)? = null,
+    privatePeerPubkey: String? = null,
+    privatePeerName: String? = null
 ) {
     val colorScheme = MaterialTheme.colorScheme
     val accent = LocalChatAccent.current
 
     when {
+        selectedPrivatePeer != null -> {
+            PrivateChatHeader(
+                peerId = selectedPrivatePeer,
+                peerPubkey = privatePeerPubkey,
+                peerName = privatePeerName ?: selectedPrivatePeer,
+                onBackClick = onBackClick,
+                onSearchClick = onSearchClick,
+                onAppearanceClick = onAppearanceClick
+            )
+        }
         currentChannel != null -> {
             // Channel header — collect connection state from all transports
             val context = LocalContext.current
@@ -361,6 +373,97 @@ fun ChatHeaderContent(
 }
 
 
+
+@Composable
+private fun PrivateChatHeader(
+    peerId: String,
+    peerPubkey: String?,
+    peerName: String,
+    onBackClick: () -> Unit,
+    onSearchClick: () -> Unit,
+    onAppearanceClick: (() -> Unit)? = null
+) {
+    val colorScheme = MaterialTheme.colorScheme
+    val accent = LocalChatAccent.current
+    val profiles by com.roman.zemzeme.nostr.NostrProfileStore.profiles.collectAsState()
+    val profile = peerPubkey?.let { profiles[it.lowercase()] }
+    val displayName = profile?.displayName ?: profile?.name ?: peerName
+
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.weight(1f)
+        ) {
+            IconButton(
+                onClick = onBackClick,
+                modifier = Modifier.size(40.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = stringResource(R.string.back),
+                    modifier = Modifier.size(24.dp),
+                    tint = accent
+                )
+            }
+
+            ProfileAvatar(
+                pubkey = peerPubkey,
+                letter = displayName.firstOrNull()?.uppercaseChar()?.toString() ?: "?",
+                color = accent,
+                size = 40.dp
+            )
+
+            Column(modifier = Modifier.padding(start = 10.dp)) {
+                Text(
+                    text = displayName,
+                    fontSize = 17.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = colorScheme.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    text = peerId.take(12),
+                    fontSize = 11.sp,
+                    color = colorScheme.onSurface.copy(alpha = 0.5f),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
+
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            IconButton(
+                onClick = onSearchClick,
+                modifier = Modifier.size(36.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Search,
+                    contentDescription = stringResource(R.string.search_messages_title),
+                    modifier = Modifier.size(22.dp),
+                    tint = accent
+                )
+            }
+            if (onAppearanceClick != null) {
+                IconButton(
+                    onClick = onAppearanceClick,
+                    modifier = Modifier.size(36.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.Palette,
+                        contentDescription = stringResource(R.string.cd_chat_appearance),
+                        modifier = Modifier.size(22.dp),
+                        tint = accent
+                    )
+                }
+            }
+        }
+    }
+}
 
 @Composable
 private fun ChannelHeader(
