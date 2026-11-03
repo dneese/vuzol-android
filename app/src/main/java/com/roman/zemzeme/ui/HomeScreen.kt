@@ -22,6 +22,7 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -39,7 +40,12 @@ import androidx.compose.material.icons.outlined.LocationCity
 import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material.icons.outlined.Map
 import androidx.compose.material.icons.outlined.QrCodeScanner
+import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material.icons.outlined.Chat
+import androidx.compose.material.icons.outlined.People
+import androidx.compose.material.icons.outlined.PushPin
+import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -84,6 +90,19 @@ private data class ActionTarget(
 )
 
 private enum class PendingAction { DELETE, CLEAR, RENAME }
+
+// ── Bottom navigation tabs ──
+
+private enum class HomeTab { Chats, People, Settings }
+
+private data class PinnedChat(
+    val key: String,
+    val name: String,
+    val color: Color,
+    val icon: ImageVector,
+    val unread: Int,
+    val onClick: () -> Unit
+)
 
 // ── HomeScreen ──
 
@@ -143,6 +162,11 @@ fun HomeScreen(
         ?: remember { mutableStateOf(emptyMap()) }
     val availableChannels by locationChannelManager?.availableChannels?.collectAsStateWithLifecycle()
         ?: remember { mutableStateOf(emptyList()) }
+
+    // Bottom navigation + search + pinned conversations
+    var selectedTab by remember { mutableStateOf(HomeTab.Chats) }
+    var searchQuery by remember { mutableStateOf("") }
+    val pinnedKeys by ConversationPinStore.pinned.collectAsState()
 
     // FAB
     var fabExpanded by remember { mutableStateOf(false) }
@@ -204,6 +228,72 @@ fun HomeScreen(
             val lastMsg = msgs?.lastOrNull()
             Triple(peerID, lastMsg, lastMsg?.timestamp?.time ?: 0L)
         }.sortedByDescending { it.third }
+    }
+
+    // Search filtering for the chat list
+    val searchTerm = searchQuery.trim().lowercase()
+    val filteredGeoGroupItems = remember(geoGroupItems, groupNicknames, searchTerm) {
+        if (searchTerm.isEmpty()) geoGroupItems else geoGroupItems.filter {
+            (groupNicknames[it.second] ?: it.second).lowercase().contains(searchTerm)
+        }
+    }
+    val filteredMyGroupItems = remember(myGroupItems, groupNicknames, searchTerm) {
+        if (searchTerm.isEmpty()) myGroupItems else myGroupItems.filter {
+            (groupNicknames[it.second] ?: it.second).lowercase().contains(searchTerm)
+        }
+    }
+    val filteredContactItems = remember(contactItems, peerNicknames, searchTerm) {
+        if (searchTerm.isEmpty()) contactItems else contactItems.filter { (peerID, _, _) ->
+            val display = peerNicknames[peerID]
+                ?: com.roman.zemzeme.p2p.P2PAliasRegistry.getDisplayName(peerID)
+                ?: "User"
+            display.lowercase().contains(searchTerm)
+        }
+    }
+
+    // Pinned conversations (shown in a compact row above the list)
+    val pinnedChats = remember(
+        pinnedKeys, geoGroupItems, myGroupItems, contactItems,
+        groupNicknames, peerNicknames, unreadChannelMessages, unreadPrivateMessages
+    ) {
+        pinnedKeys.mapNotNull { key ->
+            when {
+                key.startsWith("dm:") -> {
+                    val peerID = key.removePrefix("dm:")
+                    val entry = contactItems.firstOrNull { it.first == peerID } ?: return@mapNotNull null
+                    val name = peerNicknames[peerID]
+                        ?: com.roman.zemzeme.p2p.P2PAliasRegistry.getDisplayName(peerID)
+                        ?: "User"
+                    PinnedChat(
+                        key = key,
+                        name = name,
+                        color = extended.contactGreen,
+                        icon = Icons.Outlined.Person,
+                        unread = if (peerID in unreadPrivateMessages) 1 else 0
+                    ) {
+                        chatViewModel.navigateToContact(peerID)
+                        onGroupSelected()
+                    }
+                }
+                key.startsWith("geo:") -> {
+                    val geohash = key.removePrefix("geo:")
+                    val entry = (geoGroupItems + myGroupItems).firstOrNull { it.second == geohash }
+                        ?: return@mapNotNull null
+                    val name = groupNicknames[geohash] ?: geohash
+                    PinnedChat(
+                        key = key,
+                        name = name,
+                        color = extended.solarOrange,
+                        icon = Icons.Outlined.Map,
+                        unread = unreadChannelMessages[key] ?: 0
+                    ) {
+                        chatViewModel.navigateToGeohashGroup(geohash)
+                        onGroupSelected()
+                    }
+                }
+                else -> null
+            }
+        }
     }
 
     // Helper: compute connection data for a geohash group
@@ -314,6 +404,62 @@ fun HomeScreen(
                 HorizontalDivider(
                     color = colorScheme.outline.copy(alpha = 0.3f)
                 )
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = { searchQuery = it },
+                    placeholder = {
+                        Text(
+                            stringResource(R.string.search_chats),
+                            style = MaterialTheme.typography.bodyMedium.copy(fontFamily = NunitoFontFamily)
+                        )
+                    },
+                    leadingIcon = {
+                        Icon(Icons.Outlined.Search, contentDescription = null)
+                    },
+                    trailingIcon = {
+                        if (searchQuery.isNotEmpty()) {
+                            IconButton(onClick = { searchQuery = "" }) {
+                                Icon(Icons.Filled.Close, contentDescription = null)
+                            }
+                        }
+                    },
+                    singleLine = true,
+                    shape = RoundedCornerShape(24.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedContainerColor = colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                        unfocusedContainerColor = colorScheme.surfaceVariant.copy(alpha = 0.35f),
+                        focusedBorderColor = colorScheme.primary,
+                        unfocusedBorderColor = Color.Transparent
+                    ),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 12.dp, vertical = 6.dp)
+                )
+            }
+        },
+        bottomBar = {
+            NavigationBar(
+                containerColor = colorScheme.surface,
+                tonalElevation = 3.dp
+            ) {
+                NavigationBarItem(
+                    selected = selectedTab == HomeTab.Chats,
+                    onClick = { selectedTab = HomeTab.Chats },
+                    icon = { Icon(Icons.Outlined.Chat, contentDescription = null) },
+                    label = { Text(stringResource(R.string.nav_chats)) }
+                )
+                NavigationBarItem(
+                    selected = selectedTab == HomeTab.People,
+                    onClick = { selectedTab = HomeTab.People },
+                    icon = { Icon(Icons.Outlined.People, contentDescription = null) },
+                    label = { Text(stringResource(R.string.nav_people)) }
+                )
+                NavigationBarItem(
+                    selected = selectedTab == HomeTab.Settings,
+                    onClick = { selectedTab = HomeTab.Settings },
+                    icon = { Icon(Icons.Outlined.Settings, contentDescription = null) },
+                    label = { Text(stringResource(R.string.nav_settings)) }
+                )
             }
         },
         floatingActionButton = {
@@ -353,10 +499,60 @@ fun HomeScreen(
             }
         }
     ) { padding ->
-        LazyColumn(
+      when (selectedTab) {
+        HomeTab.Chats -> LazyColumn(
             Modifier.fillMaxSize().padding(padding),
             contentPadding = PaddingValues(vertical = 8.dp)
         ) {
+            // ── PINNED ──
+            if (pinnedChats.isNotEmpty()) {
+                item(key = "pinned_row") {
+                    LazyRow(
+                        contentPadding = PaddingValues(horizontal = 12.dp),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    ) {
+                        items(pinnedChats, key = { it.key }) { pinned ->
+                            Surface(
+                                onClick = pinned.onClick,
+                                shape = RoundedCornerShape(18.dp),
+                                color = colorScheme.surfaceVariant,
+                                modifier = Modifier.heightIn(min = 48.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    Icon(
+                                        pinned.icon,
+                                        contentDescription = null,
+                                        tint = pinned.color,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                    Text(
+                                        text = pinned.name,
+                                        style = MaterialTheme.typography.bodyMedium.copy(
+                                            fontFamily = NunitoFontFamily,
+                                            fontWeight = FontWeight.Medium
+                                        ),
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                    if (pinned.unread > 0) {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(8.dp)
+                                                .background(Color(0xFFFF9500), CircleShape)
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
             // ── NEARBY ──
             item(key = "nearby_header") { SectionHeader(stringResource(R.string.section_nearby)) }
 
@@ -421,10 +617,10 @@ fun HomeScreen(
             }
 
             // ── GEOGRAPHIC GROUPS ──
-            if (geoGroupItems.isNotEmpty()) {
+            if (filteredGeoGroupItems.isNotEmpty()) {
                 item(key = "geogroups_header") { SectionHeader(stringResource(R.string.section_geographic_groups)) }
 
-                items(geoGroupItems, key = { "geo_${it.second}" }) { (_, key, _) ->
+                items(filteredGeoGroupItems, key = { "geo_${it.second}" }) { (_, key, _) ->
                     val nick = groupNicknames[key]
                     val display = nick ?: key
                     val groupLastMsg = channelMessages["geo:$key"]?.lastOrNull()
@@ -444,10 +640,10 @@ fun HomeScreen(
             }
 
             // ── MY GROUPS ──
-            if (myGroupItems.isNotEmpty()) {
+            if (filteredMyGroupItems.isNotEmpty()) {
                 item(key = "mygroups_header") { SectionHeader(stringResource(R.string.section_my_groups)) }
 
-                items(myGroupItems, key = { "group_${it.second}" }) { (_, key, _) ->
+                items(filteredMyGroupItems, key = { "group_${it.second}" }) { (_, key, _) ->
                     val nick = groupNicknames[key]
                     val display = nick ?: key
                     val groupLastMsg = channelMessages["geo:$key"]?.lastOrNull()
@@ -466,10 +662,10 @@ fun HomeScreen(
             }
 
             // ── CONTACTS ──
-            if (contactItems.isNotEmpty()) {
+            if (filteredContactItems.isNotEmpty()) {
                 item(key = "contacts_header") { SectionHeader(stringResource(R.string.section_contacts)) }
 
-                items(contactItems, key = { "dm_${it.first}" }) { (peerID, lastMsg, _) ->
+                items(filteredContactItems, key = { "dm_${it.first}" }) { (peerID, lastMsg, _) ->
                     val displayName = peerNicknames[peerID]
                         ?: com.roman.zemzeme.p2p.P2PAliasRegistry.getDisplayName(peerID)
                         ?: "User"
@@ -491,13 +687,42 @@ fun HomeScreen(
             }
 
         }
+        HomeTab.People -> PeopleTabContent(
+            contacts = filteredContactItems,
+            peerNicknames = peerNicknames,
+            unreadPrivateMessages = unreadPrivateMessages,
+            myPeerID = myPeerID,
+            nickname = nickname,
+            onOpenChat = { peerID ->
+                chatViewModel.navigateToContact(peerID)
+                onGroupSelected()
+            },
+            onLongPress = { peerID, displayName ->
+                actionTarget = ActionTarget("dm", peerID, displayName)
+            }
+        )
+        HomeTab.Settings -> SettingsTabContent(
+            onAboutClick = onSettingsClick,
+            onResetIdentity = { showRefreshDialog = true }
+        )
+      }
     }
 
     // ── Action sheet (centered dialog) ──
 
     actionTarget?.let { target ->
+        val pinKey = when (target.type) {
+            "dm" -> "dm:${target.key}"
+            "mesh" -> "mesh"
+            else -> "geo:${target.key}"
+        }
         GroupActionSheet(
             groupName = target.displayName,
+            isPinned = pinKey in pinnedKeys,
+            onPin = {
+                ConversationPinStore.toggle(context, pinKey)
+                actionTarget = null
+            },
             showDelete = target.type != "mesh" && target.type != "location",
             deleteLabel = if (target.type == "dm") stringResource(R.string.dialog_delete_chat) else stringResource(R.string.dialog_delete_group),
             showRename = target.type == "group",
@@ -870,6 +1095,8 @@ private fun GroupActionSheet(
     showDelete: Boolean = true,
     deleteLabel: String = "Delete group",
     showRename: Boolean = false,
+    isPinned: Boolean = false,
+    onPin: () -> Unit = {},
     onRename: () -> Unit = {},
     onDelete: () -> Unit,
     onClear: () -> Unit,
@@ -908,6 +1135,35 @@ private fun GroupActionSheet(
                 )
 
                 HorizontalDivider(color = extended.borderSubtle)
+
+                // Pin chat button
+                Surface(
+                    onClick = onPin,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(14.dp),
+                    color = colorScheme.surfaceVariant
+                ) {
+                    Row(
+                        Modifier.padding(horizontal = 20.dp, vertical = 16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(14.dp)
+                    ) {
+                        Icon(
+                            Icons.Outlined.PushPin,
+                            contentDescription = null,
+                            tint = if (isPinned) colorScheme.primary else colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(22.dp)
+                        )
+                        Text(
+                            stringResource(if (isPinned) R.string.action_unpin else R.string.action_pin),
+                            style = MaterialTheme.typography.bodyLarge.copy(
+                                fontFamily = NunitoFontFamily,
+                                fontWeight = FontWeight.Medium,
+                                color = if (isPinned) colorScheme.primary else colorScheme.onSurfaceVariant
+                            )
+                        )
+                    }
+                }
 
                 // Rename group button
                 if (showRename) {
@@ -1126,4 +1382,235 @@ private fun RenameGroupDialog(currentName: String, onDismiss: () -> Unit, onConf
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } }
     )
+}
+
+// ══════════════════════════════════════════════
+// People tab
+// ══════════════════════════════════════════════
+
+@Composable
+private fun PeopleTabContent(
+    contacts: List<Triple<String, ZemzemeMessage?, Long>>,
+    peerNicknames: Map<String, String>,
+    unreadPrivateMessages: Set<String>,
+    myPeerID: String,
+    nickname: String,
+    onOpenChat: (String) -> Unit,
+    onLongPress: (String, String) -> Unit
+) {
+    val extended = MaterialTheme.extendedColors
+    val colorScheme = MaterialTheme.colorScheme
+
+    LazyColumn(
+        Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(vertical = 8.dp)
+    ) {
+        item(key = "people_header") {
+            SectionHeader(stringResource(R.string.section_contacts))
+        }
+
+        if (contacts.isEmpty()) {
+            item(key = "people_empty") {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(32.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Icon(
+                        Icons.Outlined.People,
+                        contentDescription = null,
+                        tint = colorScheme.onSurface.copy(alpha = 0.35f),
+                        modifier = Modifier.size(40.dp)
+                    )
+                    Text(
+                        stringResource(R.string.section_people_nearby),
+                        style = MaterialTheme.typography.bodyMedium.copy(
+                            fontFamily = NunitoFontFamily,
+                            color = colorScheme.onSurface.copy(alpha = 0.6f)
+                        )
+                    )
+                }
+            }
+        }
+
+        items(contacts, key = { "people_${it.first}" }) { (peerID, lastMsg, _) ->
+            val displayName = peerNicknames[peerID]
+                ?: com.roman.zemzeme.p2p.P2PAliasRegistry.getDisplayName(peerID)
+                ?: "User"
+            GroupRow(
+                name = displayName,
+                lastMessage = lastMsg,
+                avatarColor = extended.contactGreen,
+                myPeerID = myPeerID,
+                myNickname = nickname,
+                unreadCount = if (peerID in unreadPrivateMessages) 1 else 0,
+                onClick = { onOpenChat(peerID) },
+                onLongPress = { onLongPress(peerID, displayName) }
+            )
+        }
+    }
+}
+
+// ══════════════════════════════════════════════
+// Settings tab
+// ══════════════════════════════════════════════
+
+@Composable
+private fun SettingsTabContent(
+    onAboutClick: () -> Unit,
+    onResetIdentity: () -> Unit
+) {
+    val context = LocalContext.current
+    val colorScheme = MaterialTheme.colorScheme
+    val themePref by com.roman.zemzeme.ui.theme.ThemePreferenceManager.themeFlow.collectAsState()
+
+    LazyColumn(
+        Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(vertical = 8.dp)
+    ) {
+        item(key = "appearance_header") {
+            SectionHeader(stringResource(R.string.settings_section_appearance))
+        }
+
+        item(key = "theme_row") {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                SettingsChip(
+                    label = stringResource(R.string.about_system),
+                    selected = themePref.isSystem,
+                    onClick = {
+                        com.roman.zemzeme.ui.theme.ThemePreferenceManager.set(
+                            context,
+                            com.roman.zemzeme.ui.theme.ThemePreference.System
+                        )
+                    },
+                    modifier = Modifier.weight(1f)
+                )
+                SettingsChip(
+                    label = stringResource(R.string.about_light),
+                    selected = themePref.isLight,
+                    onClick = {
+                        com.roman.zemzeme.ui.theme.ThemePreferenceManager.set(
+                            context,
+                            com.roman.zemzeme.ui.theme.ThemePreference.Light
+                        )
+                    },
+                    modifier = Modifier.weight(1f)
+                )
+                SettingsChip(
+                    label = stringResource(R.string.about_dark),
+                    selected = themePref.isDark,
+                    onClick = {
+                        com.roman.zemzeme.ui.theme.ThemePreferenceManager.set(
+                            context,
+                            com.roman.zemzeme.ui.theme.ThemePreference.Dark
+                        )
+                    },
+                    modifier = Modifier.weight(1f)
+                )
+                SettingsChip(
+                    label = stringResource(R.string.theme_amoled),
+                    selected = themePref.isAmoled,
+                    onClick = {
+                        com.roman.zemzeme.ui.theme.ThemePreferenceManager.set(
+                            context,
+                            com.roman.zemzeme.ui.theme.ThemePreference.Amoled
+                        )
+                    },
+                    modifier = Modifier.weight(1f)
+                )
+            }
+        }
+
+        item(key = "about_row") {
+            SettingsRow(
+                icon = Icons.Outlined.Settings,
+                label = stringResource(R.string.action_about_app),
+                onClick = onAboutClick
+            )
+        }
+
+        item(key = "reset_row") {
+            SettingsRow(
+                icon = Icons.Outlined.DeleteForever,
+                label = stringResource(R.string.action_refresh_account_action),
+                onClick = onResetIdentity,
+                tint = colorScheme.error
+            )
+        }
+    }
+}
+
+@Composable
+private fun SettingsChip(
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        onClick = onClick,
+        modifier = modifier,
+        shape = RoundedCornerShape(12.dp),
+        color = if (selected) MaterialTheme.colorScheme.primaryContainer
+        else MaterialTheme.colorScheme.surfaceVariant
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelMedium.copy(
+                fontFamily = NunitoFontFamily,
+                fontWeight = FontWeight.Medium,
+                color = if (selected) MaterialTheme.colorScheme.onPrimaryContainer
+                else MaterialTheme.colorScheme.onSurfaceVariant
+            ),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.padding(horizontal = 6.dp, vertical = 10.dp),
+            textAlign = TextAlign.Center
+        )
+    }
+}
+
+@Composable
+private fun SettingsRow(
+    icon: ImageVector,
+    label: String,
+    onClick: () -> Unit,
+    tint: Color = MaterialTheme.colorScheme.onSurface
+) {
+    Surface(
+        onClick = onClick,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp, vertical = 4.dp),
+        shape = RoundedCornerShape(14.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
+    ) {
+        Row(
+            Modifier.padding(horizontal = 20.dp, vertical = 16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            Icon(
+                icon,
+                contentDescription = null,
+                tint = tint,
+                modifier = Modifier.size(22.dp)
+            )
+            Text(
+                label,
+                style = MaterialTheme.typography.bodyLarge.copy(
+                    fontFamily = NunitoFontFamily,
+                    fontWeight = FontWeight.Medium,
+                    color = tint
+                )
+            )
+        }
+    }
 }

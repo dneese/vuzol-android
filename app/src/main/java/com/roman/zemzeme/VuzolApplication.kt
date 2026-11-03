@@ -63,6 +63,9 @@ class VuzolApplication : Application() {
         // Per-chat appearance (accent color, wallpaper)
         com.roman.zemzeme.ui.ChatAppearanceStore.init(this)
 
+        // Pinned conversations
+        com.roman.zemzeme.ui.ConversationPinStore.init(this)
+
         // Notification sound/vibration preferences (and channel setup)
         try { com.roman.zemzeme.ui.NotificationPreferences.init(this) } catch (_: Exception) { }
 

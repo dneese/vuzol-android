@@ -701,6 +701,18 @@
     <string name="section_geographic_groups">Географічні групи</string>
     <string name="section_my_groups">Мої групи</string>
     <string name="section_contacts">Контакти</string>
+    <string name="section_pinned">Закріплені</string>
+    <string name="section_people_nearby">Люди поблизу</string>
+    <string name="search_chats">Пошук чатів і людей</string>
+    <string name="nav_chats">Чати</string>
+    <string name="nav_people">Люди</string>
+    <string name="nav_settings">Налаштування</string>
+    <string name="action_pin">Закріпити вгорі</string>
+    <string name="action_unpin">Відкріпити</string>
+    <string name="action_about_app">Про застосунок</string>
+    <string name="action_refresh_account_action">Скинути ідентифікацію</string>
+    <string name="settings_section_appearance">Вигляд</string>
+    <string name="cd_pin_chat">Закріпити чат</string>
 
     <!-- New translated strings -->
     <string name="section_username">ІМ\'Я КОРИСТУВАЧА</string>
