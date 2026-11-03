@@ -67,10 +67,9 @@ object LinkPreviewStore {
                 } ?: return null
                 val html = String(bytes, Charsets.UTF_8)
 
-                val title = tagContent(html, "title")
-                    ?: metaContent(html, "og:title")
-                val description = metaContent(html, "og:description")
-                    ?: metaContent(html, "description")
+                val title = tagContent(html, "title") ?: metaContent(html, "og:title")
+                val description =
+                    metaContent(html, "og:description") ?: metaContent(html, "description")
                 val image = metaContent(html, "og:image")
                 val site = metaContent(html, "og:site_name")
 
@@ -101,12 +100,14 @@ object LinkPreviewStore {
     }
 
     private fun clean(raw: String): String? {
-        val text = raw.replace(Regex("<[^>]*>"), " ")
-            .replace("&", "&")
-            .replace(""", "\"")
-            .replace("'", "'")
-            .replace("<", "<")
-            .replace(">", ">")
+        val text = raw
+            .replace(Regex("<[^>]*>"), " ")
+            .replace("&" + "quot;", "\"")
+            .replace("&" + "apos;", "'")
+            .replace("&" + "#39;", "'")
+            .replace("&" + "lt;", "<")
+            .replace("&" + "gt;", ">")
+            .replace("&" + "amp;", "&")
             .replace(Regex("\\s+"), " ")
             .trim()
         return text.ifEmpty { null }
