@@ -119,8 +119,9 @@ object AppStateStore {
             val list = map[channel] ?: return
             val index = list.indexOfFirst { it.id == messageId }
             if (index < 0) return
-            list[index] = list[index].copy(content = newContent, isEdited = true)
-            map[channel] = list
+            map[channel] = list.mapIndexed { i, message ->
+                if (i == index) message.copy(content = newContent, isEdited = true) else message
+            }
             _channelMessages.value = map
             ChatHistoryStore.updateContent(messageId, newContent)
         }
