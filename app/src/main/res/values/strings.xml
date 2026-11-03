@@ -553,6 +553,12 @@
   <string name="notification_reply_action">Reply</string>
   <string name="notification_reply_hint">Message</string>
   <string name="notification_mark_read">Read</string>
+  <string name="action_auto_delete_title">Auto-delete messages</string>
+  <string name="action_auto_delete_off">Off</string>
+  <string name="action_auto_delete_2s">After 2 seconds</string>
+  <string name="action_auto_delete_1h">After 1 hour</string>
+  <string name="action_auto_delete_24h">After 24 hours</string>
+  <string name="action_auto_delete_7d">After 7 days</string>
     <string name="tor_not_available_in_this_build">Tor not available in this build</string>
 
     <!-- Plurals -->

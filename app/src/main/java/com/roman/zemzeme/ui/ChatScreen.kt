@@ -165,6 +165,22 @@ fun ChatScreen(viewModel: ChatViewModel, isBluetoothEnabled: Boolean = true, onB
         }
     }
 
+    // Auto-delete (disappearing) messages timer for this conversation
+    val ttlValues by com.roman.zemzeme.services.MessageTTLStore.values.collectAsState()
+    val conversationTtl = conversationKey?.let { ttlValues[it] ?: 0L } ?: 0L
+    val currentMessages by rememberUpdatedState(displayMessages)
+    LaunchedEffect(conversationKey, conversationTtl) {
+        if (conversationTtl > 0L) {
+            while (true) {
+                kotlinx.coroutines.delay(1_000)
+                val cutoff = System.currentTimeMillis() - conversationTtl * 1000L
+                currentMessages
+                    .filter { it.timestamp.time < cutoff }
+                    .forEach { viewModel.deleteMessageLocally(it) }
+            }
+        }
+    }
+
     // Show media buttons in all channel contexts (mesh, named channels, and geohash location channels)
     val showMediaButtons = true
 

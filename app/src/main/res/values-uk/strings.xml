@@ -554,6 +554,12 @@
     <string name="notification_reply_action">Відповісти</string>
     <string name="notification_reply_hint">Повідомлення</string>
     <string name="notification_mark_read">Прочитано</string>
+    <string name="action_auto_delete_title">Автовидалення повідомлень</string>
+    <string name="action_auto_delete_off">Вимкнено</string>
+    <string name="action_auto_delete_2s">Через 2 секунди</string>
+    <string name="action_auto_delete_1h">Через 1 годину</string>
+    <string name="action_auto_delete_24h">Через 24 години</string>
+    <string name="action_auto_delete_7d">Через 7 днів</string>
     <string name="tor_not_available_in_this_build">Tor недоступний у цій збірці</string>
 
     <!-- Plurals -->

@@ -66,6 +66,9 @@ class VuzolApplication : Application() {
         // Pinned conversations
         com.roman.zemzeme.ui.ConversationPinStore.init(this)
 
+        // Auto-delete timers
+        com.roman.zemzeme.services.MessageTTLStore.init(this)
+
         // Notification sound/vibration preferences (and channel setup)
         try { com.roman.zemzeme.ui.NotificationPreferences.init(this) } catch (_: Exception) { }
 

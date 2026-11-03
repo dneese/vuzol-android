@@ -6,6 +6,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -45,6 +47,8 @@ fun ChatUserSheet(
 ) {
     val coroutineScope = rememberCoroutineScope()
     val clipboardManager = LocalClipboardManager.current
+    val context = androidx.compose.ui.platform.LocalContext.current
+    var showTtlDialog by remember { mutableStateOf(false) }
     
     // iOS system colors (matches LocationChannelsSheet exactly)
     val colorScheme = MaterialTheme.colorScheme
@@ -250,6 +254,35 @@ fun ChatUserSheet(
                         }
                     }
 
+                    // Auto-delete timer for the current conversation
+                    val ttlConversation = viewModel.selectedLocationChannel.value
+                        .let { loc ->
+                            if (loc is com.roman.zemzeme.geohash.ChannelID.Location) {
+                                "geo:${loc.channel.geohash}"
+                            } else null
+                        }
+                    if (ttlConversation != null) {
+                        val currentTtl = com.roman.zemzeme.services.MessageTTLStore.ttl(ttlConversation)
+                        item {
+                            UserActionRow(
+                                title = stringResource(R.string.action_auto_delete_title),
+                                subtitle = stringResource(
+                                    when (currentTtl) {
+                                        2L -> R.string.action_auto_delete_2s
+                                        3600L -> R.string.action_auto_delete_1h
+                                        86400L -> R.string.action_auto_delete_24h
+                                        604800L -> R.string.action_auto_delete_7d
+                                        else -> R.string.action_auto_delete_off
+                                    }
+                                ),
+                                titleColor = standardGrey,
+                                onClick = {
+                                    showTtlDialog = true
+                                }
+                            )
+                        }
+                    }
+
                     // Only show user actions for other users' messages or when no message is selected
                     if (selectedMessage?.sender != viewModel.nickname.value) {
                         // Block action
@@ -291,6 +324,71 @@ fun ChatUserSheet(
                     )
                 }
             }
+        }
+    }
+
+    // Auto-delete timer picker
+    if (showTtlDialog) {
+        val conversation = viewModel.selectedLocationChannel.value
+            .let { loc ->
+                if (loc is com.roman.zemzeme.geohash.ChannelID.Location) {
+                    "geo:${loc.channel.geohash}"
+                } else null
+            }
+        if (conversation != null) {
+            val current = com.roman.zemzeme.services.MessageTTLStore.ttl(conversation)
+            androidx.compose.material3.AlertDialog(
+                onDismissRequest = { showTtlDialog = false },
+                title = { Text(stringResource(R.string.action_auto_delete_title)) },
+                text = {
+                    Column {
+                        listOf(
+                            0L to R.string.action_auto_delete_off,
+                            2L to R.string.action_auto_delete_2s,
+                            3600L to R.string.action_auto_delete_1h,
+                            86400L to R.string.action_auto_delete_24h,
+                            604800L to R.string.action_auto_delete_7d
+                        ).forEach { (seconds, label) ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        com.roman.zemzeme.services.MessageTTLStore.setTtl(
+                                            context, conversation, seconds
+                                        )
+                                        showTtlDialog = false
+                                        onDismiss()
+                                    }
+                                    .padding(vertical = 12.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                if (current == seconds) {
+                                    Icon(
+                                        Icons.Filled.Check,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                } else {
+                                    Spacer(modifier = Modifier.width(20.dp))
+                                }
+                                Text(
+                                    text = stringResource(label),
+                                    fontSize = 15.sp,
+                                    fontFamily = NunitoFontFamily,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                            }
+                        }
+                    }
+                },
+                confirmButton = {
+                    androidx.compose.material3.TextButton(onClick = { showTtlDialog = false }) {
+                        Text(stringResource(R.string.cancel_lower))
+                    }
+                }
+            )
         }
     }
 }
