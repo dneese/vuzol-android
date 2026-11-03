@@ -273,6 +273,11 @@
     <string name="message_edited">редаговано</string>
     <string name="action_edit_title">Редагувати</string>
     <string name="action_edit_subtitle">Змінити текст повідомлення</string>
+    <string name="action_save_message_title">Зберегти</string>
+    <string name="action_save_message_subtitle">Зберегти повідомлення в «Збережене»</string>
+    <string name="saved_messages_title">Збережені повідомлення</string>
+    <string name="saved_messages_empty">Поки що немає збережених повідомлень. Утримуйте повідомлення, щоб зберегти.</string>
+    <string name="saved_message_toast">Повідомлення збережено</string>
 
     <!-- Notification settings -->
     <string name="notif_sound_title">звук сповіщень</string>

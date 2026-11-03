@@ -272,6 +272,11 @@
   <string name="message_edited">edited</string>
   <string name="action_edit_title">Edit</string>
   <string name="action_edit_subtitle">Change the text of your message</string>
+  <string name="action_save_message_title">Save</string>
+  <string name="action_save_message_subtitle">Keep this message in Saved Messages</string>
+  <string name="saved_messages_title">Saved Messages</string>
+  <string name="saved_messages_empty">No saved messages yet. Long-press a message to save it.</string>
+  <string name="saved_message_toast">Message saved</string>
 
   <!-- Notification settings -->
   <string name="notif_sound_title">notification sound</string>

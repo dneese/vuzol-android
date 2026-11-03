@@ -39,6 +39,7 @@ fun ChatUserSheet(
     onReact: ((String) -> Unit)? = null,
     onForward: ((ZemzemeMessage) -> Unit)? = null,
     onEdit: ((ZemzemeMessage) -> Unit)? = null,
+    onSave: ((ZemzemeMessage) -> Unit)? = null,
     viewModel: ChatViewModel,
     modifier: Modifier = Modifier
 ) {
@@ -134,6 +135,21 @@ fun ChatUserSheet(
                                     titleColor = standardGrey,
                                     onClick = {
                                         onForward.invoke(message)
+                                        onDismiss()
+                                    }
+                                )
+                            }
+                        }
+
+                        // Save message for later
+                        if (onSave != null) {
+                            item {
+                                UserActionRow(
+                                    title = stringResource(R.string.action_save_message_title),
+                                    subtitle = stringResource(R.string.action_save_message_subtitle),
+                                    titleColor = standardGrey,
+                                    onClick = {
+                                        onSave.invoke(message)
                                         onDismiss()
                                     }
                                 )

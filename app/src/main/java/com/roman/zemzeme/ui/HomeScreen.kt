@@ -45,6 +45,7 @@ import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Chat
 import androidx.compose.material.icons.outlined.People
 import androidx.compose.material.icons.outlined.PushPin
+import androidx.compose.material.icons.outlined.Bookmark
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -184,6 +185,9 @@ fun HomeScreen(
 
     // Refresh account confirmation dialog
     var showRefreshDialog by remember { mutableStateOf(false) }
+
+    // Saved messages
+    var showSavedMessages by remember { mutableStateOf(false) }
 
     // Mesh intro dialog (first-time only)
     val meshIntroPrefs = remember { context.getSharedPreferences("mesh_intro", android.content.Context.MODE_PRIVATE) }
@@ -553,6 +557,38 @@ fun HomeScreen(
                 }
             }
 
+            // ── SAVED MESSAGES ──
+            item(key = "saved_messages") {
+                Surface(
+                    onClick = { showSavedMessages = true },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 12.dp, vertical = 4.dp),
+                    shape = RoundedCornerShape(14.dp),
+                    color = colorScheme.surfaceVariant.copy(alpha = 0.4f)
+                ) {
+                    Row(
+                        Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(14.dp)
+                    ) {
+                        Icon(
+                            Icons.Outlined.Bookmark,
+                            contentDescription = null,
+                            tint = colorScheme.primary,
+                            modifier = Modifier.size(22.dp)
+                        )
+                        Text(
+                            stringResource(R.string.saved_messages_title),
+                            style = MaterialTheme.typography.bodyLarge.copy(
+                                fontFamily = NunitoFontFamily,
+                                fontWeight = FontWeight.Medium
+                            )
+                        )
+                    }
+                }
+            }
+
             // ── NEARBY ──
             item(key = "nearby_header") { SectionHeader(stringResource(R.string.section_nearby)) }
 
@@ -892,6 +928,12 @@ fun HomeScreen(
             }
         )
     }
+
+    // Saved messages sheet
+    SavedMessagesSheet(
+        isPresented = showSavedMessages,
+        onDismiss = { showSavedMessages = false }
+    )
 
     // About / Settings sheet
     val showAppInfo by chatViewModel.showAppInfo.collectAsStateWithLifecycle()

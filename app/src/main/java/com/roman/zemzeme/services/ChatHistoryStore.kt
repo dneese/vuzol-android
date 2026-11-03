@@ -49,6 +49,7 @@ object ChatHistoryStore {
     fun conversationForPeer(peerID: String): String = "dm:$peerID"
 
     const val CONVERSATION_MESH = "mesh"
+    const val CONVERSATION_SAVED = "saved"
 
     fun save(conv: String, message: ZemzemeMessage) {
         val h = helper ?: return
@@ -171,6 +172,15 @@ object ChatHistoryStore {
             Log.w(TAG, "load failed: ${e.message}")
             emptyList()
         }
+    }
+
+    /** Stores a copy of a message in the "saved messages" conversation. */
+    fun saveBookmark(message: ZemzemeMessage) {
+        save(CONVERSATION_SAVED, message.copy(id = "saved:${message.id}"))
+    }
+
+    fun removeBookmark(messageId: String) {
+        delete("saved:$messageId")
     }
 
     /** Replaces the text of a stored message and marks it as edited. */

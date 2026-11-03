@@ -90,6 +90,7 @@ fun ChatScreen(viewModel: ChatViewModel, isBluetoothEnabled: Boolean = true, onB
     var showAppearanceSheet by remember { mutableStateOf(false) }
     var editingMessage by remember { mutableStateOf<ZemzemeMessage?>(null) }
     var editingText by remember { mutableStateOf("") }
+    var messageEffect by remember { mutableStateOf<String?>(null) }
     val pinnedMessages by com.roman.zemzeme.services.PinStore.pins.collectAsState()
     var showUserSheet by remember { mutableStateOf(false) }
     var selectedUserForSheet by remember { mutableStateOf("") }
@@ -370,6 +371,8 @@ fun ChatScreen(viewModel: ChatViewModel, isBluetoothEnabled: Boolean = true, onB
                 val outgoing =
                     if (original != null) MessageReply.encode(original, trimmed) else trimmed
                 viewModel.sendMessage(outgoing)
+                val effect = com.roman.zemzeme.ui.MessageEffects.effectFor(trimmed)
+                if (effect != null) messageEffect = effect
                 conversationKey?.let { com.roman.zemzeme.services.DraftStore.clear(it) }
                 messageText = TextFieldValue("")
                 replyTo = null
@@ -446,6 +449,30 @@ fun ChatScreen(viewModel: ChatViewModel, isBluetoothEnabled: Boolean = true, onB
                 .zIndex(1f),
             color = colorScheme.outline.copy(alpha = 0.3f)
         )
+
+        // Message effect (emoji burst) shown after sending a reaction-style emoji
+        messageEffect?.let { emoji ->
+            LaunchedEffect(emoji) {
+                kotlinx.coroutines.delay(1400)
+                messageEffect = null
+            }
+            androidx.compose.animation.AnimatedVisibility(
+                visible = true,
+                enter = androidx.compose.animation.fadeIn() +
+                    androidx.compose.animation.scaleIn(initialScale = 0.4f),
+                exit = androidx.compose.animation.fadeOut() +
+                    androidx.compose.animation.scaleOut(targetScale = 1.4f),
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 140.dp)
+                    .zIndex(2f)
+            ) {
+                Text(
+                    text = emoji,
+                    fontSize = 72.sp
+                )
+            }
+        }
 
         // Scroll-to-bottom floating button
         AnimatedVisibility(
@@ -586,6 +613,14 @@ fun ChatScreen(viewModel: ChatViewModel, isBluetoothEnabled: Boolean = true, onB
         onMessageEditRequest = { message ->
             editingMessage = message
             editingText = message.content
+        },
+        onMessageSaveRequest = { message ->
+            com.roman.zemzeme.services.ChatHistoryStore.saveBookmark(message)
+            android.widget.Toast.makeText(
+                context,
+                context.getString(com.roman.zemzeme.R.string.saved_message_toast),
+                android.widget.Toast.LENGTH_SHORT
+            ).show()
         },
         onMessageForward = { message, channel ->
             viewModel.forwardMessage(message, channel)
@@ -1070,6 +1105,7 @@ private fun ChatDialogs(
     onMessageForwardDismiss: () -> Unit,
     onMessageForwardRequest: (ZemzemeMessage) -> Unit,
     onMessageEditRequest: (ZemzemeMessage) -> Unit,
+    onMessageSaveRequest: (ZemzemeMessage) -> Unit,
     onMessageForward: (ZemzemeMessage, com.roman.zemzeme.geohash.GeohashChannel) -> Unit,
     viewModel: ChatViewModel,
     showVerificationSheet: Boolean,
@@ -1171,6 +1207,7 @@ private fun ChatDialogs(
             onReact = { emoji -> selectedMessageForSheet?.let { viewModel.sendReaction(it.id, emoji) } },
             onForward = { message -> onMessageForwardRequest(message) },
             onEdit = { message -> onMessageEditRequest(message) },
+            onSave = { message -> onMessageSaveRequest(message) },
             viewModel = viewModel
         )
     }
