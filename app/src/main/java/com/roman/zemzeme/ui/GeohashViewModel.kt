@@ -459,6 +459,34 @@ class GeohashViewModel(
         }
     }
 
+    /** Broadcasts the edited text of a message (kind 20004). */
+    fun sendEdit(
+        targetMessageId: String,
+        newText: String,
+        channel: com.roman.zemzeme.geohash.GeohashChannel,
+        nickname: String?
+    ) {
+        if (!p2pConfig.nostrEnabled) return
+        viewModelScope.launch {
+            try {
+                val identity = NostrIdentityBridge.deriveIdentity(
+                    forGeohash = channel.geohash, context = getApplication()
+                )
+                val event = NostrProtocol.createGeohashEditEvent(
+                    targetEventId = targetMessageId,
+                    newText = newText,
+                    geohash = channel.geohash,
+                    senderIdentity = identity,
+                    nickname = nickname
+                )
+                NostrRelayManager.getInstance(getApplication())
+                    .sendEventToGeohash(event, channel.geohash, includeDefaults = true, nRelays = 5)
+            } catch (e: Exception) {
+                Log.w(TAG, "sendEdit failed: ${e.message}")
+            }
+        }
+    }
+
     /**
      * Broadcast a throttled "is typing" hint for the given channel.
      */

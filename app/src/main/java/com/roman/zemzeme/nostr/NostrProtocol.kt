@@ -234,6 +234,32 @@ object NostrProtocol {
         return@withContext senderIdentity.signEvent(event)
     }
 
+    /** Edited text of a geohash message (kind 20004, ephemeral). */
+    suspend fun createGeohashEditEvent(
+        targetEventId: String,
+        newText: String,
+        geohash: String,
+        senderIdentity: NostrIdentity,
+        nickname: String? = null
+    ): NostrEvent = withContext(Dispatchers.Default) {
+        val tags = mutableListOf<List<String>>()
+        tags.add(listOf("g", geohash))
+        tags.add(listOf("e", targetEventId))
+        if (!nickname.isNullOrEmpty()) {
+            tags.add(listOf("n", nickname))
+        }
+
+        val event = NostrEvent(
+            pubkey = senderIdentity.publicKeyHex,
+            createdAt = (System.currentTimeMillis() / 1000).toInt(),
+            kind = NostrKind.GEOHASH_EDIT,
+            tags = tags,
+            content = newText
+        )
+
+        return@withContext senderIdentity.signEvent(event)
+    }
+
     /** "Is typing" hint for a geohash channel (kind 20003, ephemeral). */
     suspend fun createGeohashTypingEvent(
         geohash: String,

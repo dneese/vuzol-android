@@ -269,6 +269,9 @@
   <string name="theme_amoled">AMOLED</string>
   <string name="action_mention_title">mention in chat</string>
   <string name="message_deleted">message deleted</string>
+  <string name="message_edited">edited</string>
+  <string name="action_edit_title">Edit</string>
+  <string name="action_edit_subtitle">Change the text of your message</string>
 
   <!-- Notification settings -->
   <string name="notif_sound_title">notification sound</string>
@@ -541,6 +544,7 @@
   <string name="pwd_label">Password</string>
   <string name="join">Join</string>
   <string name="cancel">Cancel</string>
+  <string name="action_save">Save</string>
     <string name="tor_not_available_in_this_build">Tor not available in this build</string>
 
     <!-- Plurals -->

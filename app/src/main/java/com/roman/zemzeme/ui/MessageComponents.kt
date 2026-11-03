@@ -574,6 +574,15 @@ private fun MessageBubble(
                     color = Color.Gray.copy(alpha = 0.7f)
                 )
 
+                // Edited marker
+                if (message.isEdited) {
+                    Text(
+                        text = " · " + stringResource(com.roman.zemzeme.R.string.message_edited),
+                        fontSize = 10.sp,
+                        color = Color.Gray.copy(alpha = 0.6f)
+                    )
+                }
+
                 // PoW badge
                 message.powDifficulty?.let { bits ->
                     if (bits > 0) {

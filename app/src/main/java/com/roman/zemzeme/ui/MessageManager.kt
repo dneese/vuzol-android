@@ -87,6 +87,27 @@ class MessageManager(private val state: ChatState) {
         }
     }
     
+    /** Replaces the text of a message that is already in the channel list. */
+    fun updateMessageContent(channel: String, messageId: String, newContent: String) {
+        val current = state.getChannelMessagesValue().toMutableMap()
+        val list = current[channel] ?: return
+        var changed = false
+        val updated = list.map { message ->
+            if (message.id == messageId) {
+                changed = true
+                message.copy(content = newContent, isEdited = true)
+            } else {
+                message
+            }
+        }
+        if (!changed) return
+        current[channel] = updated
+        state.setChannelMessages(current)
+        try {
+            com.roman.zemzeme.services.AppStateStore.replaceChannelMessage(channel, messageId, newContent)
+        } catch (_: Exception) { }
+    }
+
     fun clearChannelMessages(channel: String) {
         val updatedChannelMessages = state.getChannelMessagesValue().toMutableMap()
         updatedChannelMessages[channel] = emptyList()

@@ -112,6 +112,20 @@ object AppStateStore {
         }
     }
 
+    /** Replaces the text of a stored channel message (used by message editing). */
+    fun replaceChannelMessage(channel: String, messageId: String, newContent: String) {
+        synchronized(this) {
+            val map = _channelMessages.value.toMutableMap()
+            val list = map[channel] ?: return
+            val index = list.indexOfFirst { it.id == messageId }
+            if (index < 0) return
+            list[index] = list[index].copy(content = newContent, isEdited = true)
+            map[channel] = list
+            _channelMessages.value = map
+            ChatHistoryStore.updateContent(messageId, newContent)
+        }
+    }
+
     fun addChannelMessage(channel: String, msg: ZemzemeMessage) {
         synchronized(this) {
             if (msg.timestamp.time < resetTimestamp) return

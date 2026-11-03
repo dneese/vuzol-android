@@ -24,7 +24,7 @@ import java.util.concurrent.Executors
 object ChatHistoryStore {
     private const val TAG = "ChatHistoryStore"
     private const val DB_NAME = "vuzol_history.db"
-    private const val DB_VERSION = 2
+    private const val DB_VERSION = 3
     private const val MAX_MESSAGES_PER_CONVERSATION = 500
     private const val TABLE_MESSAGES = "messages"
     private const val TABLE_REACTIONS = "reactions"
@@ -136,7 +136,7 @@ object ChatHistoryStore {
             val db = h.readableDatabase
             val result = LinkedHashMap<String, MutableList<ZemzemeMessage>>()
             db.rawQuery(
-                "SELECT id, conv, sender, sender_peer, content, type, ts, is_private, delivery, pow, sender_pubkey " +
+                "SELECT id, conv, sender, sender_peer, content, type, ts, is_private, delivery, pow, sender_pubkey, edited " +
                     "FROM messages ORDER BY ts ASC",
                 null
             ).use { cursor ->
@@ -158,7 +158,7 @@ object ChatHistoryStore {
             val db = h.readableDatabase
             val out = mutableListOf<ZemzemeMessage>()
             db.rawQuery(
-                "SELECT id, conv, sender, sender_peer, content, type, ts, is_private, delivery, pow, sender_pubkey " +
+                "SELECT id, conv, sender, sender_peer, content, type, ts, is_private, delivery, pow, sender_pubkey, edited " +
                     "FROM messages WHERE conv = ? ORDER BY ts ASC LIMIT ?",
                 arrayOf(conv, limit.toString())
             ).use { cursor ->
@@ -170,6 +170,27 @@ object ChatHistoryStore {
         } catch (e: Exception) {
             Log.w(TAG, "load failed: ${e.message}")
             emptyList()
+        }
+    }
+
+    /** Replaces the text of a stored message and marks it as edited. */
+    fun updateContent(messageId: String, newContent: String) {
+        val h = helper ?: return
+        executor.execute {
+            try {
+                val db = h.writableDatabase
+                db.update(
+                    TABLE_MESSAGES,
+                    ContentValues().apply {
+                        put("content", newContent)
+                        put("edited", 1)
+                    },
+                    "id = ?",
+                    arrayOf(messageId)
+                )
+            } catch (e: Exception) {
+                Log.w(TAG, "updateContent failed: ${e.message}")
+            }
         }
     }
 
@@ -244,6 +265,7 @@ object ChatHistoryStore {
             put("delivery", encodeDelivery(message.deliveryStatus))
             put("pow", message.powDifficulty)
             put("sender_pubkey", message.senderPubkey)
+            put("edited", if (message.isEdited) 1 else 0)
         }
 
     private fun fromCursor(cursor: android.database.Cursor): ZemzemeMessage? {
@@ -261,7 +283,8 @@ object ChatHistoryStore {
                 senderPeerID = cursor.getString(4),
                 deliveryStatus = decodeDelivery(cursor.getString(8)),
                 powDifficulty = if (cursor.isNull(9)) null else cursor.getInt(9),
-                senderPubkey = if (cursor.isNull(10)) null else cursor.getString(10)
+                senderPubkey = if (cursor.isNull(10)) null else cursor.getString(10),
+                isEdited = cursor.getInt(11) != 0
             )
         } catch (e: Exception) {
             null
@@ -311,7 +334,8 @@ object ChatHistoryStore {
                 "CREATE TABLE messages (" +
                     "id TEXT PRIMARY KEY, conv TEXT NOT NULL, sender TEXT NOT NULL, " +
                     "sender_peer TEXT, content TEXT NOT NULL, type TEXT NOT NULL, ts INTEGER NOT NULL, " +
-                    "is_private INTEGER NOT NULL DEFAULT 0, delivery TEXT, pow INTEGER)"
+                    "is_private INTEGER NOT NULL DEFAULT 0, delivery TEXT, pow INTEGER, " +
+                    "sender_pubkey TEXT, edited INTEGER NOT NULL DEFAULT 0)"
             )
             db.execSQL("CREATE INDEX idx_messages_conv_ts ON messages(conv, ts)")
             db.execSQL(
@@ -324,6 +348,9 @@ object ChatHistoryStore {
         override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
             if (oldVersion < 2) {
                 try { db.execSQL("ALTER TABLE messages ADD COLUMN sender_pubkey TEXT") } catch (_: Exception) { }
+            }
+            if (oldVersion < 3) {
+                try { db.execSQL("ALTER TABLE messages ADD COLUMN edited INTEGER NOT NULL DEFAULT 0") } catch (_: Exception) { }
             }
         }
     }

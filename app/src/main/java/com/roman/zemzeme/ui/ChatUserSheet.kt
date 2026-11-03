@@ -38,6 +38,7 @@ fun ChatUserSheet(
     onReply: ((ZemzemeMessage) -> Unit)? = null,
     onReact: ((String) -> Unit)? = null,
     onForward: ((ZemzemeMessage) -> Unit)? = null,
+    onEdit: ((ZemzemeMessage) -> Unit)? = null,
     viewModel: ChatViewModel,
     modifier: Modifier = Modifier
 ) {
@@ -176,6 +177,21 @@ fun ChatUserSheet(
                                         } else {
                                             com.roman.zemzeme.services.PinStore.set(pinConvKey, message.id)
                                         }
+                                        onDismiss()
+                                    }
+                                )
+                            }
+                        }
+
+                        // Edit own message
+                        if (isOwnMessage && onEdit != null) {
+                            item {
+                                UserActionRow(
+                                    title = stringResource(R.string.action_edit_title),
+                                    subtitle = stringResource(R.string.action_edit_subtitle),
+                                    titleColor = standardGrey,
+                                    onClick = {
+                                        onEdit.invoke(message)
                                         onDismiss()
                                     }
                                 )

@@ -1124,6 +1124,22 @@ class ChatViewModel(
     }
 
     /**
+     * Edit one of the user's own messages: updates it locally and tells the
+     * channel about the new text.
+     */
+    fun editMessage(message: ZemzemeMessage, newText: String) {
+        val trimmed = newText.trim()
+        if (trimmed.isEmpty() || trimmed == message.content) return
+        val loc = state.selectedLocationChannel.value
+        if (loc is com.roman.zemzeme.geohash.ChannelID.Location) {
+            messageManager.updateMessageContent("geo:${loc.channel.geohash}", message.id, trimmed)
+            geohashViewModel.sendEdit(
+                message.id, trimmed, loc.channel, state.getNicknameValue()
+            )
+        }
+    }
+
+    /**
      * Remove a message from this device only (no network delete is sent).
      */
     fun deleteMessageLocally(message: ZemzemeMessage) {

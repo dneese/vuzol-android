@@ -270,6 +270,9 @@
     <string name="theme_amoled">AMOLED</string>
     <string name="action_mention_title">згадати в чаті</string>
     <string name="message_deleted">повідомлення видалено</string>
+    <string name="message_edited">редаговано</string>
+    <string name="action_edit_title">Редагувати</string>
+    <string name="action_edit_subtitle">Змінити текст повідомлення</string>
 
     <!-- Notification settings -->
     <string name="notif_sound_title">звук сповіщень</string>
@@ -542,6 +545,7 @@
     <string name="pwd_label">Пароль</string>
     <string name="join">Приєднатися</string>
     <string name="cancel">Скасувати</string>
+    <string name="action_save">Зберегти</string>
     <string name="tor_not_available_in_this_build">Tor недоступний у цій збірці</string>
 
     <!-- Plurals -->

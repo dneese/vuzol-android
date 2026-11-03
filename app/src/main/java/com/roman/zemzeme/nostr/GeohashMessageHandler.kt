@@ -93,7 +93,8 @@ class GeohashMessageHandler(
                 if (event.kind != NostrKind.EPHEMERAL_EVENT &&
                     event.kind != NostrKind.GEOHASH_PRESENCE &&
                     event.kind != NostrKind.GEOHASH_REACTION &&
-                    event.kind != NostrKind.GEOHASH_TYPING
+                    event.kind != NostrKind.GEOHASH_TYPING &&
+                    event.kind != NostrKind.GEOHASH_EDIT
                 ) return@launch
                 val tagGeo = event.tags.firstOrNull { it.size >= 2 && it[0] == "g" }?.getOrNull(1)
                 if (tagGeo == null || !tagGeo.equals(subscribedGeohash, true)) return@launch
@@ -154,6 +155,19 @@ class GeohashMessageHandler(
                         com.roman.zemzeme.ui.ReactionsStore.apply(
                             targetId, emoji, repo.displayNameForNostrPubkeyUI(event.pubkey)
                         )
+                    }
+                    return@launch
+                }
+                if (event.kind == NostrKind.GEOHASH_EDIT) {
+                    val targetId = event.tags
+                        .firstOrNull { it.size >= 2 && it[0] == "e" }
+                        ?.getOrNull(1)
+                    val newText = event.content
+                    if (!targetId.isNullOrBlank() && newText.isNotBlank()) {
+                        withContext(Dispatchers.Main) {
+                            messageManager.updateMessageContent("geo:$subscribedGeohash", targetId, newText)
+                        }
+                        com.roman.zemzeme.services.ChatHistoryStore.updateContent(targetId, newText)
                     }
                     return@launch
                 }

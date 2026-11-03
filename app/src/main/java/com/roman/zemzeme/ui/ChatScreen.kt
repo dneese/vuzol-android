@@ -88,6 +88,8 @@ fun ChatScreen(viewModel: ChatViewModel, isBluetoothEnabled: Boolean = true, onB
     var messageToForward by remember { mutableStateOf<ZemzemeMessage?>(null) }
     var profileMessage by remember { mutableStateOf<ZemzemeMessage?>(null) }
     var showAppearanceSheet by remember { mutableStateOf(false) }
+    var editingMessage by remember { mutableStateOf<ZemzemeMessage?>(null) }
+    var editingText by remember { mutableStateOf("") }
     val pinnedMessages by com.roman.zemzeme.services.PinStore.pins.collectAsState()
     var showUserSheet by remember { mutableStateOf(false) }
     var selectedUserForSheet by remember { mutableStateOf("") }
@@ -476,6 +478,36 @@ fun ChatScreen(viewModel: ChatViewModel, isBluetoothEnabled: Boolean = true, onB
     }
     }
 
+    // Edit own message
+    editingMessage?.let { message ->
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { editingMessage = null },
+            title = { Text(androidx.compose.ui.res.stringResource(com.roman.zemzeme.R.string.action_edit_title)) },
+            text = {
+                androidx.compose.material3.OutlinedTextField(
+                    value = editingText,
+                    onValueChange = { editingText = it },
+                    minLines = 3,
+                    maxLines = 8,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            },
+            confirmButton = {
+                androidx.compose.material3.TextButton(onClick = {
+                    viewModel.editMessage(message, editingText)
+                    editingMessage = null
+                }) {
+                    Text(androidx.compose.ui.res.stringResource(com.roman.zemzeme.R.string.action_save))
+                }
+            },
+            dismissButton = {
+                androidx.compose.material3.TextButton(onClick = { editingMessage = null }) {
+                    Text(androidx.compose.ui.res.stringResource(com.roman.zemzeme.R.string.cancel))
+                }
+            }
+        )
+    }
+
     // Chat appearance (accent color + wallpaper)
     ChatAppearanceSheet(
         isPresented = showAppearanceSheet,
@@ -551,6 +583,10 @@ fun ChatScreen(viewModel: ChatViewModel, isBluetoothEnabled: Boolean = true, onB
         },
         onMessageForwardDismiss = { messageToForward = null },
         onMessageForwardRequest = { message -> messageToForward = message },
+        onMessageEditRequest = { message ->
+            editingMessage = message
+            editingText = message.content
+        },
         onMessageForward = { message, channel ->
             viewModel.forwardMessage(message, channel)
         },
@@ -1033,6 +1069,7 @@ private fun ChatDialogs(
     onProfileBlock: (String) -> Unit,
     onMessageForwardDismiss: () -> Unit,
     onMessageForwardRequest: (ZemzemeMessage) -> Unit,
+    onMessageEditRequest: (ZemzemeMessage) -> Unit,
     onMessageForward: (ZemzemeMessage, com.roman.zemzeme.geohash.GeohashChannel) -> Unit,
     viewModel: ChatViewModel,
     showVerificationSheet: Boolean,
@@ -1133,6 +1170,7 @@ private fun ChatDialogs(
             onReply = onReply,
             onReact = { emoji -> selectedMessageForSheet?.let { viewModel.sendReaction(it.id, emoji) } },
             onForward = { message -> onMessageForwardRequest(message) },
+            onEdit = { message -> onMessageEditRequest(message) },
             viewModel = viewModel
         )
     }

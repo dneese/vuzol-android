@@ -40,7 +40,8 @@ data class NostrFilter(
                     NostrKind.EPHEMERAL_EVENT,
                     NostrKind.GEOHASH_PRESENCE,
                     NostrKind.GEOHASH_REACTION,
-                    NostrKind.GEOHASH_TYPING
+                    NostrKind.GEOHASH_TYPING,
+                    NostrKind.GEOHASH_EDIT
                 ),
                 since = since?.let { (it / 1000).toInt() },
                 tagFilters = mapOf("g" to listOf(geohash)),
