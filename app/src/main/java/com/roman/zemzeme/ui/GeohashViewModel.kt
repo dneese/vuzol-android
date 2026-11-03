@@ -459,6 +459,32 @@ class GeohashViewModel(
         }
     }
 
+    /** Broadcasts a read receipt for a message (kind 20005). */
+    fun sendReadReceipt(
+        targetMessageId: String,
+        channel: com.roman.zemzeme.geohash.GeohashChannel,
+        nickname: String?
+    ) {
+        if (!p2pConfig.nostrEnabled) return
+        viewModelScope.launch {
+            try {
+                val identity = NostrIdentityBridge.deriveIdentity(
+                    forGeohash = channel.geohash, context = getApplication()
+                )
+                val event = NostrProtocol.createGeohashReadEvent(
+                    targetEventId = targetMessageId,
+                    geohash = channel.geohash,
+                    senderIdentity = identity,
+                    nickname = nickname
+                )
+                NostrRelayManager.getInstance(getApplication())
+                    .sendEventToGeohash(event, channel.geohash, includeDefaults = true, nRelays = 5)
+            } catch (e: Exception) {
+                Log.w(TAG, "sendReadReceipt failed: ${e.message}")
+            }
+        }
+    }
+
     /** Broadcasts the edited text of a message (kind 20004). */
     fun sendEdit(
         targetMessageId: String,

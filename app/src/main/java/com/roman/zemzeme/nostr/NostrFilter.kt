@@ -41,7 +41,8 @@ data class NostrFilter(
                     NostrKind.GEOHASH_PRESENCE,
                     NostrKind.GEOHASH_REACTION,
                     NostrKind.GEOHASH_TYPING,
-                    NostrKind.GEOHASH_EDIT
+                    NostrKind.GEOHASH_EDIT,
+                    NostrKind.GEOHASH_READ
                 ),
                 since = since?.let { (it / 1000).toInt() },
                 tagFilters = mapOf("g" to listOf(geohash)),

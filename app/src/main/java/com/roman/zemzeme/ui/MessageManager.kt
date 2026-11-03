@@ -87,6 +87,35 @@ class MessageManager(private val state: ChatState) {
         }
     }
     
+    /** Marks a channel message as read by someone. */
+    fun markChannelMessageRead(channel: String, messageId: String, by: String) {
+        val current = state.getChannelMessagesValue().toMutableMap()
+        val list = current[channel] ?: return
+        var changed = false
+        val updated = list.map { message ->
+            if (message.id == messageId) {
+                changed = true
+                message.copy(
+                    deliveryStatus = com.roman.zemzeme.model.DeliveryStatus.Read(
+                        by,
+                        java.util.Date()
+                    )
+                )
+            } else {
+                message
+            }
+        }
+        if (!changed) return
+        current[channel] = updated
+        state.setChannelMessages(current)
+        try {
+            com.roman.zemzeme.services.AppStateStore.updateChannelMessageStatus(
+                messageId,
+                com.roman.zemzeme.model.DeliveryStatus.Read(by, java.util.Date())
+            )
+        } catch (_: Exception) { }
+    }
+
     /** Replaces the text of a message that is already in the channel list. */
     fun updateMessageContent(channel: String, messageId: String, newContent: String) {
         val current = state.getChannelMessagesValue().toMutableMap()

@@ -1123,6 +1123,16 @@ class ChatViewModel(
         }
     }
 
+    /** Lets the channel know that the user read a message. */
+    fun markMessageRead(messageId: String) {
+        val loc = state.selectedLocationChannel.value
+        if (loc is com.roman.zemzeme.geohash.ChannelID.Location) {
+            geohashViewModel.sendReadReceipt(
+                messageId, loc.channel, state.getNicknameValue()
+            )
+        }
+    }
+
     /**
      * Edit one of the user's own messages: updates it locally and tells the
      * channel about the new text.

@@ -1363,52 +1363,51 @@ private fun RenderFileMessage(
 @Composable
 fun DeliveryStatusIcon(status: DeliveryStatus) {
     val colorScheme = MaterialTheme.colorScheme
-    
+    val accent = LocalChatAccent.current
+
     when (status) {
         is DeliveryStatus.Sending -> {
             Text(
-                text = stringResource(R.string.status_sending),
-                fontSize = 10.sp,
-                color = colorScheme.primary.copy(alpha = 0.6f)
+                text = "\u22EF",
+                fontSize = 11.sp,
+                color = colorScheme.onSurface.copy(alpha = 0.5f)
             )
         }
         is DeliveryStatus.Sent -> {
-            // Use a subtle hollow marker for Sent; single check is reserved for Delivered (iOS parity)
             Text(
-                text = stringResource(R.string.status_pending),
-                fontSize = 10.sp,
-                color = colorScheme.primary.copy(alpha = 0.6f)
+                text = "\u2713",
+                fontSize = 11.sp,
+                color = colorScheme.onSurface.copy(alpha = 0.6f)
             )
         }
         is DeliveryStatus.Delivered -> {
-            // Single check for Delivered (matches iOS expectations)
             Text(
-                text = stringResource(R.string.status_sent),
+                text = "\u2713\u2713",
                 fontSize = 10.sp,
-                color = colorScheme.primary.copy(alpha = 0.8f)
+                color = colorScheme.onSurface.copy(alpha = 0.6f)
             )
         }
         is DeliveryStatus.Read -> {
             Text(
-                text = stringResource(R.string.status_delivered),
+                text = "\u2713\u2713",
                 fontSize = 10.sp,
-                color = Color(0xFF007AFF), // Blue
+                color = accent,
                 fontWeight = FontWeight.Bold
             )
         }
         is DeliveryStatus.Failed -> {
             Text(
-                text = stringResource(R.string.status_failed),
-                fontSize = 10.sp,
-                color = Color.Red.copy(alpha = 0.8f)
+                text = "!",
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color.Red.copy(alpha = 0.9f)
             )
         }
         is DeliveryStatus.PartiallyDelivered -> {
-            // Show a single subdued check without numeric label
             Text(
-                text = stringResource(R.string.status_sent),
-                fontSize = 10.sp,
-                color = colorScheme.primary.copy(alpha = 0.6f)
+                text = "\u25D4",
+                fontSize = 11.sp,
+                color = colorScheme.onSurface.copy(alpha = 0.6f)
             )
         }
     }

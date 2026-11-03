@@ -260,6 +260,31 @@ object NostrProtocol {
         return@withContext senderIdentity.signEvent(event)
     }
 
+    /** Read receipt for a geohash message (kind 20005, ephemeral). */
+    suspend fun createGeohashReadEvent(
+        targetEventId: String,
+        geohash: String,
+        senderIdentity: NostrIdentity,
+        nickname: String? = null
+    ): NostrEvent = withContext(Dispatchers.Default) {
+        val tags = mutableListOf<List<String>>()
+        tags.add(listOf("g", geohash))
+        tags.add(listOf("e", targetEventId))
+        if (!nickname.isNullOrEmpty()) {
+            tags.add(listOf("n", nickname))
+        }
+
+        val event = NostrEvent(
+            pubkey = senderIdentity.publicKeyHex,
+            createdAt = (System.currentTimeMillis() / 1000).toInt(),
+            kind = NostrKind.GEOHASH_READ,
+            tags = tags,
+            content = "read"
+        )
+
+        return@withContext senderIdentity.signEvent(event)
+    }
+
     /** "Is typing" hint for a geohash channel (kind 20003, ephemeral). */
     suspend fun createGeohashTypingEvent(
         geohash: String,

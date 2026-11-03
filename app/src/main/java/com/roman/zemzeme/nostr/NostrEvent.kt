@@ -219,6 +219,7 @@ object NostrKind {
     const val GEOHASH_REACTION = 20002 // Emoji reaction to a geohash message
     const val GEOHASH_TYPING = 20003   // "is typing" hint for geohash channels
     const val GEOHASH_EDIT = 20004     // Edited text of an existing geohash message
+    const val GEOHASH_READ = 20005     // "message was read" receipt
 }
 
 /**

@@ -94,7 +94,8 @@ class GeohashMessageHandler(
                     event.kind != NostrKind.GEOHASH_PRESENCE &&
                     event.kind != NostrKind.GEOHASH_REACTION &&
                     event.kind != NostrKind.GEOHASH_TYPING &&
-                    event.kind != NostrKind.GEOHASH_EDIT
+                    event.kind != NostrKind.GEOHASH_EDIT &&
+                    event.kind != NostrKind.GEOHASH_READ
                 ) return@launch
                 val tagGeo = event.tags.firstOrNull { it.size >= 2 && it[0] == "g" }?.getOrNull(1)
                 if (tagGeo == null || !tagGeo.equals(subscribedGeohash, true)) return@launch
@@ -168,6 +169,21 @@ class GeohashMessageHandler(
                             messageManager.updateMessageContent("geo:$subscribedGeohash", targetId, newText)
                         }
                         com.roman.zemzeme.services.ChatHistoryStore.updateContent(targetId, newText)
+                    }
+                    return@launch
+                }
+                if (event.kind == NostrKind.GEOHASH_READ) {
+                    val targetId = event.tags
+                        .firstOrNull { it.size >= 2 && it[0] == "e" }
+                        ?.getOrNull(1)
+                    if (!targetId.isNullOrBlank()) {
+                        withContext(Dispatchers.Main) {
+                            messageManager.markChannelMessageRead(
+                                "geo:$subscribedGeohash",
+                                targetId,
+                                repo.displayNameForNostrPubkeyUI(event.pubkey)
+                            )
+                        }
                     }
                     return@launch
                 }

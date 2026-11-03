@@ -154,6 +154,14 @@ fun ChatScreen(viewModel: ChatViewModel, isBluetoothEnabled: Boolean = true, onB
         if (conversationKey != null && displayMessages.isNotEmpty()) {
             delay(1_000)
             com.roman.zemzeme.services.ReadStateStore.markRead(conversationKey)
+            // Tell the channel that the newest incoming message was read
+            val lastIncoming = displayMessages.lastOrNull { message ->
+                message.sender != nickname &&
+                    !message.sender.startsWith("$nickname#")
+            }
+            if (lastIncoming != null) {
+                viewModel.markMessageRead(lastIncoming.id)
+            }
         }
     }
 
