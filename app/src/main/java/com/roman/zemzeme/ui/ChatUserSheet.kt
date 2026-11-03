@@ -5,6 +5,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.clickable
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
@@ -50,6 +52,9 @@ fun ChatUserSheet(
     val clipboardManager = LocalClipboardManager.current
     val context = androidx.compose.ui.platform.LocalContext.current
     var showTtlDialog by remember { mutableStateOf(false) }
+    val shareLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { }
     
     // iOS system colors (matches LocationChannelsSheet exactly)
     val colorScheme = MaterialTheme.colorScheme
@@ -174,6 +179,33 @@ fun ChatUserSheet(
                                     }
                                 )
                             }
+                        }
+
+                        // Share message with another app
+                        item {
+                            UserActionRow(
+                                title = stringResource(R.string.action_share_title),
+                                subtitle = stringResource(R.string.action_share_subtitle),
+                                titleColor = standardGrey,
+                                onClick = {
+                                    val sendIntent = android.content.Intent(
+                                        android.content.Intent.ACTION_SEND
+                                    ).apply {
+                                        type = "text/plain"
+                                        putExtra(
+                                            android.content.Intent.EXTRA_TEXT,
+                                            message.content
+                                        )
+                                    }
+                                    shareLauncher.launch(
+                                        android.content.Intent.createChooser(
+                                            sendIntent,
+                                            null
+                                        )
+                                    )
+                                    onDismiss()
+                                }
+                            )
                         }
 
                         // Copy message action

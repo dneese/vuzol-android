@@ -274,6 +274,8 @@
   <string name="action_edit_subtitle">Change the text of your message</string>
   <string name="action_save_message_title">Save</string>
   <string name="action_select_multiple_title">Select multiple</string>
+  <string name="action_share_title">Share</string>
+  <string name="action_share_subtitle">Send this message to another app</string>
   <string name="action_select_multiple_subtitle">Delete, save or forward several messages</string>
   <string name="selection_count">%1$d selected</string>
   <string name="action_save_message_subtitle">Keep this message in Saved Messages</string>
