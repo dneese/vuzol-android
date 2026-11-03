@@ -28,6 +28,9 @@ object ChatAppearanceStore {
     const val WALLPAPER_GRADIENT = 1
     const val WALLPAPER_PHOTO = 2
 
+    /** Pattern wallpapers use mode = WALLPAPER_PATTERN_BASE + pattern index. */
+    const val WALLPAPER_PATTERN_BASE = 10
+
     data class Appearance(
         val accentIndex: Int = 0,
         val wallpaperMode: Int = WALLPAPER_SOLID,

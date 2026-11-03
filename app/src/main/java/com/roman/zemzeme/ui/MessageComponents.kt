@@ -31,6 +31,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -92,6 +93,13 @@ fun MessagesList(
     selectionMode: Boolean = false,
     selectedMessageIds: Set<String> = emptySet(),
     onToggleSelect: ((ZemzemeMessage) -> Unit)? = null,
+    onForward: ((ZemzemeMessage) -> Unit)? = null,
+    onSave: ((ZemzemeMessage) -> Unit)? = null,
+    onSelect: ((ZemzemeMessage) -> Unit)? = null,
+    onEdit: ((ZemzemeMessage) -> Unit)? = null,
+    onDetails: ((ZemzemeMessage) -> Unit)? = null,
+    onPin: ((ZemzemeMessage) -> Unit)? = null,
+    onBlock: ((ZemzemeMessage) -> Unit)? = null,
     lastReadAt: Long = 0L
 ) {
     val listState = rememberLazyListState()
@@ -180,7 +188,14 @@ fun MessagesList(
                     onDelete = onDelete,
                     selectionMode = selectionMode,
                     isSelected = selectedMessageIds.contains(rowMessage.id),
-                    onToggleSelect = onToggleSelect
+                    onToggleSelect = onToggleSelect,
+                    onForward = onForward,
+                    onSave = onSave,
+                    onSelect = onSelect,
+                    onEdit = onEdit,
+                    onDetails = onDetails,
+                    onPin = onPin,
+                    onBlock = onBlock
                 )
             }
         }
@@ -208,10 +223,23 @@ fun MessageItem(
     onDelete: ((ZemzemeMessage) -> Unit)? = null,
     selectionMode: Boolean = false,
     isSelected: Boolean = false,
-    onToggleSelect: ((ZemzemeMessage) -> Unit)? = null
+    onToggleSelect: ((ZemzemeMessage) -> Unit)? = null,
+    onForward: ((ZemzemeMessage) -> Unit)? = null,
+    onSave: ((ZemzemeMessage) -> Unit)? = null,
+    onSelect: ((ZemzemeMessage) -> Unit)? = null,
+    onEdit: ((ZemzemeMessage) -> Unit)? = null,
+    onDetails: ((ZemzemeMessage) -> Unit)? = null,
+    onPin: ((ZemzemeMessage) -> Unit)? = null,
+    onBlock: ((ZemzemeMessage) -> Unit)? = null
 ) {
     val colorScheme = MaterialTheme.colorScheme
-    val timeFormatter = remember { SimpleDateFormat("HH:mm", Locale.getDefault()) }
+    val use24h by ChatDisplaySettings.use24hFlow.collectAsState()
+    val compactLayout by ChatDisplaySettings.layoutFlow.collectAsState()
+    var showActionPopup by remember { mutableStateOf(false) }
+    val clipboardManager = androidx.compose.ui.platform.LocalClipboardManager.current
+    val timeFormatter = remember(use24h) {
+        SimpleDateFormat(if (use24h) "HH:mm" else "h:mm a", Locale.getDefault())
+    }
     val haptic = LocalHapticFeedback.current
 
     // Swipe-to-reply (drag horizontally, release past the threshold).
@@ -307,7 +335,7 @@ fun MessageItem(
                 detectTapGestures(
                     onLongPress = {
                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                        onMessageLongPress?.invoke(message)
+                        showActionPopup = true
                     },
                     onDoubleTap = {
                         if (!selectionMode && onReply != null) {
@@ -324,6 +352,21 @@ fun MessageItem(
             },
         horizontalArrangement = if (isSelf) Arrangement.End else Arrangement.Start
     ) {
+        if (compactLayout && message.type == ZemzemeMessageType.Message) {
+            CompactMessageContent(
+                message = message,
+                messages = messages,
+                currentUserNickname = currentUserNickname,
+                meshService = meshService,
+                colorScheme = colorScheme,
+                timeFormatter = timeFormatter,
+                isSelf = isSelf,
+                author = truncateNickname(baseName) + suffix,
+                authorColor = baseColor,
+                onNicknameClick = onNicknameClick,
+                onProfileClick = onProfileClick
+            )
+        } else {
         // Message content column with sender name and bubble
         Row(
             horizontalArrangement = if (isSelf) Arrangement.End else Arrangement.Start,
@@ -410,6 +453,41 @@ fun MessageItem(
                 SelectionCheck(isSelected = isSelected)
             }
         }
+        }
+        }
+
+        // Quick action popup anchored to the touched message
+        if (showActionPopup) {
+            androidx.compose.ui.window.Popup(
+                positionProvider = MessagePopupPositionProvider(),
+                properties = androidx.compose.ui.window.PopupProperties(
+                    focusable = true,
+                    dismissOnBackPress = true,
+                    dismissOnClickOutside = true
+                ),
+                onDismissRequest = { showActionPopup = false }
+            ) {
+                MessageActionPopup(
+                    message = message,
+                    authorName = truncateNickname(baseName) + suffix,
+                    authorColor = baseColor,
+                    timeText = timeFormatter.format(message.timestamp),
+                    isSelf = isSelf,
+                    onDismiss = { showActionPopup = false },
+                    onReply = { onReply?.invoke(message) },
+                    onReact = { emoji -> onReact?.invoke(message, emoji) },
+                    onCopy = { clipboardManager.setText(AnnotatedString(message.content)) },
+                    onForward = onForward?.let { cb -> { cb(message) } },
+                    onSave = onSave?.let { cb -> { cb(message) } },
+                    onPin = onPin?.let { cb -> { cb(message) } },
+                    onEdit = onEdit?.let { cb -> { cb(message) } },
+                    onDelete = onDelete?.let { cb -> { cb(message) } },
+                    onSelect = onSelect?.let { cb -> { cb(message) } },
+                    onDetails = onDetails?.let { cb -> { cb(message) } },
+                    onBlock = onBlock?.let { cb -> { cb(message) } },
+                    onMore = onMessageLongPress?.let { cb -> { cb(message) } }
+                )
+            }
         }
     }
 }
@@ -541,6 +619,70 @@ private fun blendColors(base: androidx.compose.ui.graphics.Color, accent: androi
         blue = base.blue + (accent.blue - base.blue) * ratio,
         alpha = base.alpha
     )
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun CompactMessageContent(
+    message: ZemzemeMessage,
+    messages: List<ZemzemeMessage>,
+    currentUserNickname: String,
+    meshService: BluetoothMeshService,
+    colorScheme: ColorScheme,
+    timeFormatter: SimpleDateFormat,
+    isSelf: Boolean,
+    author: String,
+    authorColor: Color,
+    onNicknameClick: ((String) -> Unit)?,
+    onProfileClick: ((ZemzemeMessage) -> Unit)?
+) {
+    val chatTextSize by ChatDisplaySettings.textSizeFlow.collectAsState()
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 6.dp, vertical = 1.dp),
+        verticalAlignment = Alignment.Top
+    ) {
+        Text(
+            text = timeFormatter.format(message.timestamp),
+            fontSize = 10.sp,
+            color = colorScheme.onSurface.copy(alpha = 0.45f),
+            modifier = Modifier.padding(top = 3.dp)
+        )
+        Spacer(modifier = Modifier.width(6.dp))
+        Text(
+            text = author,
+            fontSize = (chatTextSize - 2).sp,
+            fontWeight = FontWeight.SemiBold,
+            color = authorColor,
+            modifier = Modifier
+                .padding(top = 2.dp)
+                .clickable(enabled = onNicknameClick != null || onProfileClick != null) {
+                    if (onProfileClick != null) {
+                        onProfileClick.invoke(message)
+                    } else {
+                        onNicknameClick?.invoke(message.originalSender ?: message.sender)
+                    }
+                }
+        )
+        Spacer(modifier = Modifier.width(6.dp))
+        Box(modifier = Modifier.weight(1f)) {
+            MessageBubbleContent(
+                message = message,
+                messages = messages,
+                currentUserNickname = currentUserNickname,
+                meshService = meshService,
+                colorScheme = colorScheme,
+                timeFormatter = timeFormatter,
+                isSelf = isSelf,
+                onNicknameClick = onNicknameClick,
+                onMessageLongPress = null,
+                onCancelTransfer = null,
+                onImageClick = null,
+                maxTextWidth = Dp.Unspecified
+            )
+        }
+    }
 }
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -692,8 +834,11 @@ private fun MessageBubbleContent(
     onNicknameClick: ((String) -> Unit)?,
     onMessageLongPress: ((ZemzemeMessage) -> Unit)?,
     onCancelTransfer: ((ZemzemeMessage) -> Unit)?,
-    onImageClick: ((String, List<String>, Int) -> Unit)?
+    onImageClick: ((String, List<String>, Int) -> Unit)?,
+    maxTextWidth: Dp = 280.dp
 ) {
+    val chatTextSize by ChatDisplaySettings.textSizeFlow.collectAsState()
+
     // Handle special message types
     when (message.type) {
         ZemzemeMessageType.Image -> {
@@ -781,7 +926,7 @@ private fun MessageBubbleContent(
         val previews by LinkPreviewStore.previews.collectAsState()
         val linkPreview = linkUrl?.let { previews[it] }
 
-        Column(modifier = Modifier.widthIn(max = 280.dp)) {
+        Column(modifier = Modifier.widthIn(max = maxTextWidth)) {
         if (replyQuote != null) {
             ReplyQuoteBlock(text = replyQuote)
             Spacer(modifier = Modifier.height(4.dp))
@@ -858,8 +1003,8 @@ private fun MessageBubbleContent(
                         }
                     )
                 },
-            fontSize = 15.sp,
-            lineHeight = 20.sp,
+            fontSize = chatTextSize.sp,
+            lineHeight = (chatTextSize + 5).sp,
             color = colorScheme.onSurface,
             onTextLayout = { result -> textLayoutResult = result }
         )

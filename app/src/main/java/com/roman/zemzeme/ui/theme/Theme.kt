@@ -323,6 +323,9 @@ fun ZemzemeTheme(
     // App-level override from ThemePreferenceManager
     val themePref by ThemePreferenceManager.themeFlow.collectAsState(initial = ThemePreference.Dark)
 
+    // Selected colour theme pack (Matrix, Amber Terminal, Cyberpunk, ...)
+    val themePack by ThemePackManager.packFlow.collectAsState(initial = ThemePack.Bitchat)
+
     val isAmoled = themePref == ThemePreference.Amoled && darkTheme != false
 
     val shouldUseDark = when (darkTheme) {
@@ -337,11 +340,11 @@ fun ZemzemeTheme(
     }
 
     val colorScheme = when {
-        isAmoled -> AmoledColorScheme
-        shouldUseDark -> DarkColorScheme
-        else -> LightColorScheme
+        isAmoled -> ThemePacks.amoledScheme(themePack)
+        shouldUseDark -> ThemePacks.darkScheme(themePack)
+        else -> ThemePacks.lightScheme(themePack)
     }
-    val extendedColors = if (shouldUseDark) DarkExtendedColors else LightExtendedColors
+    val extendedColors = ThemePacks.extended(themePack, shouldUseDark)
 
     // Animate color transitions for smooth theme switching (300ms ease)
     val animatedColorScheme = colorScheme.copy(

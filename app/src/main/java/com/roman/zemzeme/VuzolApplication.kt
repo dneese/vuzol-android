@@ -3,6 +3,7 @@ package com.roman.zemzeme
 import android.app.Application
 import com.roman.zemzeme.iconswitch.IconSwitchTaskDescription
 import com.roman.zemzeme.nostr.RelayDirectory
+import com.roman.zemzeme.ui.theme.ThemePackManager
 import com.roman.zemzeme.ui.theme.ThemePreferenceManager
 import com.roman.zemzeme.net.ArtiTorManager
 
@@ -60,8 +61,14 @@ class VuzolApplication : Application() {
         // Initialize theme preference
         ThemePreferenceManager.init(this)
 
+        // Selected colour theme pack
+        try { ThemePackManager.init(this) } catch (_: Exception) { }
+
         // Per-chat appearance (accent color, wallpaper)
         com.roman.zemzeme.ui.ChatAppearanceStore.init(this)
+
+        // Global chat display settings (layout, text size, clock, keyword filter)
+        try { com.roman.zemzeme.ui.ChatDisplaySettings.init(this) } catch (_: Exception) { }
 
         // Pinned conversations
         com.roman.zemzeme.ui.ConversationPinStore.init(this)

@@ -28,6 +28,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.outlined.DeleteForever
 import androidx.compose.material.icons.outlined.DeleteOutline
@@ -40,6 +41,8 @@ import androidx.compose.material.icons.outlined.LocationCity
 import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material.icons.outlined.Map
 import androidx.compose.material.icons.outlined.QrCodeScanner
+import androidx.compose.material.icons.outlined.Block
+import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Chat
@@ -1600,6 +1603,12 @@ private fun SettingsTabContent(
     val context = LocalContext.current
     val colorScheme = MaterialTheme.colorScheme
     val themePref by com.roman.zemzeme.ui.theme.ThemePreferenceManager.themeFlow.collectAsState()
+    val themePack by com.roman.zemzeme.ui.theme.ThemePackManager.packFlow.collectAsState()
+    val layoutMode by ChatDisplaySettings.layoutFlow.collectAsState()
+    val textSize by ChatDisplaySettings.textSizeFlow.collectAsState()
+    val use24h by ChatDisplaySettings.use24hFlow.collectAsState()
+    val blockedWords by ChatDisplaySettings.blockedWordsFlow.collectAsState()
+    var showBlockedWordsDialog by remember { mutableStateOf(false) }
 
     LazyColumn(
         Modifier.fillMaxSize(),
@@ -1663,6 +1672,104 @@ private fun SettingsTabContent(
             }
         }
 
+        item(key = "theme_pack_header") {
+            SectionHeader(stringResource(R.string.settings_theme_pack))
+        }
+
+        items(
+            listOf(
+                com.roman.zemzeme.ui.theme.ThemePack.Bitchat,
+                com.roman.zemzeme.ui.theme.ThemePack.Matrix,
+                com.roman.zemzeme.ui.theme.ThemePack.Amber,
+                com.roman.zemzeme.ui.theme.ThemePack.Cyber,
+                com.roman.zemzeme.ui.theme.ThemePack.Hacker,
+                com.roman.zemzeme.ui.theme.ThemePack.Ghost
+            ),
+            key = { "theme_pack_" + it.id }
+        ) { pack ->
+            ThemePackChip(
+                pack = pack,
+                selected = themePack == pack,
+                onClick = {
+                    com.roman.zemzeme.ui.theme.ThemePackManager.set(context, pack)
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp, vertical = 3.dp)
+            )
+        }
+
+        item(key = "chat_section_header") {
+            SectionHeader(stringResource(R.string.settings_section_chat))
+        }
+
+        item(key = "layout_row") {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                SettingsChip(
+                    label = stringResource(R.string.chat_layout_bubbles),
+                    selected = layoutMode == ChatDisplaySettings.LAYOUT_BUBBLES,
+                    onClick = {
+                        ChatDisplaySettings.setLayout(
+                            context,
+                            ChatDisplaySettings.LAYOUT_BUBBLES
+                        )
+                    },
+                    modifier = Modifier.weight(1f)
+                )
+                SettingsChip(
+                    label = stringResource(R.string.chat_layout_compact),
+                    selected = layoutMode == ChatDisplaySettings.LAYOUT_COMPACT,
+                    onClick = {
+                        ChatDisplaySettings.setLayout(
+                            context,
+                            ChatDisplaySettings.LAYOUT_COMPACT
+                        )
+                    },
+                    modifier = Modifier.weight(1f)
+                )
+            }
+        }
+
+        item(key = "text_size_row") {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                listOf(13, 15, 18, 21).forEach { size ->
+                    SettingsChip(
+                        label = "$size",
+                        selected = textSize == size,
+                        onClick = { ChatDisplaySettings.setTextSize(context, size) },
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+            }
+        }
+
+        item(key = "clock_row") {
+            SettingsSwitchRow(
+                icon = Icons.Outlined.Schedule,
+                label = stringResource(R.string.settings_time_format),
+                checked = use24h,
+                onCheckedChange = { ChatDisplaySettings.setUse24h(context, it) }
+            )
+        }
+
+        item(key = "blocked_words_row") {
+            SettingsRow(
+                icon = Icons.Outlined.Block,
+                label = stringResource(R.string.settings_blocked_words),
+                onClick = { showBlockedWordsDialog = true }
+            )
+        }
+
         item(key = "about_row") {
             SettingsRow(
                 icon = Icons.Outlined.Settings,
@@ -1679,6 +1786,37 @@ private fun SettingsTabContent(
                 tint = colorScheme.error
             )
         }
+    }
+
+    if (showBlockedWordsDialog) {
+        var blockedInput by remember { mutableStateOf(blockedWords) }
+        AlertDialog(
+            onDismissRequest = { showBlockedWordsDialog = false },
+            title = { Text(stringResource(R.string.settings_blocked_words)) },
+            text = {
+                OutlinedTextField(
+                    value = blockedInput,
+                    onValueChange = { blockedInput = it },
+                    placeholder = { Text(stringResource(R.string.blocked_words_hint)) },
+                    modifier = Modifier.fillMaxWidth()
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        ChatDisplaySettings.setBlockedWords(context, blockedInput)
+                        showBlockedWordsDialog = false
+                    }
+                ) {
+                    Text(stringResource(R.string.perm_info_dialog_ok))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showBlockedWordsDialog = false }) {
+                    Text(stringResource(R.string.cancel))
+                }
+            }
+        )
     }
 }
 
@@ -1709,6 +1847,105 @@ private fun SettingsChip(
             modifier = Modifier.padding(horizontal = 6.dp, vertical = 10.dp),
             textAlign = TextAlign.Center
         )
+    }
+}
+
+@Composable
+private fun ThemePackChip(
+    pack: com.roman.zemzeme.ui.theme.ThemePack,
+    selected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val isDark = com.roman.zemzeme.ui.theme.isAppInDarkTheme()
+    val packColors = com.roman.zemzeme.ui.theme.ThemePacks.colors(pack, dark = isDark)
+    Surface(
+        onClick = onClick,
+        modifier = modifier,
+        shape = RoundedCornerShape(14.dp),
+        color = if (selected) MaterialTheme.colorScheme.primaryContainer
+        else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
+    ) {
+        Row(
+            Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Box(
+                Modifier
+                    .size(18.dp)
+                    .clip(CircleShape)
+                    .background(packColors.primary)
+            )
+            Box(
+                Modifier
+                    .size(18.dp)
+                    .clip(CircleShape)
+                    .background(packColors.secondary)
+            )
+            Text(
+                text = pack.label,
+                style = MaterialTheme.typography.bodyLarge.copy(
+                    fontFamily = NunitoFontFamily,
+                    fontWeight = FontWeight.Medium,
+                    color = if (selected) MaterialTheme.colorScheme.onPrimaryContainer
+                    else MaterialTheme.colorScheme.onSurface
+                ),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f)
+            )
+            if (selected) {
+                Icon(
+                    Icons.Filled.Check,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SettingsSwitchRow(
+    icon: ImageVector,
+    label: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit
+) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp, vertical = 4.dp),
+        shape = RoundedCornerShape(14.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
+    ) {
+        Row(
+            Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            Icon(
+                icon,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.size(22.dp)
+            )
+            Text(
+                label,
+                style = MaterialTheme.typography.bodyLarge.copy(
+                    fontFamily = NunitoFontFamily,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.onSurface
+                ),
+                modifier = Modifier.weight(1f)
+            )
+            Switch(
+                checked = checked,
+                onCheckedChange = onCheckedChange
+            )
+        }
     }
 }
 

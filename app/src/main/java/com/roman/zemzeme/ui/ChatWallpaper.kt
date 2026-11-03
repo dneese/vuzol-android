@@ -86,7 +86,19 @@ fun ChatWallpaper(
                 }
             }
 
-            else -> Unit
+            else -> {
+                val pattern = mode - ChatAppearanceStore.WALLPAPER_PATTERN_BASE
+                if (pattern in 0 until WallpaperPatterns.COUNT) {
+                    Canvas(modifier = Modifier.fillMaxSize()) {
+                        WallpaperPatterns.draw(
+                            scope = this,
+                            pattern = pattern,
+                            color = accent,
+                            alpha = if (isDark) 0.13f else 0.18f
+                        )
+                    }
+                }
+            }
         }
     }
 }

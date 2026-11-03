@@ -161,6 +161,46 @@ fun ChatAppearanceSheet(
                 )
             }
 
+            Text(
+                text = stringResource(R.string.wallpaper_patterns),
+                fontSize = 13.sp,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+            )
+
+            val patternLabels = listOf(
+                stringResource(R.string.wallpaper_pattern_dots),
+                stringResource(R.string.wallpaper_pattern_geometric),
+                stringResource(R.string.wallpaper_pattern_waves),
+                stringResource(R.string.wallpaper_pattern_hexagons),
+                stringResource(R.string.wallpaper_pattern_circuit),
+                stringResource(R.string.wallpaper_pattern_topography)
+            )
+
+            patternLabels.chunked(3).forEach { row ->
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    row.forEach { label ->
+                        val pattern = patternLabels.indexOf(label)
+                        PatternOption(
+                            label = label,
+                            pattern = pattern,
+                            selected = appearance.wallpaperMode ==
+                                ChatAppearanceStore.WALLPAPER_PATTERN_BASE + pattern,
+                            accent = appearance.accent,
+                            onClick = {
+                                onWallpaperChange(
+                                    ChatAppearanceStore.WALLPAPER_PATTERN_BASE + pattern,
+                                    null
+                                )
+                            },
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                }
+            }
+
             OutlinedButton(
                 onClick = {
                     photoPicker.launch("image/*")
@@ -228,6 +268,50 @@ private fun WallpaperOption(
                 text = label,
                 fontSize = 12.sp,
                 color = MaterialTheme.colorScheme.onSurface
+            )
+        }
+    }
+}
+
+@Composable
+private fun PatternOption(
+    label: String,
+    pattern: Int,
+    selected: Boolean,
+    accent: Color,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        modifier = modifier
+            .clip(RoundedCornerShape(14.dp))
+            .clickable { onClick() },
+        shape = RoundedCornerShape(14.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant,
+        border = if (selected) androidx.compose.foundation.BorderStroke(
+            2.dp,
+            accent
+        ) else null
+    ) {
+        Column(
+            modifier = Modifier.padding(vertical = 8.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            androidx.compose.foundation.Canvas(
+                modifier = Modifier
+                    .size(34.dp)
+                    .clip(CircleShape)
+                    .background(accent.copy(alpha = 0.12f))
+            ) {
+                WallpaperPatterns.draw(this, pattern, accent, 0.55f)
+            }
+            Text(
+                text = label,
+                fontSize = 11.sp,
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
             )
         }
     }

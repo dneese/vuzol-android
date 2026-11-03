@@ -106,6 +106,8 @@ fun ChatScreen(viewModel: ChatViewModel, isBluetoothEnabled: Boolean = true, onB
     var forceScrollToBottom by remember { mutableStateOf(false) }
     var isScrolledUp by remember { mutableStateOf(false) }
     var replyTo by remember { mutableStateOf<ZemzemeMessage?>(null) }
+    var detailsMessage by remember { mutableStateOf<ZemzemeMessage?>(null) }
+
 
     // Show password dialog when needed
     LaunchedEffect(showPasswordPrompt) {
@@ -121,6 +123,46 @@ fun ChatScreen(viewModel: ChatViewModel, isBluetoothEnabled: Boolean = true, onB
         currentChannel != null -> "ch:$currentChannel"
         else -> (selectedLocationChannel as? com.roman.zemzeme.geohash.ChannelID.Location)
             ?.let { "geo:${it.channel.geohash}" }
+    }
+
+    // Shared message action handlers (quick popup + full action sheet)
+    val handleMessageForward: (ZemzemeMessage) -> Unit = { message ->
+        messageToForward = message
+    }
+    val handleMessageEdit: (ZemzemeMessage) -> Unit = { message ->
+        editingMessage = message
+        editingText = message.content
+    }
+    val handleMessageSelect: (ZemzemeMessage) -> Unit = { message ->
+        selectionMode = true
+        selectedMessageIds = setOf(message.id)
+    }
+    val handleMessageSave: (ZemzemeMessage) -> Unit = { message ->
+        com.roman.zemzeme.services.ChatHistoryStore.saveBookmark(message)
+        android.widget.Toast.makeText(
+            context,
+            context.getString(com.roman.zemzeme.R.string.saved_message_toast),
+            android.widget.Toast.LENGTH_SHORT
+        ).show()
+    }
+    val handleMessagePin: (ZemzemeMessage) -> Unit = { message ->
+        val key = conversationKey
+        if (key != null) {
+            if (com.roman.zemzeme.services.PinStore.pinned(key) == message.id) {
+                com.roman.zemzeme.services.PinStore.clear(key)
+            } else {
+                com.roman.zemzeme.services.PinStore.set(key, message.id)
+            }
+        }
+    }
+    val handleMessageBlock: (ZemzemeMessage) -> Unit = { message ->
+        val (baseName, _) = splitSuffix(message.sender)
+        val selectedLocationChannel = viewModel.selectedLocationChannel.value
+        if (selectedLocationChannel is com.roman.zemzeme.geohash.ChannelID.Location) {
+            viewModel.blockUserInGeohash(baseName)
+        } else {
+            viewModel.sendMessage("/block $baseName")
+        }
     }
     val initialLastRead = remember(conversationKey) {
         conversationKey?.let { com.roman.zemzeme.services.ReadStateStore.lastRead(it) } ?: 0L
@@ -142,7 +184,7 @@ fun ChatScreen(viewModel: ChatViewModel, isBluetoothEnabled: Boolean = true, onB
 
     // Determine what messages to show based on current context (unified timelines)
     // Legacy private chat timeline removed - private chats now exclusively use PrivateChatSheet
-    val displayMessages = when {
+    val rawMessages = when {
         currentChannel != null -> channelMessages[currentChannel] ?: emptyList()
         else -> {
             val locationChannel = selectedLocationChannel
@@ -152,6 +194,15 @@ fun ChatScreen(viewModel: ChatViewModel, isBluetoothEnabled: Boolean = true, onB
             } else {
                 messages // Mesh timeline
             }
+        }
+    }
+
+    // Keyword filter: hide messages that contain blocked words
+    val displayMessages = remember(rawMessages) {
+        if (rawMessages.any { ChatDisplaySettings.isBlocked(it.content) }) {
+            rawMessages.filterNot { ChatDisplaySettings.isBlocked(it.content) }
+        } else {
+            rawMessages
         }
     }
 
@@ -348,6 +399,13 @@ fun ChatScreen(viewModel: ChatViewModel, isBluetoothEnabled: Boolean = true, onB
                         android.widget.Toast.LENGTH_SHORT
                     ).show()
                 },
+                onForward = handleMessageForward,
+                onSave = handleMessageSave,
+                onSelect = handleMessageSelect,
+                onEdit = handleMessageEdit,
+                onDetails = { msg -> detailsMessage = msg },
+                onPin = handleMessagePin,
+                onBlock = handleMessageBlock,
                 lastReadAt = initialLastRead
             )
             // Input area - stays at bottom
@@ -685,23 +743,10 @@ fun ChatScreen(viewModel: ChatViewModel, isBluetoothEnabled: Boolean = true, onB
             }
         },
         onMessageForwardDismiss = { messageToForward = null },
-        onMessageForwardRequest = { message -> messageToForward = message },
-        onMessageEditRequest = { message ->
-            editingMessage = message
-            editingText = message.content
-        },
-        onMessageSelectRequest = { message ->
-            selectionMode = true
-            selectedMessageIds = setOf(message.id)
-        },
-        onMessageSaveRequest = { message ->
-            com.roman.zemzeme.services.ChatHistoryStore.saveBookmark(message)
-            android.widget.Toast.makeText(
-                context,
-                context.getString(com.roman.zemzeme.R.string.saved_message_toast),
-                android.widget.Toast.LENGTH_SHORT
-            ).show()
-        },
+        onMessageForwardRequest = handleMessageForward,
+        onMessageEditRequest = handleMessageEdit,
+        onMessageSelectRequest = handleMessageSelect,
+        onMessageSaveRequest = handleMessageSave,
         onMessageForward = { message, channel ->
             viewModel.forwardMessage(message, channel)
         },
@@ -721,6 +766,13 @@ fun ChatScreen(viewModel: ChatViewModel, isBluetoothEnabled: Boolean = true, onB
         showMeshPeerListSheet = showMeshPeerListSheet,
         onMeshPeerListDismiss = viewModel::hideMeshPeerList,
         onBackToHome = onBackToHome,
+    )
+
+    // Technical details of a message
+    MessageDetailsSheet(
+        isPresented = detailsMessage != null,
+        message = detailsMessage,
+        onDismiss = { detailsMessage = null }
     )
 }
 
