@@ -38,10 +38,12 @@ class NostrProfileService private constructor(private val application: Applicati
                 filter = filter,
                 id = "profile-$key",
                 handler = { event ->
-                    if (event.kind != NostrKind.METADATA) return@handler
-                    if (!event.pubkey.equals(key, ignoreCase = true)) return@handler
-                    val profile = NostrProfileStore.parse(event.content) ?: return@handler
-                    NostrProfileStore.apply(key, profile)
+                    if (event.kind == NostrKind.METADATA &&
+                        event.pubkey.equals(key, ignoreCase = true)
+                    ) {
+                        val profile = NostrProfileStore.parse(event.content)
+                        if (profile != null) NostrProfileStore.apply(key, profile)
+                    }
                 }
             )
         } catch (e: Exception) {
