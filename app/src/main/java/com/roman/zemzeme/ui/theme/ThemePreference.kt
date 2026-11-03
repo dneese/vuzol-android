@@ -10,11 +10,13 @@ import kotlinx.coroutines.flow.StateFlow
 enum class ThemePreference {
     System,
     Light,
-    Dark;
+    Dark,
+    Amoled;
 
     val isSystem : Boolean get() = this == System
     val isLight : Boolean get() = this == Light
     val isDark : Boolean get() = this == Dark
+    val isAmoled : Boolean get() = this == Amoled
 }
 
 /**

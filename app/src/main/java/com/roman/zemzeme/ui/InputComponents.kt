@@ -214,7 +214,7 @@ fun MessageInput(
                     color = if (enabled) colorScheme.primary else colorScheme.onSurface.copy(alpha = 0.3f),
                     fontFamily = NunitoFontFamily
                 ),
-                cursorBrush = SolidColor(if (isRecording) Color.Transparent else colorScheme.primary),
+                cursorBrush = SolidColor(if (isRecording) Color.Transparent else LocalChatAccent.current),
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
                 keyboardActions = KeyboardActions(onSend = {
                     if (hasText && enabled) onSend()
@@ -361,7 +361,7 @@ fun MessageInput(
                                 // Orange for both private messages and channels when enabled
                                 Color(0xFFFF9500).copy(alpha = 0.75f)
                             } else {
-                                colorScheme.primary.copy(alpha = 0.75f)
+                                LocalChatAccent.current.copy(alpha = 0.85f)
                             },
                             shape = CircleShape
                         ),

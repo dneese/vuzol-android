@@ -258,6 +258,16 @@
     <string name="action_forward_subtitle">надіслати це повідомлення в інший канал</string>
     <string name="forward_to_channel">переслати в канал</string>
     <string name="forward_no_channels">каналів поки немає</string>
+    <string name="chat_appearance_title">Вигляд чату</string>
+    <string name="chat_accent_color">Колір чату</string>
+    <string name="chat_wallpaper">Шпалери</string>
+    <string name="wallpaper_solid">Суцільний</string>
+    <string name="wallpaper_gradient">Градієнт</string>
+    <string name="wallpaper_photo">Фото</string>
+    <string name="wallpaper_choose_photo">Вибрати фото з галереї</string>
+    <string name="appearance_reset">Скинути до стандартних</string>
+    <string name="cd_chat_appearance">Вигляд чату</string>
+    <string name="theme_amoled">AMOLED</string>
     <string name="action_mention_title">згадати в чаті</string>
     <string name="message_deleted">повідомлення видалено</string>
 

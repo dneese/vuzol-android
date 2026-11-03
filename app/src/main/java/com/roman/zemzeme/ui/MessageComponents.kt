@@ -158,7 +158,9 @@ fun MessagesList(
                     messages = messages,
                     currentUserNickname = currentUserNickname,
                     meshService = meshService,
-                    modifier = Modifier.padding(top = if (row.showHeader) 6.dp else 0.dp),
+                    modifier = Modifier
+                        .animateItem()
+                        .padding(top = if (row.showHeader) 6.dp else 0.dp),
                     showHeader = row.showHeader,
                     showAvatar = row.isLastInGroup,
                     showTail = row.isLastInGroup,
@@ -458,6 +460,16 @@ fun ProfileAvatar(
     }
 }
 
+/** Mixes a base color with an accent color. */
+private fun blendColors(base: androidx.compose.ui.graphics.Color, accent: androidx.compose.ui.graphics.Color, ratio: Float): androidx.compose.ui.graphics.Color {
+    return androidx.compose.ui.graphics.Color(
+        red = base.red + (accent.red - base.red) * ratio,
+        green = base.green + (accent.green - base.green) * ratio,
+        blue = base.blue + (accent.blue - base.blue) * ratio,
+        alpha = base.alpha
+    )
+}
+
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun MessageBubble(
@@ -475,10 +487,11 @@ private fun MessageBubble(
     onImageClick: ((String, List<String>, Int) -> Unit)?
 ) {
     val extendedColors = MaterialTheme.extendedColors
+    val chatAccent = LocalChatAccent.current
 
-    // Bubble background color from theme
+    // Bubble background color from theme (own bubbles follow the chat accent)
     val bubbleColor = if (isSelf) {
-        extendedColors.sentBubble
+        blendColors(extendedColors.sentBubble, chatAccent, 0.45f)
     } else {
         extendedColors.receivedBubble
     }

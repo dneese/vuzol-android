@@ -60,6 +60,9 @@ class VuzolApplication : Application() {
         // Initialize theme preference
         ThemePreferenceManager.init(this)
 
+        // Per-chat appearance (accent color, wallpaper)
+        com.roman.zemzeme.ui.ChatAppearanceStore.init(this)
+
         // Notification sound/vibration preferences (and channel setup)
         try { com.roman.zemzeme.ui.NotificationPreferences.init(this) } catch (_: Exception) { }
 

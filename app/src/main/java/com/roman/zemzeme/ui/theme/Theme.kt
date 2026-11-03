@@ -189,6 +189,33 @@ private val DarkColorScheme = darkColorScheme(
     onErrorContainer = Color(0xFFFFB4AB)
 )
 
+private val AmoledColorScheme = darkColorScheme(
+    primary = ElectricCyan,
+    onPrimary = Color.Black,
+    primaryContainer = Color(0xFF003D42),
+    onPrimaryContainer = ElectricCyanLight,
+    secondary = NeonPurple,
+    onSecondary = Color.Black,
+    secondaryContainer = Color(0xFF3D2952),
+    onSecondaryContainer = NeonPurpleLight,
+    tertiary = MatrixGreen,
+    onTertiary = Color.Black,
+    tertiaryContainer = Color(0xFF1A3D24),
+    onTertiaryContainer = MatrixGreenLight,
+    background = Color(0xFF000000),
+    onBackground = MoonlightWhite,
+    surface = Color(0xFF0A0A0A),
+    onSurface = MoonlightWhite,
+    surfaceVariant = Color(0xFF141414),
+    onSurfaceVariant = StardustGray,
+    outline = Color(0xFF1E1E1E),
+    outlineVariant = Color(0xFF101010),
+    error = SignalRed,
+    onError = Color.Black,
+    errorContainer = Color(0xFF4D1F1A),
+    onErrorContainer = Color(0xFFFFB4AB)
+)
+
 private val LightColorScheme = lightColorScheme(
     primary = ElectricCyanDark,
     onPrimary = MoonlightWhite,
@@ -296,17 +323,24 @@ fun ZemzemeTheme(
     // App-level override from ThemePreferenceManager
     val themePref by ThemePreferenceManager.themeFlow.collectAsState(initial = ThemePreference.Dark)
 
+    val isAmoled = themePref == ThemePreference.Amoled && darkTheme != false
+
     val shouldUseDark = when (darkTheme) {
         true -> true
         false -> false
         null -> when (themePref) {
             ThemePreference.Dark -> true
+            ThemePreference.Amoled -> true
             ThemePreference.Light -> false
             ThemePreference.System -> isSystemInDarkTheme()
         }
     }
 
-    val colorScheme = if (shouldUseDark) DarkColorScheme else LightColorScheme
+    val colorScheme = when {
+        isAmoled -> AmoledColorScheme
+        shouldUseDark -> DarkColorScheme
+        else -> LightColorScheme
+    }
     val extendedColors = if (shouldUseDark) DarkExtendedColors else LightExtendedColors
 
     // Animate color transitions for smooth theme switching (300ms ease)

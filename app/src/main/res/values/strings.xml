@@ -257,6 +257,16 @@
   <string name="action_forward_subtitle">send this message to another channel</string>
   <string name="forward_to_channel">forward to channel</string>
   <string name="forward_no_channels">no channels available yet</string>
+  <string name="chat_appearance_title">Chat appearance</string>
+  <string name="chat_accent_color">Chat color</string>
+  <string name="chat_wallpaper">Wallpaper</string>
+  <string name="wallpaper_solid">Solid</string>
+  <string name="wallpaper_gradient">Gradient</string>
+  <string name="wallpaper_photo">Photo</string>
+  <string name="wallpaper_choose_photo">Choose photo from gallery</string>
+  <string name="appearance_reset">Reset to default</string>
+  <string name="cd_chat_appearance">Chat appearance</string>
+  <string name="theme_amoled">AMOLED</string>
   <string name="action_mention_title">mention in chat</string>
   <string name="message_deleted">message deleted</string>
 

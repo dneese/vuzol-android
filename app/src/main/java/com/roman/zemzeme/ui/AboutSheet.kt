@@ -575,6 +575,12 @@ fun AboutSheet(
                                         onClick = { com.roman.zemzeme.ui.theme.ThemePreferenceManager.set(context, com.roman.zemzeme.ui.theme.ThemePreference.Dark) },
                                         modifier = Modifier.weight(1f)
                                     )
+                                    ThemeChip(
+                                        label = stringResource(R.string.theme_amoled),
+                                        selected = themePref.isAmoled,
+                                        onClick = { com.roman.zemzeme.ui.theme.ThemePreferenceManager.set(context, com.roman.zemzeme.ui.theme.ThemePreference.Amoled) },
+                                        modifier = Modifier.weight(1f)
+                                    )
                                 }
                             }
                         }

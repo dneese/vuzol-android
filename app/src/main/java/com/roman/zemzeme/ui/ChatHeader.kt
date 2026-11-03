@@ -284,9 +284,11 @@ fun ChatHeaderContent(
     onShowAppInfo: () -> Unit,
     onLocationChannelsClick: () -> Unit,
     onLocationNotesClick: () -> Unit,
-    onSearchClick: () -> Unit = {}
+    onSearchClick: () -> Unit = {},
+    onAppearanceClick: (() -> Unit)? = null
 ) {
     val colorScheme = MaterialTheme.colorScheme
+    val accent = LocalChatAccent.current
 
     when {
         currentChannel != null -> {
@@ -341,7 +343,8 @@ fun ChatHeaderContent(
                     error = topicState?.error
                 ),
                 hasP2P = chHasP2P || p2pConnected,
-                hasNostr = chHasNostr || chNostrConnected
+                hasNostr = chHasNostr || chNostrConnected,
+                onAppearanceClick = onAppearanceClick
             )
         }
         else -> {
@@ -350,7 +353,8 @@ fun ChatHeaderContent(
                 onBackToHome = onBackToHome,
                 onSidebarClick = onSidebarClick,
                 viewModel = viewModel,
-                onSearchClick = onSearchClick
+                onSearchClick = onSearchClick,
+                onAppearanceClick = onAppearanceClick
             )
         }
     }
@@ -366,9 +370,11 @@ private fun ChannelHeader(
     onSidebarClick: () -> Unit,
     channelConnectionData: ConnectionDisplayData.ChannelConnection? = null,
     hasP2P: Boolean = false,
-    hasNostr: Boolean = false
+    hasNostr: Boolean = false,
+    onAppearanceClick: (() -> Unit)? = null
 ) {
     val colorScheme = MaterialTheme.colorScheme
+    val accent = LocalChatAccent.current
 
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -414,13 +420,28 @@ private fun ChannelHeader(
             }
         }
 
-        // Right: leave button
-        TextButton(onClick = onLeaveChannel) {
-            Text(
-                text = stringResource(R.string.chat_leave),
-                fontSize = 16.sp,
-                color = Color.Red
-            )
+        // Right: appearance + leave button
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            if (onAppearanceClick != null) {
+                IconButton(
+                    onClick = onAppearanceClick,
+                    modifier = Modifier.size(40.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.Palette,
+                        contentDescription = stringResource(R.string.cd_chat_appearance),
+                        modifier = Modifier.size(22.dp),
+                        tint = accent
+                    )
+                }
+            }
+            TextButton(onClick = onLeaveChannel) {
+                Text(
+                    text = stringResource(R.string.chat_leave),
+                    fontSize = 16.sp,
+                    color = Color.Red
+                )
+            }
         }
     }
 }
@@ -430,9 +451,11 @@ private fun MainHeader(
     onBackToHome: () -> Unit,
     onSidebarClick: () -> Unit,
     viewModel: ChatViewModel,
-    onSearchClick: () -> Unit = {}
+    onSearchClick: () -> Unit = {},
+    onAppearanceClick: (() -> Unit)? = null
 ) {
     val colorScheme = MaterialTheme.colorScheme
+    val accent = LocalChatAccent.current
     val connectedPeers by viewModel.connectedPeers.collectAsStateWithLifecycle()
     val joinedChannels by viewModel.joinedChannels.collectAsStateWithLifecycle()
     val hasUnreadChannels by viewModel.unreadChannelMessages.collectAsStateWithLifecycle()
@@ -516,8 +539,22 @@ private fun MainHeader(
                     imageVector = Icons.Filled.Search,
                     contentDescription = stringResource(R.string.search_messages_title),
                     modifier = Modifier.size(22.dp),
-                    tint = colorScheme.primary
+                    tint = accent
                 )
+            }
+
+            if (onAppearanceClick != null) {
+                IconButton(
+                    onClick = onAppearanceClick,
+                    modifier = Modifier.size(36.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.Palette,
+                        contentDescription = stringResource(R.string.cd_chat_appearance),
+                        modifier = Modifier.size(22.dp),
+                        tint = accent
+                    )
+                }
             }
 
             // Unread private messages badge

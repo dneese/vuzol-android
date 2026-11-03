@@ -86,6 +86,7 @@ fun ChatScreen(viewModel: ChatViewModel, isBluetoothEnabled: Boolean = true, onB
     var showMessageSearch by remember { mutableStateOf(false) }
     var messageToForward by remember { mutableStateOf<ZemzemeMessage?>(null) }
     var profileMessage by remember { mutableStateOf<ZemzemeMessage?>(null) }
+    var showAppearanceSheet by remember { mutableStateOf(false) }
     val pinnedMessages by com.roman.zemzeme.services.PinStore.pins.collectAsState()
     var showUserSheet by remember { mutableStateOf(false) }
     var selectedUserForSheet by remember { mutableStateOf("") }
@@ -155,12 +156,25 @@ fun ChatScreen(viewModel: ChatViewModel, isBluetoothEnabled: Boolean = true, onB
     // Show media buttons in all channel contexts (mesh, named channels, and geohash location channels)
     val showMediaButtons = true
 
+    // Appearance (accent color + wallpaper) of the current chat
+    val appearanceKey = conversationKey ?: "default"
+    val appearances by ChatAppearanceStore.appearances.collectAsState()
+    val appearance = appearances[appearanceKey] ?: ChatAppearanceStore.Appearance()
+
     // Use WindowInsets to handle keyboard properly
+    androidx.compose.runtime.CompositionLocalProvider(LocalChatAccent provides appearance.accent) {
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(colorScheme.background) // Extend background to fill entire screen including status bar
     ) {
+        // Chat wallpaper behind the messages
+        ChatWallpaper(
+            accent = appearance.accent,
+            mode = appearance.wallpaperMode,
+            photoPath = appearance.wallpaperPath,
+            modifier = Modifier.matchParentSize()
+        )
         val headerHeight = 82.dp
 
         // Main content area that responds to keyboard/window insets
@@ -391,7 +405,8 @@ fun ChatScreen(viewModel: ChatViewModel, isBluetoothEnabled: Boolean = true, onB
             onPanicClear = { viewModel.panicClearAllData() },
             onLocationChannelsClick = { showLocationChannelsSheet = true },
             onLocationNotesClick = { showLocationNotesSheet = true },
-            onSearchClick = { showMessageSearch = true }
+            onSearchClick = { showMessageSearch = true },
+            onAppearanceClick = { showAppearanceSheet = true }
         )
 
         // Divider under header - positioned after status bar + header height
@@ -432,6 +447,7 @@ fun ChatScreen(viewModel: ChatViewModel, isBluetoothEnabled: Boolean = true, onB
                 }
             }
         }
+    }
     }
 
     // Full-screen image viewer - separate from other sheets to allow image browsing without navigation
@@ -876,7 +892,8 @@ private fun ChatFloatingHeader(
     onPanicClear: () -> Unit,
     onLocationChannelsClick: () -> Unit,
     onLocationNotesClick: () -> Unit,
-    onSearchClick: () -> Unit = {}
+    onSearchClick: () -> Unit = {},
+    onAppearanceClick: (() -> Unit)? = null
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val locationManager = remember { com.roman.zemzeme.geohash.LocationChannelManager.getInstance(context) }
@@ -916,7 +933,8 @@ private fun ChatFloatingHeader(
                     locationManager.refreshChannels()
                     onLocationNotesClick()
                 },
-                onSearchClick = onSearchClick
+                onSearchClick = onSearchClick,
+                onAppearanceClick = onAppearanceClick
             )
         }
     }
@@ -997,6 +1015,22 @@ private fun ChatDialogs(
         )
     }
     
+    // Chat appearance (accent color + wallpaper)
+    ChatAppearanceSheet(
+        isPresented = showAppearanceSheet,
+        appearance = appearances[appearanceKey] ?: ChatAppearanceStore.Appearance(),
+        onAccentChange = { index ->
+            ChatAppearanceStore.setAccent(context, appearanceKey, index)
+        },
+        onWallpaperChange = { mode, path ->
+            ChatAppearanceStore.setWallpaper(context, appearanceKey, mode, path)
+        },
+        onReset = {
+            ChatAppearanceStore.reset(context, appearanceKey)
+        },
+        onDismiss = { showAppearanceSheet = false }
+    )
+
     // Peer profile
     PeerProfileSheet(
         isPresented = profileMessage != null,
