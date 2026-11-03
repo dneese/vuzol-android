@@ -42,6 +42,7 @@ fun ChatUserSheet(
     onForward: ((ZemzemeMessage) -> Unit)? = null,
     onEdit: ((ZemzemeMessage) -> Unit)? = null,
     onSave: ((ZemzemeMessage) -> Unit)? = null,
+    onSelectMultiple: ((ZemzemeMessage) -> Unit)? = null,
     viewModel: ChatViewModel,
     modifier: Modifier = Modifier
 ) {
@@ -139,6 +140,21 @@ fun ChatUserSheet(
                                     titleColor = standardGrey,
                                     onClick = {
                                         onForward.invoke(message)
+                                        onDismiss()
+                                    }
+                                )
+                            }
+                        }
+
+                        // Select multiple messages
+                        if (onSelectMultiple != null) {
+                            item {
+                                UserActionRow(
+                                    title = stringResource(R.string.action_select_multiple_title),
+                                    subtitle = stringResource(R.string.action_select_multiple_subtitle),
+                                    titleColor = standardGrey,
+                                    onClick = {
+                                        onSelectMultiple.invoke(message)
                                         onDismiss()
                                     }
                                 )

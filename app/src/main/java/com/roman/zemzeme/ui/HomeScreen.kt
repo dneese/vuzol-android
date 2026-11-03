@@ -450,8 +450,22 @@ fun HomeScreen(
                 NavigationBarItem(
                     selected = selectedTab == HomeTab.Chats,
                     onClick = { selectedTab = HomeTab.Chats },
-                    icon = { Icon(Icons.Outlined.Chat, contentDescription = null) },
-                    label = { Text(stringResource(R.string.nav_chats)) }
+                    icon = {
+                        Icon(Icons.Outlined.Chat, contentDescription = null)
+                    },
+                    label = { Text(stringResource(R.string.nav_chats)) },
+                    badge = {
+                        val totalUnread = unreadChannelMessages.values.sum() +
+                            unreadPrivateMessages.size + unreadMeshCount
+                        if (totalUnread > 0) {
+                            Badge {
+                                Text(
+                                    if (totalUnread > 99) "99+" else totalUnread.toString(),
+                                    fontSize = 10.sp
+                                )
+                            }
+                        }
+                    }
                 )
                 NavigationBarItem(
                     selected = selectedTab == HomeTab.People,

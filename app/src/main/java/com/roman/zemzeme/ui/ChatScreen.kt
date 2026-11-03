@@ -22,6 +22,9 @@ import androidx.compose.material.icons.filled.WifiOff
 import androidx.compose.material.icons.filled.CloudOff
 import androidx.compose.material.icons.filled.AirplanemodeActive
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.outlined.Bookmark
+import androidx.compose.material.icons.automirrored.filled.Forward
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.IconButton
@@ -91,6 +94,8 @@ fun ChatScreen(viewModel: ChatViewModel, isBluetoothEnabled: Boolean = true, onB
     var editingMessage by remember { mutableStateOf<ZemzemeMessage?>(null) }
     var editingText by remember { mutableStateOf("") }
     var messageEffect by remember { mutableStateOf<String?>(null) }
+    var selectionMode by remember { mutableStateOf(false) }
+    var selectedMessageIds by remember { mutableStateOf<Set<String>>(emptySet()) }
     val pinnedMessages by com.roman.zemzeme.services.PinStore.pins.collectAsState()
     var showUserSheet by remember { mutableStateOf(false) }
     var selectedUserForSheet by remember { mutableStateOf("") }
@@ -326,6 +331,15 @@ fun ChatScreen(viewModel: ChatViewModel, isBluetoothEnabled: Boolean = true, onB
                 onReply = { msg -> replyTo = msg },
                 onReact = { msg, emoji -> viewModel.sendReaction(msg.id, emoji) },
                 onProfileClick = { msg -> profileMessage = msg },
+                selectionMode = selectionMode,
+                selectedMessageIds = selectedMessageIds,
+                onToggleSelect = { msg ->
+                    selectedMessageIds = if (selectedMessageIds.contains(msg.id)) {
+                        selectedMessageIds - msg.id
+                    } else {
+                        selectedMessageIds + msg.id
+                    }
+                },
                 onDelete = { msg ->
                     viewModel.deleteMessageLocally(msg)
                     android.widget.Toast.makeText(
@@ -443,8 +457,46 @@ fun ChatScreen(viewModel: ChatViewModel, isBluetoothEnabled: Boolean = true, onB
             )
         }
 
+        // Selection action bar replaces the header while selecting messages
+        if (selectionMode) {
+            SelectionActionBar(
+                count = selectedMessageIds.size,
+                onClose = {
+                    selectionMode = false
+                    selectedMessageIds = emptySet()
+                },
+                onDelete = {
+                    selectedMessageIds.forEach { id ->
+                        displayMessages.firstOrNull { it.id == id }?.let {
+                            viewModel.deleteMessageLocally(it)
+                        }
+                    }
+                    selectedMessageIds = emptySet()
+                    selectionMode = false
+                },
+                onSave = {
+                    selectedMessageIds.forEach { id ->
+                        displayMessages.firstOrNull { it.id == id }?.let {
+                            com.roman.zemzeme.services.ChatHistoryStore.saveBookmark(it)
+                        }
+                    }
+                    selectedMessageIds = emptySet()
+                    selectionMode = false
+                },
+                onForward = {
+                    val first = selectedMessageIds.firstOrNull()
+                    val message = displayMessages.firstOrNull { it.id == first }
+                    if (message != null) {
+                        messageToForward = message
+                    }
+                    selectedMessageIds = emptySet()
+                    selectionMode = false
+                }
+            )
+        }
+
         // Floating header - positioned absolutely at top, ignores keyboard
-        ChatFloatingHeader(
+        if (!selectionMode) ChatFloatingHeader(
             headerHeight = headerHeight,
             selectedPrivatePeer = selectedPrivatePeer,
             currentChannel = currentChannel,
@@ -637,6 +689,10 @@ fun ChatScreen(viewModel: ChatViewModel, isBluetoothEnabled: Boolean = true, onB
         onMessageEditRequest = { message ->
             editingMessage = message
             editingText = message.content
+        },
+        onMessageSelectRequest = { message ->
+            selectionMode = true
+            selectedMessageIds = setOf(message.id)
         },
         onMessageSaveRequest = { message ->
             com.roman.zemzeme.services.ChatHistoryStore.saveBookmark(message)
@@ -1099,6 +1155,71 @@ private fun ChatFloatingHeader(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
+private fun SelectionActionBar(
+    count: Int,
+    onClose: () -> Unit,
+    onDelete: () -> Unit,
+    onSave: () -> Unit,
+    onForward: () -> Unit
+) {
+    val colorScheme = MaterialTheme.colorScheme
+    val accent = LocalChatAccent.current
+
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .zIndex(2f)
+            .windowInsetsPadding(WindowInsets.statusBars),
+        color = colorScheme.surface
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(64.dp)
+                .padding(horizontal = 4.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(onClick = onClose) {
+                Icon(
+                    imageVector = Icons.Filled.Close,
+                    contentDescription = stringResource(com.roman.zemzeme.R.string.cancel),
+                    tint = colorScheme.onSurface
+                )
+            }
+            Text(
+                text = stringResource(com.roman.zemzeme.R.string.selection_count, count),
+                fontSize = 16.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = colorScheme.onSurface,
+                modifier = Modifier.weight(1f)
+            )
+            IconButton(onClick = onSave, enabled = count > 0) {
+                Icon(
+                    imageVector = Icons.Outlined.Bookmark,
+                    contentDescription = stringResource(com.roman.zemzeme.R.string.action_save_message_title),
+                    tint = if (count > 0) accent else colorScheme.onSurface.copy(alpha = 0.3f)
+                )
+            }
+            IconButton(onClick = onForward, enabled = count > 0) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.Forward,
+                    contentDescription = stringResource(com.roman.zemzeme.R.string.action_forward_title),
+                    tint = if (count > 0) accent else colorScheme.onSurface.copy(alpha = 0.3f)
+                )
+            }
+            IconButton(onClick = onDelete, enabled = count > 0) {
+                Icon(
+                    imageVector = Icons.Filled.Delete,
+                    contentDescription = stringResource(com.roman.zemzeme.R.string.action_delete_title),
+                    tint = if (count > 0) colorScheme.error else colorScheme.onSurface.copy(alpha = 0.3f)
+                )
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
 private fun ChatDialogs(
     isBluetoothEnabled: Boolean,
     showPasswordDialog: Boolean,
@@ -1130,6 +1251,7 @@ private fun ChatDialogs(
     onMessageForwardRequest: (ZemzemeMessage) -> Unit,
     onMessageEditRequest: (ZemzemeMessage) -> Unit,
     onMessageSaveRequest: (ZemzemeMessage) -> Unit,
+    onMessageSelectRequest: (ZemzemeMessage) -> Unit,
     onMessageForward: (ZemzemeMessage, com.roman.zemzeme.geohash.GeohashChannel) -> Unit,
     viewModel: ChatViewModel,
     showVerificationSheet: Boolean,
@@ -1232,6 +1354,7 @@ private fun ChatDialogs(
             onForward = { message -> onMessageForwardRequest(message) },
             onEdit = { message -> onMessageEditRequest(message) },
             onSave = { message -> onMessageSaveRequest(message) },
+            onSelectMultiple = { message -> onMessageSelectRequest(message) },
             viewModel = viewModel
         )
     }

@@ -274,6 +274,9 @@
     <string name="action_edit_title">Редагувати</string>
     <string name="action_edit_subtitle">Змінити текст повідомлення</string>
     <string name="action_save_message_title">Зберегти</string>
+    <string name="action_select_multiple_title">Вибрати кілька</string>
+    <string name="action_select_multiple_subtitle">Видалити, зберегти або переслати кілька повідомлень</string>
+    <string name="selection_count">Вибрано: %1$d</string>
     <string name="action_save_message_subtitle">Зберегти повідомлення в «Збережене»</string>
     <string name="saved_messages_title">Збережені повідомлення</string>
     <string name="saved_messages_empty">Поки що немає збережених повідомлень. Утримуйте повідомлення, щоб зберегти.</string>

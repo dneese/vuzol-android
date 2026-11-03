@@ -52,6 +52,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.automirrored.filled.Reply
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -88,6 +89,9 @@ fun MessagesList(
     onReact: ((ZemzemeMessage, String) -> Unit)? = null,
     onProfileClick: ((ZemzemeMessage) -> Unit)? = null,
     onDelete: ((ZemzemeMessage) -> Unit)? = null,
+    selectionMode: Boolean = false,
+    selectedMessageIds: Set<String> = emptySet(),
+    onToggleSelect: ((ZemzemeMessage) -> Unit)? = null,
     lastReadAt: Long = 0L
 ) {
     val listState = rememberLazyListState()
@@ -173,7 +177,10 @@ fun MessagesList(
                     onReply = onReply,
                     onReact = onReact,
                     onProfileClick = onProfileClick,
-                    onDelete = onDelete
+                    onDelete = onDelete,
+                    selectionMode = selectionMode,
+                    isSelected = selectedMessageIds.contains(rowMessage.id),
+                    onToggleSelect = onToggleSelect
                 )
             }
         }
@@ -198,7 +205,10 @@ fun MessageItem(
     onReply: ((ZemzemeMessage) -> Unit)? = null,
     onReact: ((ZemzemeMessage, String) -> Unit)? = null,
     onProfileClick: ((ZemzemeMessage) -> Unit)? = null,
-    onDelete: ((ZemzemeMessage) -> Unit)? = null
+    onDelete: ((ZemzemeMessage) -> Unit)? = null,
+    selectionMode: Boolean = false,
+    isSelected: Boolean = false,
+    onToggleSelect: ((ZemzemeMessage) -> Unit)? = null
 ) {
     val colorScheme = MaterialTheme.colorScheme
     val timeFormatter = remember { SimpleDateFormat("HH:mm", Locale.getDefault()) }
@@ -293,16 +303,21 @@ fun MessageItem(
                     }
                 )
             }
-            .pointerInput(message.id) {
+            .pointerInput(message.id, selectionMode) {
                 detectTapGestures(
                     onLongPress = {
                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                         onMessageLongPress?.invoke(message)
                     },
                     onDoubleTap = {
-                        if (onReply != null) {
+                        if (!selectionMode && onReply != null) {
                             haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                             onReply.invoke(message)
+                        }
+                    },
+                    onTap = {
+                        if (selectionMode) {
+                            onToggleSelect?.invoke(message)
                         }
                     }
                 )
@@ -334,6 +349,10 @@ fun MessageItem(
                 } else {
                     Spacer(modifier = Modifier.width(44.dp))
                 }
+            }
+
+            if (selectionMode && isSelf) {
+                SelectionCheck(isSelected = isSelected)
             }
 
             // Message content column - wraps content width
@@ -386,7 +405,37 @@ fun MessageItem(
                     )
                 }
             }
+
+            if (selectionMode && !isSelf) {
+                SelectionCheck(isSelected = isSelected)
+            }
         }
+        }
+    }
+}
+
+/** Round checkbox shown while multiple messages are selected. */
+@Composable
+private fun SelectionCheck(isSelected: Boolean) {
+    val accent = LocalChatAccent.current
+    val colorScheme = MaterialTheme.colorScheme
+    Box(
+        modifier = Modifier
+            .padding(horizontal = 6.dp)
+            .size(24.dp)
+            .clip(CircleShape)
+            .background(
+                if (isSelected) accent else colorScheme.onSurface.copy(alpha = 0.12f)
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        if (isSelected) {
+            Icon(
+                imageVector = Icons.Filled.Check,
+                contentDescription = null,
+                tint = Color.White,
+                modifier = Modifier.size(15.dp)
+            )
         }
     }
 }
