@@ -451,21 +451,28 @@ fun HomeScreen(
                     selected = selectedTab == HomeTab.Chats,
                     onClick = { selectedTab = HomeTab.Chats },
                     icon = {
-                        Icon(Icons.Outlined.Chat, contentDescription = null)
-                    },
-                    label = { Text(stringResource(R.string.nav_chats)) },
-                    badge = {
-                        val totalUnread = unreadChannelMessages.values.sum() +
-                            unreadPrivateMessages.size + unreadMeshCount
-                        if (totalUnread > 0) {
-                            Badge {
-                                Text(
-                                    if (totalUnread > 99) "99+" else totalUnread.toString(),
-                                    fontSize = 10.sp
-                                )
+                        Box {
+                            Icon(Icons.Outlined.Chat, contentDescription = null)
+                            val totalUnread = unreadChannelMessages.values.sum() +
+                                unreadPrivateMessages.size + unreadMeshCount
+                            if (totalUnread > 0) {
+                                Box(
+                                    modifier = Modifier
+                                        .align(Alignment.TopEnd)
+                                        .size(18.dp)
+                                        .background(colorScheme.error, CircleShape),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = if (totalUnread > 99) "99+" else totalUnread.toString(),
+                                        fontSize = 9.sp,
+                                        color = Color.White
+                                    )
+                                }
                             }
                         }
-                    }
+                    },
+                    label = { Text(stringResource(R.string.nav_chats)) }
                 )
                 NavigationBarItem(
                     selected = selectedTab == HomeTab.People,
