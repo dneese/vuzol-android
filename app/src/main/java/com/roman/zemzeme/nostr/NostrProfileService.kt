@@ -16,7 +16,7 @@ class NostrProfileService private constructor(private val application: Applicati
         @Volatile private var INSTANCE: NostrProfileService? = null
 
         fun get(context: Context): NostrProfileService = INSTANCE ?: synchronized(this) {
-            INSTANCE ?: NostrProfileService(context.applicationContext).also { INSTANCE = it }
+            INSTANCE ?: NostrProfileService(context.applicationContext as Application).also { INSTANCE = it }
         }
     }
 
@@ -34,12 +34,16 @@ class NostrProfileService private constructor(private val application: Applicati
                 authors = listOf(key),
                 limit = 1
             )
-            relayManager.subscribe(filter, "profile-$key") { event ->
-                if (event.kind != NostrKind.METADATA) return@subscribe
-                if (!event.pubkey.equals(key, ignoreCase = true)) return@subscribe
-                val profile = NostrProfileStore.parse(event.content) ?: return@subscribe
-                NostrProfileStore.apply(key, profile)
-            }
+            relayManager.subscribe(
+                filter = filter,
+                id = "profile-$key",
+                handler = { event ->
+                    if (event.kind != NostrKind.METADATA) return@handler
+                    if (!event.pubkey.equals(key, ignoreCase = true)) return@handler
+                    val profile = NostrProfileStore.parse(event.content) ?: return@handler
+                    NostrProfileStore.apply(key, profile)
+                }
+            )
         } catch (e: Exception) {
             Log.w(TAG, "profile request failed: ${e.message}")
         }
