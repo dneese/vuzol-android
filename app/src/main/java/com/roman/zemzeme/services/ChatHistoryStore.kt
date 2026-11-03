@@ -24,7 +24,7 @@ import java.util.concurrent.Executors
 object ChatHistoryStore {
     private const val TAG = "ChatHistoryStore"
     private const val DB_NAME = "vuzol_history.db"
-    private const val DB_VERSION = 1
+    private const val DB_VERSION = 2
     private const val MAX_MESSAGES_PER_CONVERSATION = 500
     private const val TABLE_MESSAGES = "messages"
     private const val TABLE_REACTIONS = "reactions"
@@ -136,7 +136,7 @@ object ChatHistoryStore {
             val db = h.readableDatabase
             val result = LinkedHashMap<String, MutableList<ZemzemeMessage>>()
             db.rawQuery(
-                "SELECT id, conv, sender, sender_peer, content, type, ts, is_private, delivery, pow " +
+                "SELECT id, conv, sender, sender_peer, content, type, ts, is_private, delivery, pow, sender_pubkey " +
                     "FROM messages ORDER BY ts ASC",
                 null
             ).use { cursor ->
@@ -158,7 +158,7 @@ object ChatHistoryStore {
             val db = h.readableDatabase
             val out = mutableListOf<ZemzemeMessage>()
             db.rawQuery(
-                "SELECT id, conv, sender, sender_peer, content, type, ts, is_private, delivery, pow " +
+                "SELECT id, conv, sender, sender_peer, content, type, ts, is_private, delivery, pow, sender_pubkey " +
                     "FROM messages WHERE conv = ? ORDER BY ts ASC LIMIT ?",
                 arrayOf(conv, limit.toString())
             ).use { cursor ->
@@ -243,6 +243,7 @@ object ChatHistoryStore {
             put("is_private", if (message.isPrivate) 1 else 0)
             put("delivery", encodeDelivery(message.deliveryStatus))
             put("pow", message.powDifficulty)
+            put("sender_pubkey", message.senderPubkey)
         }
 
     private fun fromCursor(cursor: android.database.Cursor): ZemzemeMessage? {
@@ -259,7 +260,8 @@ object ChatHistoryStore {
                 isPrivate = cursor.getInt(7) != 0,
                 senderPeerID = cursor.getString(4),
                 deliveryStatus = decodeDelivery(cursor.getString(8)),
-                powDifficulty = if (cursor.isNull(9)) null else cursor.getInt(9)
+                powDifficulty = if (cursor.isNull(9)) null else cursor.getInt(9),
+                senderPubkey = if (cursor.isNull(10)) null else cursor.getString(10)
             )
         } catch (e: Exception) {
             null
@@ -320,9 +322,9 @@ object ChatHistoryStore {
         }
 
         override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
-            db.execSQL("DROP TABLE IF EXISTS reactions")
-            db.execSQL("DROP TABLE IF EXISTS messages")
-            onCreate(db)
+            if (oldVersion < 2) {
+                try { db.execSQL("ALTER TABLE messages ADD COLUMN sender_pubkey TEXT") } catch (_: Exception) { }
+            }
         }
     }
 }

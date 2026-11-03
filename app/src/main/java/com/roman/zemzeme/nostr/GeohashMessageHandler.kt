@@ -129,6 +129,8 @@ class GeohashMessageHandler(
                 }
                 
                 event.tags.find { it.size >= 2 && it[0] == "n" }?.let { repo.cacheNickname(event.pubkey, it[1]) }
+                // Ask relays for the profile so we can show a real avatar
+                try { NostrProfileService.get(application).request(event.pubkey) } catch (_: Exception) { }
                 event.tags.find { it.size >= 2 && it[0] == "t" && it[1] == "teleport" }?.let { repo.markTeleported(event.pubkey) }
                 // Register a geohash DM alias for this participant so MessageRouter can route DMs via Nostr
                 try {
@@ -182,6 +184,7 @@ class GeohashMessageHandler(
                                 isRelay = false,
                                 originalSender = repo.displayNameForNostrPubkey(event.pubkey),
                                 senderPeerID = "nostr:${event.pubkey.take(8)}",
+                                senderPubkey = event.pubkey,
                                 channel = "#$subscribedGeohash"
                             )
                             withContext(Dispatchers.Main) {
@@ -204,6 +207,7 @@ class GeohashMessageHandler(
                     isRelay = false,
                     originalSender = repo.displayNameForNostrPubkey(event.pubkey),
                     senderPeerID = "nostr:${event.pubkey.take(8)}",
+                    senderPubkey = event.pubkey,
                     mentions = null,
                     channel = "#$subscribedGeohash",
                     powDifficulty = try {

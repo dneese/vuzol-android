@@ -69,7 +69,8 @@ data class ZemzemeMessage(
     val encryptedContent: ByteArray? = null,
     val isEncrypted: Boolean = false,
     val deliveryStatus: DeliveryStatus? = null,
-    val powDifficulty: Int? = null
+    val powDifficulty: Int? = null,
+    val senderPubkey: String? = null
 ) : Parcelable {
 
     /**

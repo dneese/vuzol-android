@@ -4,6 +4,7 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -18,6 +19,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.AnnotatedString
@@ -28,6 +30,7 @@ import com.roman.zemzeme.ui.theme.NunitoFontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -39,6 +42,7 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import android.content.Intent
 import android.net.Uri
 import com.roman.zemzeme.model.ZemzemeMessage
+import com.roman.zemzeme.nostr.NostrProfileStore
 import com.roman.zemzeme.model.DeliveryStatus
 import com.roman.zemzeme.mesh.BluetoothMeshService
 import java.text.SimpleDateFormat
@@ -277,7 +281,8 @@ fun MessageItem(
             // For received messages, show avatar on the left, aligned with bubble
             if (!isSelf) {
                 if (showAvatar) {
-                    AvatarCircle(
+                    ProfileAvatar(
+                        pubkey = message.senderPubkey,
                         letter = baseName.firstOrNull()?.uppercaseChar()?.toString() ?: "?",
                         color = baseColor,
                         modifier = Modifier.padding(end = 8.dp)
@@ -392,6 +397,37 @@ private fun AvatarCircle(
             fontSize = 16.sp,
             fontWeight = FontWeight.Bold,
             color = color
+        )
+    }
+}
+
+@Composable
+private fun ProfileAvatar(
+    pubkey: String?,
+    letter: String,
+    color: Color,
+    modifier: Modifier = Modifier
+) {
+    val profiles by NostrProfileStore.profiles.collectAsState()
+    val picture = pubkey?.let { profiles[it.lowercase()]?.picture }
+    val bitmap by produceState<ImageBitmap?>(null, picture) {
+        value = picture?.let { AvatarLoader.load(it) }
+    }
+    val image = bitmap
+    if (image != null) {
+        Image(
+            bitmap = image,
+            contentDescription = null,
+            contentScale = ContentScale.Crop,
+            modifier = modifier
+                .size(36.dp)
+                .clip(CircleShape)
+        )
+    } else {
+        AvatarCircle(
+            letter = letter,
+            color = color,
+            modifier = modifier
         )
     }
 }

@@ -55,6 +55,7 @@ class VuzolApplication : Application() {
         try { com.roman.zemzeme.services.ReadStateStore.init(this) } catch (_: Exception) { }
         try { com.roman.zemzeme.services.MuteStore.init(this) } catch (_: Exception) { }
         try { com.roman.zemzeme.services.PinStore.init(this) } catch (_: Exception) { }
+        try { com.roman.zemzeme.nostr.NostrProfileStore.init(this) } catch (_: Exception) { }
 
         // Initialize theme preference
         ThemePreferenceManager.init(this)
