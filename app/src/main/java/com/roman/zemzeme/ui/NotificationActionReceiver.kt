@@ -52,7 +52,7 @@ class NotificationActionReceiver : BroadcastReceiver() {
             ACTION_MARK_READ -> {
                 val conv = ChatHistoryStore.conversationForChannel("geo:$geohash")
                 ReadStateStore.markRead(conv)
-                notificationManager(appContext).clearNotificationsForGeohash(geohash)
+                notificationManager(context.applicationContext).clearNotificationsForGeohash(geohash)
             }
         }
     }

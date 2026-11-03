@@ -614,7 +614,7 @@ class NotificationManager(
             replyIntent,
             PendingIntent.FLAG_MUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
-        val remoteInput = android.app.RemoteInput.Builder(NotificationActionReceiver.REPLY_KEY)
+        val remoteInput = androidx.core.app.RemoteInput.Builder(NotificationActionReceiver.REPLY_KEY)
             .setLabel(context.getString(R.string.notification_reply_hint))
             .build()
         val replyAction = NotificationCompat.Action.Builder(

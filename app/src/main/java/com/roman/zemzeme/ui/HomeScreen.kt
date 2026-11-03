@@ -1065,7 +1065,7 @@ private fun GroupRow(
                             .align(Alignment.TopEnd)
                             .offset(x = 4.dp, y = (-2).dp)
                             .defaultMinSize(minWidth = badgeSize, minHeight = badgeSize)
-                            .background(colorScheme.primary, CircleShape)
+                            .background(MaterialTheme.colorScheme.primary, CircleShape)
                             .padding(2.dp),
                         contentAlignment = Alignment.Center
                     ) {
