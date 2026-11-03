@@ -84,6 +84,8 @@ fun MessagesList(
     onImageClick: ((String, List<String>, Int) -> Unit)? = null,
     onReply: ((ZemzemeMessage) -> Unit)? = null,
     onReact: ((ZemzemeMessage, String) -> Unit)? = null,
+    onProfileClick: ((ZemzemeMessage) -> Unit)? = null,
+    onDelete: ((ZemzemeMessage) -> Unit)? = null,
     lastReadAt: Long = 0L
 ) {
     val listState = rememberLazyListState()
@@ -165,7 +167,9 @@ fun MessagesList(
                     onCancelTransfer = onCancelTransfer,
                     onImageClick = onImageClick,
                     onReply = onReply,
-                    onReact = onReact
+                    onReact = onReact,
+                    onProfileClick = onProfileClick,
+                    onDelete = onDelete
                 )
             }
         }
@@ -188,7 +192,9 @@ fun MessageItem(
     onCancelTransfer: ((ZemzemeMessage) -> Unit)? = null,
     onImageClick: ((String, List<String>, Int) -> Unit)? = null,
     onReply: ((ZemzemeMessage) -> Unit)? = null,
-    onReact: ((ZemzemeMessage, String) -> Unit)? = null
+    onReact: ((ZemzemeMessage, String) -> Unit)? = null,
+    onProfileClick: ((ZemzemeMessage) -> Unit)? = null,
+    onDelete: ((ZemzemeMessage) -> Unit)? = null
 ) {
     val colorScheme = MaterialTheme.colorScheme
     val timeFormatter = remember { SimpleDateFormat("HH:mm", Locale.getDefault()) }
@@ -246,7 +252,12 @@ fun MessageItem(
                     onDragEnd = {
                         if (kotlin.math.abs(swipeOffset) >= maxSwipePx * 0.6f) {
                             haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                            onReply.invoke(message)
+                            val deleteOnLeft = swipeOffset < 0f && isSelf && onDelete != null
+                            if (deleteOnLeft) {
+                                onDelete.invoke(message)
+                            } else {
+                                onReply.invoke(message)
+                            }
                         }
                         swipeOffset = 0f
                     },
@@ -281,12 +292,20 @@ fun MessageItem(
             // For received messages, show avatar on the left, aligned with bubble
             if (!isSelf) {
                 if (showAvatar) {
-                    ProfileAvatar(
-                        pubkey = message.senderPubkey,
-                        letter = baseName.firstOrNull()?.uppercaseChar()?.toString() ?: "?",
-                        color = baseColor,
-                        modifier = Modifier.padding(end = 8.dp)
-                    )
+                    Box(
+                        modifier = Modifier
+                            .padding(end = 8.dp)
+                            .clip(CircleShape)
+                            .clickable(enabled = onProfileClick != null) {
+                                onProfileClick?.invoke(message)
+                            }
+                    ) {
+                        ProfileAvatar(
+                            pubkey = message.senderPubkey,
+                            letter = baseName.firstOrNull()?.uppercaseChar()?.toString() ?: "?",
+                            color = baseColor
+                        )
+                    }
                 } else {
                     Spacer(modifier = Modifier.width(44.dp))
                 }
@@ -305,9 +324,13 @@ fun MessageItem(
                         color = baseColor,
                         modifier = Modifier
                             .padding(bottom = 4.dp, start = 4.dp)
-                            .clickable(enabled = onNicknameClick != null) {
+                            .clickable(enabled = onNicknameClick != null || onProfileClick != null) {
                                 haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                onNicknameClick?.invoke(message.originalSender ?: message.sender)
+                                if (onProfileClick != null) {
+                                    onProfileClick.invoke(message)
+                                } else {
+                                    onNicknameClick?.invoke(message.originalSender ?: message.sender)
+                                }
                             }
                     )
                 }
@@ -384,11 +407,12 @@ private fun ReactionChips(
 private fun AvatarCircle(
     letter: String,
     color: Color,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    size: androidx.compose.ui.unit.Dp = 36.dp
 ) {
     Box(
         modifier = modifier
-            .size(36.dp)
+            .size(size)
             .background(color.copy(alpha = 0.2f), CircleShape),
         contentAlignment = Alignment.Center
     ) {
@@ -402,11 +426,12 @@ private fun AvatarCircle(
 }
 
 @Composable
-private fun ProfileAvatar(
+fun ProfileAvatar(
     pubkey: String?,
     letter: String,
     color: Color,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    size: androidx.compose.ui.unit.Dp = 36.dp
 ) {
     val profiles by NostrProfileStore.profiles.collectAsState()
     val picture = pubkey?.let { profiles[it.lowercase()]?.picture }
@@ -420,14 +445,15 @@ private fun ProfileAvatar(
             contentDescription = null,
             contentScale = ContentScale.Crop,
             modifier = modifier
-                .size(36.dp)
+                .size(size)
                 .clip(CircleShape)
         )
     } else {
         AvatarCircle(
             letter = letter,
             color = color,
-            modifier = modifier
+            modifier = modifier,
+            size = size
         )
     }
 }

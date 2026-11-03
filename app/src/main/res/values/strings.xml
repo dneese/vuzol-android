@@ -257,6 +257,8 @@
   <string name="action_forward_subtitle">send this message to another channel</string>
   <string name="forward_to_channel">forward to channel</string>
   <string name="forward_no_channels">no channels available yet</string>
+  <string name="action_mention_title">mention in chat</string>
+  <string name="message_deleted">message deleted</string>
 
   <!-- Notification settings -->
   <string name="notif_sound_title">notification sound</string>

@@ -55,6 +55,7 @@ import com.roman.zemzeme.ui.media.FullScreenImageViewer
  */
 @Composable
 fun ChatScreen(viewModel: ChatViewModel, isBluetoothEnabled: Boolean = true, onBackToHome: () -> Unit = {}) {
+    val context = androidx.compose.ui.platform.LocalContext.current
     val colorScheme = MaterialTheme.colorScheme
     val messages by viewModel.messages.collectAsStateWithLifecycle()
     val connectedPeers by viewModel.connectedPeers.collectAsStateWithLifecycle()
@@ -84,6 +85,7 @@ fun ChatScreen(viewModel: ChatViewModel, isBluetoothEnabled: Boolean = true, onB
     var showLocationNotesSheet by remember { mutableStateOf(false) }
     var showMessageSearch by remember { mutableStateOf(false) }
     var messageToForward by remember { mutableStateOf<ZemzemeMessage?>(null) }
+    var profileMessage by remember { mutableStateOf<ZemzemeMessage?>(null) }
     val pinnedMessages by com.roman.zemzeme.services.PinStore.pins.collectAsState()
     var showUserSheet by remember { mutableStateOf(false) }
     var selectedUserForSheet by remember { mutableStateOf("") }
@@ -259,6 +261,15 @@ fun ChatScreen(viewModel: ChatViewModel, isBluetoothEnabled: Boolean = true, onB
                 },
                 onReply = { msg -> replyTo = msg },
                 onReact = { msg, emoji -> viewModel.sendReaction(msg.id, emoji) },
+                onProfileClick = { msg -> profileMessage = msg },
+                onDelete = { msg ->
+                    viewModel.deleteMessageLocally(msg)
+                    android.widget.Toast.makeText(
+                        context,
+                        context.getString(com.roman.zemzeme.R.string.message_deleted),
+                        android.widget.Toast.LENGTH_SHORT
+                    ).show()
+                },
                 lastReadAt = initialLastRead
             )
             // Input area - stays at bottom
@@ -462,6 +473,24 @@ fun ChatScreen(viewModel: ChatViewModel, isBluetoothEnabled: Boolean = true, onB
         onMessageSearchDismiss = { showMessageSearch = false },
         displayMessages = displayMessages,
         messageToForward = messageToForward,
+        profileMessage = profileMessage,
+        onProfileDismiss = { profileMessage = null },
+        onProfileMention = { name ->
+            val currentText = messageText.text
+            val mentionText = "@$name "
+            messageText = TextFieldValue(
+                text = currentText + mentionText,
+                selection = TextRange(currentText.length + mentionText.length)
+            )
+        },
+        onProfileBlock = { name ->
+            val selectedLocationChannel = viewModel.selectedLocationChannel.value
+            if (selectedLocationChannel is com.roman.zemzeme.geohash.ChannelID.Location) {
+                viewModel.blockUserInGeohash(name)
+            } else {
+                viewModel.sendMessage("/block $name")
+            }
+        },
         onMessageForwardDismiss = { messageToForward = null },
         onMessageForwardRequest = { message -> messageToForward = message },
         onMessageForward = { message, channel ->
@@ -918,6 +947,10 @@ private fun ChatDialogs(
     onMessageSearchDismiss: () -> Unit,
     displayMessages: List<ZemzemeMessage>,
     messageToForward: ZemzemeMessage?,
+    profileMessage: ZemzemeMessage?,
+    onProfileDismiss: () -> Unit,
+    onProfileMention: (String) -> Unit,
+    onProfileBlock: (String) -> Unit,
     onMessageForwardDismiss: () -> Unit,
     onMessageForwardRequest: (ZemzemeMessage) -> Unit,
     onMessageForward: (ZemzemeMessage, com.roman.zemzeme.geohash.GeohashChannel) -> Unit,
@@ -964,6 +997,16 @@ private fun ChatDialogs(
         )
     }
     
+    // Peer profile
+    PeerProfileSheet(
+        isPresented = profileMessage != null,
+        message = profileMessage,
+        displayName = profileMessage?.let { splitSuffix(it.sender).first } ?: "",
+        onMention = { name -> onProfileMention(name) },
+        onBlock = { name -> onProfileBlock(name) },
+        onDismiss = onProfileDismiss
+    )
+
     // Forward message to another channel
     ForwardSheet(
         isPresented = messageToForward != null,
