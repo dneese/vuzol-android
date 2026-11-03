@@ -37,6 +37,7 @@ fun ChatUserSheet(
     selectedMessage: ZemzemeMessage? = null,
     onReply: ((ZemzemeMessage) -> Unit)? = null,
     onReact: ((String) -> Unit)? = null,
+    onForward: ((ZemzemeMessage) -> Unit)? = null,
     viewModel: ChatViewModel,
     modifier: Modifier = Modifier
 ) {
@@ -117,6 +118,21 @@ fun ChatUserSheet(
                                     titleColor = MaterialTheme.colorScheme.primary,
                                     onClick = {
                                         onReply.invoke(message)
+                                        onDismiss()
+                                    }
+                                )
+                            }
+                        }
+
+                        // Forward to another channel
+                        if (onForward != null) {
+                            item {
+                                UserActionRow(
+                                    title = stringResource(R.string.action_forward_title),
+                                    subtitle = stringResource(R.string.action_forward_subtitle),
+                                    titleColor = standardGrey,
+                                    onClick = {
+                                        onForward.invoke(message)
                                         onDismiss()
                                     }
                                 )

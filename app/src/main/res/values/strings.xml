@@ -253,6 +253,10 @@
   <string name="action_pin_title">pin message</string>
   <string name="action_unpin_title">unpin message</string>
   <string name="emoji_picker">emoji</string>
+  <string name="action_forward_title">forward</string>
+  <string name="action_forward_subtitle">send this message to another channel</string>
+  <string name="forward_to_channel">forward to channel</string>
+  <string name="forward_no_channels">no channels available yet</string>
 
   <!-- Notification settings -->
   <string name="notif_sound_title">notification sound</string>

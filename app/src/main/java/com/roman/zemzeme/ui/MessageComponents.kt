@@ -635,6 +635,15 @@ private fun MessageBubbleContent(
         val context = LocalContext.current
         var textLayoutResult by remember { mutableStateOf<TextLayoutResult?>(null) }
 
+        val linkUrl = remember(contentMessage.content) {
+            LinkPreviewStore.firstUrl(contentMessage.content)
+        }
+        LaunchedEffect(linkUrl) {
+            linkUrl?.let { LinkPreviewStore.ensure(it) }
+        }
+        val previews by LinkPreviewStore.previews.collectAsState()
+        val linkPreview = linkUrl?.let { previews[it] }
+
         Column(modifier = Modifier.widthIn(max = 280.dp)) {
         if (replyQuote != null) {
             ReplyQuoteBlock(text = replyQuote)
@@ -717,6 +726,75 @@ private fun MessageBubbleContent(
             color = colorScheme.onSurface,
             onTextLayout = { result -> textLayoutResult = result }
         )
+        if (linkPreview != null) {
+            LinkPreviewCard(preview = linkPreview)
+        }
+        }
+    }
+}
+
+@Composable
+private fun LinkPreviewCard(preview: LinkPreview) {
+    val colorScheme = MaterialTheme.colorScheme
+    val context = LocalContext.current
+    val image by produceState<ImageBitmap?>(null, preview.imageUrl) {
+        value = preview.imageUrl?.let { AvatarLoader.load(it) }
+    }
+    Column(
+        modifier = Modifier
+            .padding(top = 6.dp)
+            .widthIn(max = 280.dp)
+            .clip(RoundedCornerShape(10.dp))
+            .background(colorScheme.surfaceVariant.copy(alpha = 0.45f))
+            .clickable {
+                try {
+                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(preview.url))
+                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    context.startActivity(intent)
+                } catch (_: Exception) {
+                }
+            }
+    ) {
+        val bitmap = image
+        if (bitmap != null) {
+            Image(
+                bitmap = bitmap,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(140.dp)
+            )
+        }
+        Column(modifier = Modifier.padding(10.dp)) {
+            preview.title?.let {
+                Text(
+                    text = it,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = colorScheme.onSurface,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+            preview.description?.let {
+                Text(
+                    text = it,
+                    fontSize = 12.sp,
+                    color = colorScheme.onSurface.copy(alpha = 0.7f),
+                    maxLines = 3,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(top = 2.dp)
+                )
+            }
+            preview.siteName?.let {
+                Text(
+                    text = it,
+                    fontSize = 11.sp,
+                    color = colorScheme.primary,
+                    modifier = Modifier.padding(top = 4.dp)
+                )
+            }
         }
     }
 }

@@ -1088,6 +1088,23 @@ class ChatViewModel(
         notificationManager.setCurrentGeohash(geohash)
     }
 
+    /** Forward a message into another geohash channel. */
+    fun forwardMessage(message: ZemzemeMessage, channel: com.roman.zemzeme.geohash.GeohashChannel) {
+        val text = when (message.type) {
+            com.roman.zemzeme.model.ZemzemeMessageType.Message -> message.content
+            com.roman.zemzeme.model.ZemzemeMessageType.Image -> "[photo]"
+            com.roman.zemzeme.model.ZemzemeMessageType.Audio -> "[voice]"
+            com.roman.zemzeme.model.ZemzemeMessageType.File -> "[file]"
+        }
+        val sender = message.sender
+        geohashViewModel.sendGeohashMessage(
+            "↪ $sender: $text",
+            channel,
+            meshService.myPeerID,
+            state.getNicknameValue()
+        )
+    }
+
     /** Toggle an emoji reaction on a message in the current geohash channel. */
     fun sendReaction(messageId: String, emoji: String) {
         val loc = state.selectedLocationChannel.value

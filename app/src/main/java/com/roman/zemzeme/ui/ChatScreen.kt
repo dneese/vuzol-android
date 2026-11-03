@@ -83,6 +83,7 @@ fun ChatScreen(viewModel: ChatViewModel, isBluetoothEnabled: Boolean = true, onB
     var showLocationChannelsSheet by remember { mutableStateOf(false) }
     var showLocationNotesSheet by remember { mutableStateOf(false) }
     var showMessageSearch by remember { mutableStateOf(false) }
+    var messageToForward by remember { mutableStateOf<ZemzemeMessage?>(null) }
     val pinnedMessages by com.roman.zemzeme.services.PinStore.pins.collectAsState()
     var showUserSheet by remember { mutableStateOf(false) }
     var selectedUserForSheet by remember { mutableStateOf("") }
@@ -460,6 +461,12 @@ fun ChatScreen(viewModel: ChatViewModel, isBluetoothEnabled: Boolean = true, onB
         showMessageSearch = showMessageSearch,
         onMessageSearchDismiss = { showMessageSearch = false },
         displayMessages = displayMessages,
+        messageToForward = messageToForward,
+        onMessageForwardDismiss = { messageToForward = null },
+        onMessageForwardRequest = { message -> messageToForward = message },
+        onMessageForward = { message, channel ->
+            viewModel.forwardMessage(message, channel)
+        },
         showUserSheet = showUserSheet,
         onUserSheetDismiss = { 
             showUserSheet = false
@@ -910,6 +917,10 @@ private fun ChatDialogs(
     showMessageSearch: Boolean,
     onMessageSearchDismiss: () -> Unit,
     displayMessages: List<ZemzemeMessage>,
+    messageToForward: ZemzemeMessage?,
+    onMessageForwardDismiss: () -> Unit,
+    onMessageForwardRequest: (ZemzemeMessage) -> Unit,
+    onMessageForward: (ZemzemeMessage, com.roman.zemzeme.geohash.GeohashChannel) -> Unit,
     viewModel: ChatViewModel,
     showVerificationSheet: Boolean,
     onVerificationSheetDismiss: () -> Unit,
@@ -953,6 +964,15 @@ private fun ChatDialogs(
         )
     }
     
+    // Forward message to another channel
+    ForwardSheet(
+        isPresented = messageToForward != null,
+        onDismiss = onMessageForwardDismiss,
+        onPick = { channel ->
+            messageToForward?.let { onMessageForward(it, channel) }
+        }
+    )
+
     // Message search
     MessageSearchSheet(
         isPresented = showMessageSearch,
@@ -986,6 +1006,7 @@ private fun ChatDialogs(
             selectedMessage = selectedMessageForSheet,
             onReply = onReply,
             onReact = { emoji -> selectedMessageForSheet?.let { viewModel.sendReaction(it.id, emoji) } },
+            onForward = { message -> onMessageForwardRequest(message) },
             viewModel = viewModel
         )
     }
