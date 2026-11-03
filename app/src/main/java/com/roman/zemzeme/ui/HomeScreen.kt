@@ -136,6 +136,7 @@ fun HomeScreen(
     val peerNicknames by chatViewModel.peerNicknames.collectAsStateWithLifecycle()
     val p2pTopicStates by chatViewModel.p2pTopicStates.collectAsStateWithLifecycle()
     val geohashParticipantCounts by chatViewModel.geohashParticipantCounts.collectAsStateWithLifecycle()
+    val geohashPeople by chatViewModel.geohashPeople.collectAsStateWithLifecycle()
     val connectedPeers by chatViewModel.connectedPeers.collectAsStateWithLifecycle()
     val isConnected by chatViewModel.isConnected.collectAsStateWithLifecycle()
 
@@ -724,6 +725,7 @@ fun HomeScreen(
 
         }
         HomeTab.People -> PeopleTabContent(
+            nearby = geohashPeople,
             contacts = filteredContactItems,
             peerNicknames = peerNicknames,
             unreadPrivateMessages = unreadPrivateMessages,
@@ -1432,6 +1434,7 @@ private fun RenameGroupDialog(currentName: String, onDismiss: () -> Unit, onConf
 
 @Composable
 private fun PeopleTabContent(
+    nearby: List<GeoPerson>,
     contacts: List<Triple<String, ZemzemeMessage?, Long>>,
     peerNicknames: Map<String, String>,
     unreadPrivateMessages: Set<String>,
@@ -1447,6 +1450,18 @@ private fun PeopleTabContent(
         Modifier.fillMaxSize(),
         contentPadding = PaddingValues(vertical = 8.dp)
     ) {
+        if (nearby.isNotEmpty()) {
+            item(key = "nearby_people_header") {
+                SectionHeader(stringResource(R.string.section_people_nearby))
+            }
+            items(nearby, key = { "nearby_${it.id}" }) { person ->
+                NearbyPersonRow(
+                    person = person,
+                    onClick = { onOpenChat("nostr_${person.id.take(16)}") }
+                )
+            }
+        }
+
         item(key = "people_header") {
             SectionHeader(stringResource(R.string.section_contacts))
         }
@@ -1498,6 +1513,63 @@ private fun PeopleTabContent(
 // ══════════════════════════════════════════════
 // Settings tab
 // ══════════════════════════════════════════════
+
+@Composable
+private fun NearbyPersonRow(
+    person: GeoPerson,
+    onClick: () -> Unit
+) {
+    val extended = MaterialTheme.extendedColors
+    val colorScheme = MaterialTheme.colorScheme
+    val (baseName, _) = splitSuffix(person.displayName)
+    val lastSeen = person.lastSeen.time
+    val now = System.currentTimeMillis()
+    val online = now - lastSeen < 120_000L
+    val minutes = (now - lastSeen) / 60_000L
+
+    Surface(
+        onClick = onClick,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp, vertical = 2.dp),
+        shape = RoundedCornerShape(14.dp),
+        color = Color.Transparent
+    ) {
+        Row(
+            Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            ProfileAvatar(
+                pubkey = person.id,
+                letter = baseName.firstOrNull()?.uppercaseChar()?.toString() ?: "?",
+                color = extended.electricCyan,
+                size = 46.dp
+            )
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(
+                    baseName,
+                    style = MaterialTheme.typography.bodyLarge.copy(
+                        fontFamily = NunitoFontFamily,
+                        fontWeight = FontWeight.SemiBold
+                    ),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    text = when {
+                        online -> stringResource(R.string.presence_online)
+                        minutes < 60 -> stringResource(R.string.presence_minutes_ago, minutes)
+                        minutes < 60 * 24 -> stringResource(R.string.presence_hours_ago, minutes / 60)
+                        else -> stringResource(R.string.presence_days_ago, minutes / (60 * 24))
+                    },
+                    fontSize = 12.sp,
+                    color = if (online) extended.contactGreen else colorScheme.onSurface.copy(alpha = 0.55f)
+                )
+            }
+        }
+    }
+}
 
 @Composable
 private fun SettingsTabContent(

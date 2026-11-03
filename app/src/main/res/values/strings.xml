@@ -758,6 +758,10 @@
     <string name="section_contacts">Contacts</string>
     <string name="section_pinned">Pinned</string>
     <string name="section_people_nearby">People nearby</string>
+  <string name="presence_online">online</string>
+  <string name="presence_minutes_ago">%1$d min ago</string>
+  <string name="presence_hours_ago">%1$d h ago</string>
+  <string name="presence_days_ago">%1$d d ago</string>
     <string name="search_chats">Search chats and people</string>
     <string name="nav_chats">Chats</string>
     <string name="nav_people">People</string>
