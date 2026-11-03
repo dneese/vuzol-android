@@ -1003,7 +1003,10 @@ private fun ChatDialogs(
         message = profileMessage,
         displayName = profileMessage?.let { splitSuffix(it.sender).first } ?: "",
         onMention = { name -> onProfileMention(name) },
-        onBlock = { name -> onProfileBlock(name) },
+        onBlock = {
+            val name = profileMessage?.let { splitSuffix(it.sender).first } ?: ""
+            onProfileBlock(name)
+        },
         onDismiss = onProfileDismiss
     )
 
