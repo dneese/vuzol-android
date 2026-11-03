@@ -212,10 +212,16 @@ private fun WallpaperOption(
                 modifier = Modifier
                     .size(36.dp)
                     .clip(CircleShape)
-                    .background(
-                        if (gradient) androidx.compose.ui.graphics.Brush.linearGradient(
-                            listOf(accent, accent.copy(alpha = 0.15f))
-                        ) else accent.copy(alpha = 0.35f)
+                    .then(
+                        if (gradient) {
+                            Modifier.background(
+                                androidx.compose.ui.graphics.Brush.linearGradient(
+                                    listOf(accent, accent.copy(alpha = 0.15f))
+                                )
+                            )
+                        } else {
+                            Modifier.background(accent.copy(alpha = 0.35f))
+                        }
                     )
             )
             Text(

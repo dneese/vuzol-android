@@ -450,6 +450,22 @@ fun ChatScreen(viewModel: ChatViewModel, isBluetoothEnabled: Boolean = true, onB
     }
     }
 
+    // Chat appearance (accent color + wallpaper)
+    ChatAppearanceSheet(
+        isPresented = showAppearanceSheet,
+        appearance = appearances[appearanceKey] ?: ChatAppearanceStore.Appearance(),
+        onAccentChange = { index ->
+            ChatAppearanceStore.setAccent(context, appearanceKey, index)
+        },
+        onWallpaperChange = { mode, path ->
+            ChatAppearanceStore.setWallpaper(context, appearanceKey, mode, path)
+        },
+        onReset = {
+            ChatAppearanceStore.reset(context, appearanceKey)
+        },
+        onDismiss = { showAppearanceSheet = false }
+    )
+
     // Full-screen image viewer - separate from other sheets to allow image browsing without navigation
     if (showFullScreenImageViewer) {
         FullScreenImageViewer(
@@ -1015,22 +1031,6 @@ private fun ChatDialogs(
         )
     }
     
-    // Chat appearance (accent color + wallpaper)
-    ChatAppearanceSheet(
-        isPresented = showAppearanceSheet,
-        appearance = appearances[appearanceKey] ?: ChatAppearanceStore.Appearance(),
-        onAccentChange = { index ->
-            ChatAppearanceStore.setAccent(context, appearanceKey, index)
-        },
-        onWallpaperChange = { mode, path ->
-            ChatAppearanceStore.setWallpaper(context, appearanceKey, mode, path)
-        },
-        onReset = {
-            ChatAppearanceStore.reset(context, appearanceKey)
-        },
-        onDismiss = { showAppearanceSheet = false }
-    )
-
     // Peer profile
     PeerProfileSheet(
         isPresented = profileMessage != null,
