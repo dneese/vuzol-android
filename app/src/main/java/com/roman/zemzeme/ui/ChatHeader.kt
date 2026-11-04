@@ -388,7 +388,13 @@ private fun PrivateChatHeader(
     val accent = LocalChatAccent.current
     val profiles by com.roman.zemzeme.nostr.NostrProfileStore.profiles.collectAsState()
     val profile = peerPubkey?.let { profiles[it.lowercase()] }
-    val displayName = profile?.displayName ?: profile?.name ?: peerName
+    val resolvedName = PeerNameResolver.resolve(
+        peerId = peerId,
+        knownNickname = peerName,
+        lastMessageSender = peerName,
+        profiles = profiles
+    )
+    val displayName = profile?.displayName ?: profile?.name ?: resolvedName ?: peerName
 
     Row(
         modifier = Modifier.fillMaxWidth(),

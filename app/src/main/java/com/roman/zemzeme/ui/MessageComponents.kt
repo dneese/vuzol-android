@@ -37,6 +37,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlin.math.roundToInt
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -55,6 +56,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.automirrored.filled.Reply
+import androidx.compose.material.icons.outlined.MoreHoriz
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.shape.CircleShape
@@ -453,6 +455,28 @@ fun MessageItem(
                 SelectionCheck(isSelected = isSelected)
             }
         }
+        }
+
+        // Big touch target that opens the message menu without a long press
+        if (!selectionMode && compactLayout != ChatDisplaySettings.LAYOUT_COMPACT) {
+            Box(
+                modifier = Modifier
+                    .size(44.dp)
+                    .padding(start = 2.dp)
+                    .clip(CircleShape)
+                    .clickable {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        showActionPopup = true
+                    },
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.MoreHoriz,
+                    contentDescription = stringResource(R.string.action_more_actions),
+                    tint = colorScheme.onSurface.copy(alpha = 0.32f),
+                    modifier = Modifier.size(22.dp)
+                )
+            }
         }
         }
 

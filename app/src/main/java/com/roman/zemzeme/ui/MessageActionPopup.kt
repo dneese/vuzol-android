@@ -2,6 +2,8 @@ package com.roman.zemzeme.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -237,15 +239,17 @@ fun MessageActionPopup(
     }
 
     Surface(
-        modifier = Modifier.width(268.dp),
-        shape = RoundedCornerShape(18.dp),
+        modifier = Modifier.width(320.dp),
+        shape = RoundedCornerShape(22.dp),
         color = colorScheme.surface,
-        tonalElevation = 4.dp,
-        shadowElevation = 10.dp
+        tonalElevation = 6.dp,
+        shadowElevation = 12.dp
     ) {
         Column(
-            modifier = Modifier.padding(vertical = 12.dp, horizontal = 10.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            modifier = Modifier
+                .padding(vertical = 14.dp, horizontal = 12.dp)
+                .verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             // Header: author, time and a short preview of the message
             Row(
@@ -259,12 +263,12 @@ fun MessageActionPopup(
                     pubkey = message.senderPubkey,
                     letter = authorName.firstOrNull()?.uppercaseChar()?.toString() ?: "?",
                     color = authorColor,
-                    size = 30.dp
+                    size = 38.dp
                 )
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = authorName,
-                        fontSize = 13.sp,
+                        fontSize = 15.sp,
                         fontFamily = NunitoFontFamily,
                         fontWeight = FontWeight.SemiBold,
                         color = authorColor,
@@ -273,7 +277,7 @@ fun MessageActionPopup(
                     )
                     Text(
                         text = timeText,
-                        fontSize = 10.sp,
+                        fontSize = 11.sp,
                         color = colorScheme.onSurface.copy(alpha = 0.55f)
                     )
                 }
@@ -283,7 +287,7 @@ fun MessageActionPopup(
             if (preview.isNotEmpty() && message.type == ZemzemeMessageType.Message) {
                 Text(
                     text = preview,
-                    fontSize = 12.sp,
+                    fontSize = 13.sp,
                     color = colorScheme.onSurface.copy(alpha = 0.75f),
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
@@ -301,7 +305,7 @@ fun MessageActionPopup(
                 ReactionsStore.SUPPORTED.forEach { emoji ->
                     Box(
                         modifier = Modifier
-                            .size(34.dp)
+                            .size(42.dp)
                             .clip(CircleShape)
                             .background(colorScheme.surfaceVariant.copy(alpha = 0.6f))
                             .clickable {
@@ -310,7 +314,7 @@ fun MessageActionPopup(
                             },
                         contentAlignment = Alignment.Center
                     ) {
-                        Text(text = emoji, fontSize = 17.sp)
+                        Text(text = emoji, fontSize = 21.sp)
                     }
                 }
             }
@@ -344,21 +348,21 @@ private fun QuickActionButton(
     val tint = action.tint ?: MaterialTheme.colorScheme.onSurface
     Column(
         modifier = modifier
-            .clip(RoundedCornerShape(12.dp))
+            .clip(RoundedCornerShape(14.dp))
             .clickable { action.onClick() }
-            .padding(vertical = 7.dp, horizontal = 2.dp),
+            .padding(vertical = 10.dp, horizontal = 2.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(3.dp)
+        verticalArrangement = Arrangement.spacedBy(5.dp)
     ) {
         Icon(
             imageVector = action.icon,
             contentDescription = null,
             tint = tint,
-            modifier = Modifier.size(19.dp)
+            modifier = Modifier.size(24.dp)
         )
         Text(
             text = action.label,
-            fontSize = 9.sp,
+            fontSize = 11.sp,
             fontFamily = NunitoFontFamily,
             color = tint.copy(alpha = 0.85f),
             maxLines = 1,

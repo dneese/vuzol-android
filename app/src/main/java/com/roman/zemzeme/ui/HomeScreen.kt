@@ -254,9 +254,10 @@ fun HomeScreen(
     }
     val filteredContactItems = remember(contactItems, peerNicknames, searchTerm) {
         if (searchTerm.isEmpty()) contactItems else contactItems.filter { (peerID, _, _) ->
-            val display = peerNicknames[peerID]
-                ?: com.roman.zemzeme.p2p.P2PAliasRegistry.getDisplayName(peerID)
-                ?: "User"
+            val display = PeerNameResolver.resolve(
+                peerId = peerID,
+                knownNickname = peerNicknames[peerID]
+            ) ?: "User"
             display.lowercase().contains(searchTerm)
         }
     }
@@ -271,9 +272,10 @@ fun HomeScreen(
                 key.startsWith("dm:") -> {
                     val peerID = key.removePrefix("dm:")
                     val entry = contactItems.firstOrNull { it.first == peerID } ?: return@mapNotNull null
-                    val name = peerNicknames[peerID]
-                        ?: com.roman.zemzeme.p2p.P2PAliasRegistry.getDisplayName(peerID)
-                        ?: "User"
+                    val name = PeerNameResolver.resolve(
+                        peerId = peerID,
+                        knownNickname = peerNicknames[peerID]
+                    ) ?: "User"
                     PinnedChat(
                         key = key,
                         name = name,
@@ -729,9 +731,11 @@ fun HomeScreen(
                 item(key = "contacts_header") { SectionHeader(stringResource(R.string.section_contacts)) }
 
                 items(filteredContactItems, key = { "dm_${it.first}" }) { (peerID, lastMsg, _) ->
-                    val displayName = peerNicknames[peerID]
-                        ?: com.roman.zemzeme.p2p.P2PAliasRegistry.getDisplayName(peerID)
-                        ?: "User"
+                    val displayName = PeerNameResolver.resolve(
+                        peerId = peerID,
+                        knownNickname = peerNicknames[peerID],
+                        lastMessageSender = lastMsg?.sender
+                    ) ?: "User"
                     val unread = if (peerID in unreadPrivateMessages) 1 else 0
                     GroupRow(
                         name = displayName,
@@ -1519,9 +1523,11 @@ private fun PeopleTabContent(
         }
 
         items(contacts, key = { "people_${it.first}" }) { (peerID, lastMsg, _) ->
-            val displayName = peerNicknames[peerID]
-                ?: com.roman.zemzeme.p2p.P2PAliasRegistry.getDisplayName(peerID)
-                ?: "User"
+            val displayName = PeerNameResolver.resolve(
+                peerId = peerID,
+                knownNickname = peerNicknames[peerID],
+                lastMessageSender = lastMsg?.sender
+            ) ?: "User"
             GroupRow(
                 name = displayName,
                 lastMessage = lastMsg,

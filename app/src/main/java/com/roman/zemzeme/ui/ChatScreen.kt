@@ -16,6 +16,7 @@ import androidx.compose.ui.Alignment
 import android.content.Intent
 import android.provider.Settings
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.BluetoothDisabled
 import androidx.compose.material.icons.filled.WifiOff
@@ -274,11 +275,17 @@ fun ChatScreen(viewModel: ChatViewModel, isBluetoothEnabled: Boolean = true, onB
             }?.senderPubkey
         }
     }
-    val peerDisplayName = remember(conversationKey, displayMessages, selectedPrivatePeer) {
+    val peerDisplayName = remember(conversationKey, displayMessages, selectedPrivatePeer, nostrProfiles) {
         selectedPrivatePeer?.let { peer ->
-            displayMessages.lastOrNull {
+            val lastSender = displayMessages.lastOrNull {
                 it.senderPeerID == peer || it.sender == peer || it.sender.startsWith(peer)
             }?.sender
+            PeerNameResolver.resolve(
+                peerId = peer,
+                knownNickname = lastSender,
+                lastMessageSender = lastSender,
+                profiles = nostrProfiles
+            )
         }
     }
     val headerImageUrl = peerPubkey?.let { nostrProfiles[it.lowercase()]?.picture }
@@ -484,7 +491,7 @@ fun ChatScreen(viewModel: ChatViewModel, isBluetoothEnabled: Boolean = true, onB
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Icon(
-                imageVector = androidx.compose.material.icons.Icons.Filled.VisibilityOff,
+                imageVector = Icons.Filled.VisibilityOff,
                 contentDescription = null,
                 tint = colorScheme.onSecondaryContainer,
                 modifier = Modifier.size(18.dp)

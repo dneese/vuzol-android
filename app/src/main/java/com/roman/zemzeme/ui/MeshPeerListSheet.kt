@@ -423,7 +423,15 @@ fun PeopleSection(
                 if (noiseHex != null) privateChats[noiseHex]?.count { msg -> msg.sender != nickname && nostrUnread } ?: 0 else 0
             )
 
-            val displayName = if (peerID == nickname) "You" else (peerNicknames[peerID] ?: (privateChats[peerID]?.lastOrNull()?.sender ?: peerID.take(12)))
+            val displayName = if (peerID == nickname) {
+                "You"
+            } else {
+                PeerNameResolver.resolve(
+                    peerId = peerID,
+                    knownNickname = peerNicknames[peerID],
+                    lastMessageSender = privateChats[peerID]?.lastOrNull()?.sender
+                ) ?: peerID.take(12)
+            }
             val (bName, _) = splitSuffix(displayName)
             val showHash = (baseNameCounts[bName] ?: 0) > 1
 
@@ -842,7 +850,11 @@ fun PrivateChatSheet(
 
     // Compute display name and title text reactively
     // Re-compute when messages change (to pick up sender nicknames from incoming messages)
-    val displayName = peerNicknames[peerID] ?: peerID.take(12)
+    val displayName = PeerNameResolver.resolve(
+        peerId = peerID,
+        knownNickname = peerNicknames[peerID],
+        lastMessageSender = messages.lastOrNull()?.sender
+    ) ?: peerID.take(12)
     val titleText = remember(peerID, peerNicknames, messages) {
         val baseName = when {
             isP2PPeer -> {
@@ -869,7 +881,11 @@ fun PrivateChatSheet(
                 "#$gh/@$name"
             }
             else -> {
-                peerNicknames[peerID] ?: peerID.take(12)
+                PeerNameResolver.resolve(
+                    peerId = peerID,
+                    knownNickname = peerNicknames[peerID],
+                    lastMessageSender = messages.lastOrNull()?.sender
+                ) ?: peerID.take(12)
             }
         }
 
