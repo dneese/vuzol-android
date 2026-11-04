@@ -103,17 +103,16 @@ fun ZoomableImage(
         onScaleChange(minScale)
     }
 
-    val transformState = rememberTransformableState { zoomChange, panChange, centroid ->
+    val transformState = rememberTransformableState { zoomChange, panChange, _ ->
         animationJob?.cancel()
         val oldScale = scale
         val newScale = (oldScale * zoomChange).coerceIn(minScale, maxScale)
         if (oldScale <= 0f) return@rememberTransformableState
         val ratio = newScale / oldScale
-        val center = Offset(boxSize.width / 2f, boxSize.height / 2f)
-        // keep the point under the fingers in place
-        val anchored = (centroid - center) * (1f - ratio) + offset * ratio + panChange
+        // the picture grows around its centre, so the offset scales with it
+        val moved = offset * ratio + panChange
         scale = newScale
-        offset = if (newScale <= minScale + 0.01f) Offset.Zero else clampOffset(anchored, newScale)
+        offset = if (newScale <= minScale + 0.01f) Offset.Zero else clampOffset(moved, newScale)
         onScaleChange(scale)
     }
 
