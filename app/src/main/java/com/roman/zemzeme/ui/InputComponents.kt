@@ -432,7 +432,8 @@ fun MessageInput(
             onPickPhoto = {
                 photoPicker.launch(
                     androidx.activity.result.PickVisualMediaRequest(
-                        androidx.activity.result.PickVisualMedia.ImageAndVideo
+                        androidx.activity.result.contract.ActivityResultContracts
+                            .PickVisualMedia.ImageAndVideo
                     )
                 )
             },

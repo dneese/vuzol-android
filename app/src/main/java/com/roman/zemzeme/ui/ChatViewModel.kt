@@ -1157,6 +1157,7 @@ class ChatViewModel(
             com.roman.zemzeme.model.ZemzemeMessageType.Image -> "[photo]"
             com.roman.zemzeme.model.ZemzemeMessageType.Audio -> "[voice]"
             com.roman.zemzeme.model.ZemzemeMessageType.File -> "[file]"
+            com.roman.zemzeme.model.ZemzemeMessageType.Media -> "[media]"
         }
         val sender = message.sender
         geohashViewModel.sendGeohashMessage(
