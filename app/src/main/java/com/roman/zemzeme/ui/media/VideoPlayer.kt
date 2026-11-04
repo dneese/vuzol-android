@@ -1,10 +1,11 @@
 package com.roman.zemzeme.ui.media
 
-import android.app.Activity
 import android.content.Context
-import android.content.ContextWrapper
-import android.content.pm.ActivityInfo
-import android.widget.VideoView
+import android.content.Intent
+import android.os.Bundle
+import android.view.WindowManager
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -19,7 +20,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Download
@@ -28,12 +28,10 @@ import androidx.compose.material.icons.filled.FullscreenExit
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -49,15 +47,97 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import com.roman.zemzeme.R
 import com.roman.zemzeme.ui.theme.NunitoFontFamily
 import kotlinx.coroutines.delay
 import java.io.File
 
 /**
- * Video player with custom controls: play/pause, seek bar, fullscreen and save.
+ * Fullscreen video player.
+ *
+ * It lives in its own activity so that rotating the device does not destroy the
+ * player state (the activity handles the configuration changes itself).
+ */
+class VideoPlayerActivity : ComponentActivity() {
+
+    private var fullscreen = true
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+
+        val path = intent.getStringExtra(EXTRA_PATH)
+        if (path.isNullOrBlank() || !File(path).exists()) {
+            finish()
+            return
+        }
+
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        hideSystemBars()
+
+        setContent {
+            VideoPlayerSurface(
+                path = path,
+                fullscreen = fullscreen,
+                onToggleFullscreen = {
+                    fullscreen = !fullscreen
+                    if (fullscreen) {
+                        requestedOrientation = android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+                        hideSystemBars()
+                    } else {
+                        requestedOrientation = android.content.pm.ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+                        showSystemBars()
+                    }
+                },
+                onClose = { finish() },
+                onSave = { saveVideo(path) }
+            )
+        }
+    }
+
+    private fun hideSystemBars() {
+        val controller = WindowInsetsControllerCompat(window, window.decorView)
+        controller.hide(WindowInsetsCompat.Type.systemBars())
+        controller.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+    }
+
+    private fun showSystemBars() {
+        val controller = WindowInsetsControllerCompat(window, window.decorView)
+        controller.show(WindowInsetsCompat.Type.systemBars())
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        requestedOrientation = android.content.pm.ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+    }
+
+    private fun saveVideo(path: String) {
+        val ok = com.roman.zemzeme.features.file.FileUtils.saveToDownloads(
+            context = this,
+            fileName = File(path).name,
+            mimeType = "video/mp4",
+            content = runCatching { File(path).readBytes() }.getOrDefault(ByteArray(0))
+        )
+        android.widget.Toast.makeText(
+            this,
+            getString(if (ok) R.string.toast_file_saved else R.string.toast_failed_to_save_file),
+            android.widget.Toast.LENGTH_SHORT
+        ).show()
+    }
+
+    companion object {
+        const val EXTRA_PATH = "video_path"
+
+        fun intent(context: Context, path: String): Intent =
+            Intent(context, VideoPlayerActivity::class.java).putExtra(EXTRA_PATH, path)
+    }
+}
+
+/**
+ * In-chat video player: play/pause, seek bar, fullscreen and save.
  */
 @Composable
 fun VideoPlayerDialog(
@@ -66,32 +146,19 @@ fun VideoPlayerDialog(
     onSave: () -> Unit
 ) {
     val context = LocalContext.current
-    val activity = remember(context) { context.findActivity() }
-    var fullscreen by remember { mutableStateOf(false) }
 
-    DisposableEffect(activity) {
-        onDispose {
-            activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
-        }
-    }
-
-    Dialog(
+    androidx.compose.ui.window.Dialog(
         onDismissRequest = onClose,
-        properties = DialogProperties(
-            usePlatformDefaultWidth = false,
-            decorFitsSystemWindows = false
-        )
+        properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false)
     ) {
-        VideoPlayerContent(
+        VideoPlayerSurface(
             path = path,
-            fullscreen = fullscreen,
+            fullscreen = false,
             onToggleFullscreen = {
-                fullscreen = !fullscreen
-                activity?.requestedOrientation = if (fullscreen) {
-                    ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
-                } else {
-                    ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
-                }
+                try {
+                    context.startActivity(VideoPlayerActivity.intent(context, path))
+                } catch (_: Exception) { }
+                onClose()
             },
             onClose = onClose,
             onSave = onSave
@@ -100,7 +167,7 @@ fun VideoPlayerDialog(
 }
 
 @Composable
-private fun VideoPlayerContent(
+private fun VideoPlayerSurface(
     path: String,
     fullscreen: Boolean,
     onToggleFullscreen: () -> Unit,
@@ -146,7 +213,7 @@ private fun VideoPlayerContent(
             ) {
                 AndroidView(
                     factory = { ctx ->
-                        VideoView(ctx).apply {
+                        android.widget.VideoView(ctx).apply {
                             setVideoPath(path)
                             setOnPreparedListener { player ->
                                 player.isLooping = false
@@ -287,14 +354,7 @@ private fun VideoPlayerContent(
 
 /** Plain holder for the platform video view (no snapshot writes during composition). */
 private class VideoRef {
-    var view: VideoView? = null
-}
-
-/** Finds the hosting activity from a composition context. */
-private tailrec fun Context.findActivity(): Activity? = when (this) {
-    is Activity -> this
-    is ContextWrapper -> baseContext.findActivity()
-    else -> null
+    var view: android.widget.VideoView? = null
 }
 
 /** Formats a playback position as mm:ss (or h:mm:ss). */

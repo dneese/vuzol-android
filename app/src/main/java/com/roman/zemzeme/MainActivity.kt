@@ -684,8 +684,7 @@ class MainActivity : OrientationAwareActivity() {
                 // Handle any notification intent
                 handleNotificationIntent(intent)
                 handleVerificationIntent(intent)
-                handleJoinIntent(intent)
-                
+
                 // Small delay to ensure mesh service is fully initialized
                 delay(500)
                 Log.d("MainActivity", "App initialization complete")
@@ -697,6 +696,10 @@ class MainActivity : OrientationAwareActivity() {
                 } else {
                     mainViewModel.updateOnboardingState(OnboardingState.COMPLETE)
                 }
+
+                // Join requests are handled last, so the group opens on top of the ready UI
+                delay(300)
+                handleJoinIntent(intent)
             } catch (e: Exception) {
                 Log.e("MainActivity", "Failed to initialize app", e)
                 handleOnboardingFailed("Failed to initialize the app: ${e.message}")
@@ -864,7 +867,9 @@ class MainActivity : OrientationAwareActivity() {
      */
     private fun handleJoinIntent(intent: Intent) {
         val uri = intent.data ?: return
-        if (uri.scheme != "vuzol" || uri.host != "join") return
+        val isDeepLink = uri.scheme == "vuzol" && uri.host == "join"
+        val isWebLink = uri.scheme == "https" && (uri.host == "dneese.github.io" || uri.host == "github.io")
+        if (!isDeepLink && !isWebLink) return
 
         val code = com.roman.zemzeme.ui.GroupInvite.codeFrom(uri.toString())
         if (code == null) {
@@ -877,7 +882,7 @@ class MainActivity : OrientationAwareActivity() {
         }
         val joined = chatViewModel.joinGroupByCode(code)
         if (joined) {
-            // Open the group right away
+            // Open the group right away (also when the user is already a member)
             chatViewModel.navigateToGeohashGroup(code)
         }
         android.widget.Toast.makeText(

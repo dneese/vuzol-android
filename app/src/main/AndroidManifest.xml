@@ -96,6 +96,14 @@
             android:windowSoftInputMode="adjustResize"
             android:launchMode="singleTop">
         </activity>
+        <!-- Fullscreen video player: handles rotation itself so playback is not interrupted -->
+        <activity
+            android:name=".ui.media.VideoPlayerActivity"
+            android:exported="false"
+            android:theme="@style/Theme.VuzolAndroid"
+            android:launchMode="singleTop"
+            android:screenOrientation="unspecified"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboardHidden|keyboard|navigation|uiMode|density|fontScale|layoutDirection" />
 
         <!-- ═══ Dynamic icon / name aliases (100 variants) ═══ -->
 

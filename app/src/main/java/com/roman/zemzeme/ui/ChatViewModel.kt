@@ -1725,7 +1725,11 @@ class ChatViewModel(
         val normalized = code.trim().lowercase()
         if (!GroupInvite.isValidCode(normalized)) return false
         val groups = state.getCustomGroupsValue().toMutableSet()
-        if (normalized in groups) return false
+        if (normalized in groups) {
+            // Already a member: keep the topic subscribed and let the caller open the group
+            subscribeP2PTopics(normalized)
+            return true
+        }
         joinGroup(normalized, normalized)
         return true
     }

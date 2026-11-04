@@ -85,6 +85,7 @@ fun FullScreenImageViewer(imagePaths: List<String>, initialIndex: Int = 0, onClo
                             bitmap = it.asImageBitmap(),
                             contentDescription = stringResource(R.string.cd_image_index_of, page + 1, imagePaths.size),
                             modifier = Modifier.fillMaxSize(),
+                            resetKey = page,
                             onScaleChange = { zoomScale = it }
                         )
                     } ?: run {
