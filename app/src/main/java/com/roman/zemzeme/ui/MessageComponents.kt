@@ -770,7 +770,7 @@ private fun MessageBubble(
                 Text(
                     text = timeFormatter.format(message.timestamp),
                     fontSize = 11.sp,
-                    color = Color.Gray.copy(alpha = 0.7f)
+                    color = colorScheme.onSurface.copy(alpha = 0.55f)
                 )
 
                 // Edited marker
@@ -778,7 +778,7 @@ private fun MessageBubble(
                     Text(
                         text = " · " + stringResource(com.roman.zemzeme.R.string.message_edited),
                         fontSize = 10.sp,
-                        color = Color.Gray.copy(alpha = 0.6f)
+                        color = colorScheme.onSurface.copy(alpha = 0.45f)
                     )
                 }
 
@@ -788,7 +788,7 @@ private fun MessageBubble(
                         Text(
                             text = " ⛨${bits}b",
                             fontSize = 10.sp,
-                            color = Color.Gray.copy(alpha = 0.6f)
+                            color = colorScheme.onSurface.copy(alpha = 0.45f)
                         )
                     }
                 }
