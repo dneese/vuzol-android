@@ -115,6 +115,7 @@ fun ChatScreen(viewModel: ChatViewModel, isBluetoothEnabled: Boolean = true, onB
     var showAutoDeleteDialog by remember { mutableStateOf(false) }
     var showChatOptions by remember { mutableStateOf(false) }
     var showGroupInvite by remember { mutableStateOf(false) }
+    var showMediaGallery by remember { mutableStateOf(false) }
     val customGroups by viewModel.customGroups.collectAsStateWithLifecycle()
     val groupNicknames by viewModel.groupNicknames.collectAsStateWithLifecycle()
 
@@ -454,6 +455,19 @@ fun ChatScreen(viewModel: ChatViewModel, isBluetoothEnabled: Boolean = true, onB
                 onDetails = { msg -> detailsMessage = msg },
                 onPin = handleMessagePin,
                 onBlock = handleMessageBlock,
+                onVuzolLink = { code ->
+                    val joined = viewModel.joinGroupByCode(code)
+                    viewModel.navigateToGeohashGroup(code)
+                    android.widget.Toast.makeText(
+                        context,
+                        context.getString(
+                            if (joined) com.roman.zemzeme.R.string.group_joined_toast
+                            else com.roman.zemzeme.R.string.group_join_invalid,
+                            code
+                        ),
+                        android.widget.Toast.LENGTH_SHORT
+                    ).show()
+                },
                 lastReadAt = initialLastRead
             )
             }
@@ -895,6 +909,7 @@ fun ChatScreen(viewModel: ChatViewModel, isBluetoothEnabled: Boolean = true, onB
             onSelect = { selectionMode = true },
             onSearch = { showMessageSearch = true },
             onInvite = if (currentGroupCode != null) { { showGroupInvite = true } } else null,
+            onGallery = { showMediaGallery = true },
             onClear = {
                 viewModel.sendMessage("/clear")
             }
@@ -986,6 +1001,13 @@ fun ChatScreen(viewModel: ChatViewModel, isBluetoothEnabled: Boolean = true, onB
             }
         )
     }
+
+    // Gallery of the photos in this conversation
+    com.roman.zemzeme.ui.media.MediaGallerySheet(
+        isPresented = showMediaGallery,
+        messages = displayMessages,
+        onDismiss = { showMediaGallery = false }
+    )
 
     // Invite sheet for a private group
     val inviteCode = (viewModel.selectedLocationChannel.value as? com.roman.zemzeme.geohash.ChannelID.Location)

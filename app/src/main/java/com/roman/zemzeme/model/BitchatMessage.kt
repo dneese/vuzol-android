@@ -14,7 +14,9 @@ enum class ZemzemeMessageType : Parcelable {
     Image,
     File,
     /** Several photos / videos / files sent as one message. */
-    Media
+    Media,
+    /** A video that can be played inside the chat. */
+    Video
 }
 
 /**

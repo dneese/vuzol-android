@@ -311,6 +311,7 @@ object FileUtils {
                 com.roman.zemzeme.model.ZemzemeMessageType.Media
             lower.startsWith("image/") -> com.roman.zemzeme.model.ZemzemeMessageType.Image
             lower.startsWith("audio/") -> com.roman.zemzeme.model.ZemzemeMessageType.Audio
+            lower.startsWith("video/") -> com.roman.zemzeme.model.ZemzemeMessageType.Video
             else -> com.roman.zemzeme.model.ZemzemeMessageType.File
         }
     }

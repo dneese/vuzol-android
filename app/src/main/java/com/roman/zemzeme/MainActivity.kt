@@ -876,6 +876,10 @@ class MainActivity : OrientationAwareActivity() {
             return
         }
         val joined = chatViewModel.joinGroupByCode(code)
+        if (joined) {
+            // Open the group right away
+            chatViewModel.navigateToGeohashGroup(code)
+        }
         android.widget.Toast.makeText(
             this,
             getString(

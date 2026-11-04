@@ -139,6 +139,7 @@ class ChatViewModel(
                 val msgType = when {
                     mimeType.startsWith("image/") -> com.roman.zemzeme.model.ZemzemeMessageType.Image
                     mimeType.startsWith("audio/") -> com.roman.zemzeme.model.ZemzemeMessageType.Audio
+                    mimeType.startsWith("video/") -> com.roman.zemzeme.model.ZemzemeMessageType.Video
                     else -> com.roman.zemzeme.model.ZemzemeMessageType.File
                 }
                 geohashViewModel.sendGeohashMedia(filePath, mimeType, msgType, loc.channel, meshService.myPeerID, state.getNicknameValue())
@@ -1158,6 +1159,7 @@ class ChatViewModel(
             com.roman.zemzeme.model.ZemzemeMessageType.Audio -> "[voice]"
             com.roman.zemzeme.model.ZemzemeMessageType.File -> "[file]"
             com.roman.zemzeme.model.ZemzemeMessageType.Media -> "[media]"
+            com.roman.zemzeme.model.ZemzemeMessageType.Video -> "[video]"
         }
         val sender = message.sender
         geohashViewModel.sendGeohashMessage(

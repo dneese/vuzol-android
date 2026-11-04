@@ -104,6 +104,7 @@ fun MessagesList(
     onDetails: ((ZemzemeMessage) -> Unit)? = null,
     onPin: ((ZemzemeMessage) -> Unit)? = null,
     onBlock: ((ZemzemeMessage) -> Unit)? = null,
+    onVuzolLink: ((String) -> Unit)? = null,
     lastReadAt: Long = 0L
 ) {
     val listState = rememberLazyListState()
@@ -201,7 +202,8 @@ fun MessagesList(
                     onEdit = onEdit,
                     onDetails = onDetails,
                     onPin = onPin,
-                    onBlock = onBlock
+                    onBlock = onBlock,
+                    onVuzolLink = onVuzolLink
                 )
             }
         }
@@ -238,7 +240,8 @@ fun MessageItem(
     onEdit: ((ZemzemeMessage) -> Unit)? = null,
     onDetails: ((ZemzemeMessage) -> Unit)? = null,
     onPin: ((ZemzemeMessage) -> Unit)? = null,
-    onBlock: ((ZemzemeMessage) -> Unit)? = null
+    onBlock: ((ZemzemeMessage) -> Unit)? = null,
+    onVuzolLink: ((String) -> Unit)? = null
 ) {
     val colorScheme = MaterialTheme.colorScheme
     val use24h by ChatDisplaySettings.use24hFlow.collectAsState()
@@ -442,7 +445,8 @@ fun MessageItem(
                     onNicknameClick = onNicknameClick,
                     onMessageLongPress = onMessageLongPress,
                     onCancelTransfer = onCancelTransfer,
-                    onImageClick = onImageClick
+                    onImageClick = onImageClick,
+                    onVuzolLink = onVuzolLink
                 )
 
                 val allReactions by ReactionsStore.reactions.collectAsState()
@@ -683,7 +687,8 @@ private fun MessageBubble(
     onNicknameClick: ((String) -> Unit)?,
     onMessageLongPress: ((ZemzemeMessage) -> Unit)?,
     onCancelTransfer: ((ZemzemeMessage) -> Unit)?,
-    onImageClick: ((String, List<String>, Int) -> Unit)?
+    onImageClick: ((String, List<String>, Int) -> Unit)?,
+    onVuzolLink: ((String) -> Unit)? = null
 ) {
     val extendedColors = MaterialTheme.extendedColors
     val chatAccent = LocalChatAccent.current
@@ -756,7 +761,8 @@ private fun MessageBubble(
                 onNicknameClick = onNicknameClick,
                 onMessageLongPress = onMessageLongPress,
                 onCancelTransfer = onCancelTransfer,
-                onImageClick = onImageClick
+                onImageClick = onImageClick,
+                onVuzolLink = onVuzolLink
             )
 
             Spacer(modifier = Modifier.height(4.dp))
@@ -819,6 +825,7 @@ private fun MessageBubbleContent(
     onMessageLongPress: ((ZemzemeMessage) -> Unit)?,
     onCancelTransfer: ((ZemzemeMessage) -> Unit)?,
     onImageClick: ((String, List<String>, Int) -> Unit)?,
+    onVuzolLink: ((String) -> Unit)? = null,
     maxTextWidth: Dp = 280.dp
 ) {
     val chatTextSize by ChatDisplaySettings.textSizeFlow.collectAsState()
@@ -851,6 +858,14 @@ private fun MessageBubbleContent(
                 onNicknameClick = onNicknameClick,
                 onMessageLongPress = onMessageLongPress,
                 onCancelTransfer = onCancelTransfer,
+                modifier = Modifier.fillMaxWidth()
+            )
+            return
+        }
+        ZemzemeMessageType.Video -> {
+            com.roman.zemzeme.ui.media.VideoMessageItem(
+                message = message,
+                timeText = timeFormatter.format(message.timestamp),
                 modifier = Modifier.fillMaxWidth()
             )
             return
@@ -978,6 +993,21 @@ private fun MessageBubbleContent(
                             )
                             if (urlAnnotations.isNotEmpty()) {
                                 val raw = urlAnnotations.first().item
+                                if (raw.startsWith("vuzol://", ignoreCase = true)) {
+                                    // In-app invite link: join the group and open it
+                                    val code = com.roman.zemzeme.ui.GroupInvite.codeFrom(raw)
+                                    if (code != null) {
+                                        onVuzolLink?.invoke(code)
+                                    } else {
+                                        try {
+                                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(raw))
+                                            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                            context.startActivity(intent)
+                                        } catch (_: Exception) { }
+                                    }
+                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                    return@detectTapGestures
+                                }
                                 val resolved =
                                     if (raw.startsWith("http://", ignoreCase = true) || raw.startsWith(
                                             "https://",

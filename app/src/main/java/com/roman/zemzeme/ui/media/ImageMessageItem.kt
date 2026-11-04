@@ -38,6 +38,29 @@ import androidx.compose.material3.ColorScheme
 import java.text.SimpleDateFormat
 import java.util.*
 
+/**
+ * Decodes a downscaled preview (max 480 px) so the chat stays light even
+ * with many photos. The full resolution image is loaded by the fullscreen
+ * viewer when the user taps the preview.
+ */
+private fun decodePreview(path: String, maxDim: Int = 480): android.graphics.Bitmap? {
+    return try {
+        val bounds = android.graphics.BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        android.graphics.BitmapFactory.decodeFile(path, bounds)
+        if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null
+        var sample = 1
+        while (bounds.outWidth / sample > maxDim || bounds.outHeight / sample > maxDim) {
+            sample *= 2
+        }
+        android.graphics.BitmapFactory.decodeFile(
+            path,
+            android.graphics.BitmapFactory.Options().apply { inSampleSize = sample }
+        )
+    } catch (_: Exception) {
+        null
+    }
+}
+
 @Composable
 fun ImageMessageItem(
     message: ZemzemeMessage,
@@ -82,7 +105,9 @@ fun ImageMessageItem(
         )
 
         val context = LocalContext.current
-        val bmp = remember(path) { try { android.graphics.BitmapFactory.decodeFile(path) } catch (_: Exception) { null } }
+        // Only a small preview is decoded for the chat; the full resolution
+        // image is loaded by the fullscreen viewer when the user taps it.
+        val bmp = remember(path) { decodePreview(path) }
 
         // Privacy: images received from other people can stay hidden until tapped
         val blurImages by ChatDisplaySettings.blurImagesFlow.collectAsState()

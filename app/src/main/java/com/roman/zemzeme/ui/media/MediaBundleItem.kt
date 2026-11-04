@@ -72,6 +72,7 @@ fun MediaBundleItem(
 
     var entries by remember(path) { mutableStateOf<List<BundleEntry>>(emptyList()) }
     var loading by remember(path) { mutableStateOf(true) }
+    var videoToPlay by remember(path) { mutableStateOf<String?>(null) }
 
     LaunchedEffect(path) {
         val extracted = withContext(Dispatchers.IO) { extractBundle(context, path) }
@@ -129,6 +130,8 @@ fun MediaBundleItem(
                                         val index = imagePaths.indexOf(entry.path)
                                         if (entry.mimeType.startsWith("image/") && index >= 0) {
                                             onImageClick?.invoke(entry.path, imagePaths, index)
+                                        } else if (entry.mimeType.startsWith("video/")) {
+                                            videoToPlay = entry.path
                                         }
                                     }
                                 )
@@ -150,6 +153,30 @@ fun MediaBundleItem(
                 )
             }
         }
+    }
+
+    val playing = videoToPlay
+    if (playing != null) {
+        VideoPlayerDialog(
+            path = playing,
+            onClose = { videoToPlay = null },
+            onSave = {
+                val ok = com.roman.zemzeme.features.file.FileUtils.saveToDownloads(
+                    context = context,
+                    fileName = File(playing).name,
+                    mimeType = "video/mp4",
+                    content = runCatching { File(playing).readBytes() }.getOrDefault(ByteArray(0))
+                )
+                android.widget.Toast.makeText(
+                    context,
+                    context.getString(
+                        if (ok) com.roman.zemzeme.R.string.toast_file_saved
+                        else com.roman.zemzeme.R.string.toast_failed_to_save_file
+                    ),
+                    android.widget.Toast.LENGTH_SHORT
+                ).show()
+            }
+        )
     }
 }
 

@@ -59,6 +59,19 @@ object MessageSpecialParser {
         if (text.isEmpty()) return emptyList()
         val results = mutableListOf<UrlMatch>()
 
+        // 0) Custom app links (vuzol://join/group?code=...) are clickable too
+        val custom = Regex("(?<![A-Za-z0-9])[A-Za-z][A-Za-z0-9+.\\-]{1,15}://[^\\s\\u00A0]+")
+        for (m in custom.findAll(text)) {
+            val start = m.range.first
+            var endExclusive = m.range.last + 1
+            var token = text.substring(start, endExclusive)
+            while (token.isNotEmpty() && token.last() in setOf('.', ',', ';', ':', '!', '?', '\'', '"')) {
+                endExclusive -= 1
+                token = text.substring(start, endExclusive)
+            }
+            results.add(UrlMatch(start, endExclusive, token))
+        }
+
         // 1) Use Android's WEB_URL for robust detection of http(s) and www.*
         val webUrl = Patterns.WEB_URL
         val matcher = webUrl.matcher(text)

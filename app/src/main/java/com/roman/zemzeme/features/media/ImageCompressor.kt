@@ -13,8 +13,8 @@ import java.io.FileOutputStream
  */
 object ImageCompressor {
     private const val MAX_DIM = 1600
-    private const val QUALITY = 80
-    private const val SMALL_ENOUGH_BYTES = 300_000L
+    private const val QUALITY = 88
+    private const val SMALL_ENOUGH_BYTES = 400_000L
 
     fun compressIfImage(context: Context, path: String, mimeType: String): File {
         val source = File(path)

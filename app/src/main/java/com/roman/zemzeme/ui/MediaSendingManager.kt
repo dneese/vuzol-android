@@ -155,6 +155,7 @@ class MediaSendingManager(
             val messageType = when {
                 mimeType.lowercase().startsWith("image/") -> ZemzemeMessageType.Image
                 mimeType.lowercase().startsWith("audio/") -> ZemzemeMessageType.Audio
+                mimeType.lowercase().startsWith("video/") -> ZemzemeMessageType.Video
                 else -> ZemzemeMessageType.File
             }
 

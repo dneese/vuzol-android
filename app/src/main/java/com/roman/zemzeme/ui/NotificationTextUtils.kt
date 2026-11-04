@@ -20,6 +20,8 @@ object NotificationTextUtils {
             when (message.type) {
                 ZemzemeMessageType.Image -> "📷 sent an image"
                 ZemzemeMessageType.Audio -> "🎤 sent a voice message"
+                ZemzemeMessageType.Video -> "🎬 sent a video"
+                ZemzemeMessageType.Media -> "🖼️ sent media"
                 ZemzemeMessageType.File -> {
                     // Show just the filename (not the full path)
                     val name = try { java.io.File(message.content).name } catch (_: Exception) { null }

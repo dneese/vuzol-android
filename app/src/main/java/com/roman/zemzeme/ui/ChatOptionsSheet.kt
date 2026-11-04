@@ -21,6 +21,7 @@ import androidx.compose.material.icons.outlined.Groups
 import androidx.compose.material.icons.outlined.NotificationsOff
 import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.outlined.PersonAdd
+import androidx.compose.material.icons.outlined.PhotoLibrary
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -60,6 +61,7 @@ fun ChatOptionsSheet(
     onSearch: (() -> Unit)? = null,
     onPeople: (() -> Unit)? = null,
     onInvite: (() -> Unit)? = null,
+    onGallery: (() -> Unit)? = null,
     onClear: (() -> Unit)? = null
 ) {
     val colorScheme = MaterialTheme.colorScheme
@@ -100,6 +102,13 @@ fun ChatOptionsSheet(
                     icon = Icons.Outlined.Groups,
                     label = stringResource(R.string.section_people_nearby),
                     onClick = { onPeople(); onDismiss() }
+                )
+            }
+            if (onGallery != null) {
+                OptionsRow(
+                    icon = Icons.Outlined.PhotoLibrary,
+                    label = stringResource(R.string.media_gallery_title),
+                    onClick = { onGallery(); onDismiss() }
                 )
             }
             if (onInvite != null) {

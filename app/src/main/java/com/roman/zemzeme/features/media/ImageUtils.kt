@@ -11,7 +11,7 @@ import java.io.FileOutputStream
 import java.io.InputStream
 
 object ImageUtils {
-    fun downscaleAndSaveToAppFiles(context: Context, uri: Uri, maxDim: Int = 512, quality: Int = 85): String? {
+    fun downscaleAndSaveToAppFiles(context: Context, uri: Uri, maxDim: Int = 1600, quality: Int = 90): String? {
         return try {
             val resolver = context.contentResolver
             val exifRotation = resolver.openInputStream(uri)?.use { getRotationDegreesFromExif(it) } ?: 0
@@ -43,7 +43,7 @@ object ImageUtils {
         }
     }
 
-    fun downscalePathAndSaveToAppFiles(context: Context, path: String, maxDim: Int = 512, quality: Int = 85): String? {
+    fun downscalePathAndSaveToAppFiles(context: Context, path: String, maxDim: Int = 1600, quality: Int = 90): String? {
         return try {
             val original = BitmapFactory.decodeFile(path) ?: return null
             val exifRotation = getRotationDegreesFromExif(path)

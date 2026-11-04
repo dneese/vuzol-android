@@ -871,4 +871,8 @@
   <string name="attachment_selected_count">Вибрано: %1$d</string>
   <string name="attachment_more_files">та ще %1$d</string>
   <string name="action_send_media">Фото або відео</string>
+  <string name="media_gallery_title">Фото та файли</string>
+  <string name="media_gallery_empty">У цьому чаті ще немає фото</string>
+  <string name="video_play">Відтворити відео</string>
+  <string name="video_save">Зберегти відео</string>
 </resources>
