@@ -1,6 +1,6 @@
 # Vuzol — User Manual
 
-**Version 1.1.2**
+**Version 1.6.0**
 
 ---
 
@@ -137,7 +137,7 @@ Messages older than the selected lifetime are removed from the chat automaticall
 
 ### Chat Appearance
 
-Tap the **palette icon** in the chat header to change:
+Tap the **⋮** button in the chat header and choose **Appearance** to change:
 
 - **Chat color** — one of eight accent colors used for the header, your bubbles and the send button.
 - **Wallpaper** — solid, soft gradient, or your own photo (picked from the gallery).
@@ -145,10 +145,10 @@ Tap the **palette icon** in the chat header to change:
 
 ### Message Menu
 
-Long-press a message — or tap the **⋮** button next to the bubble — to open the quick menu:
+Long-press a message to open the **message actions sheet** — one place for every action:
 
 - Quick reactions (👍 ❤️ 😂 😮 😢 🔥)
-- **Reply**, **Copy**, **Forward**, **Save**, **Pin**, **Edit**, **Select**, **Details**, **Block**, **Delete**
+- **Reply**, **Copy**, **Share**, **Forward**, **Save**, **Pin**, **Edit**, **Select**, **Details**, **Mute**, **Auto-delete**, **Block**, **Delete**
 - **Details** opens a sheet with the message id, sender, time, delivery status and PoW difficulty.
 
 Swipe a message right to reply, swipe left on your own message to delete it.
@@ -163,6 +163,14 @@ Inside chat text you can use light formatting:
 | `*text*` or `_text_` | italic |
 | `` `text` `` | monospace code |
 | `~~text~~` | crossed out |
+
+### Your Profile
+
+Tap your avatar in the top-left corner of the home screen (or the **Profile** card in Settings):
+
+- Pick a photo from the gallery — it stays on your device and is shown next to your messages in group chats.
+- Change your **nickname**, **display name** and **bio**.
+- Press **Publish to Nostr** to sign and publish a NIP-01 metadata event (kind 0) with your name and bio.
 
 ### Away Mode
 
@@ -311,6 +319,7 @@ Open settings by tapping the **gear icon** on the main screen.
 
 | Setting | Description |
 |---|---|
+| **Profile** | Your own avatar, nickname, display name and bio — publish to Nostr with one tap |
 | **Theme** | Choose System, Light, Dark or AMOLED (pure black) |
 | **Theme pack** | Color pack for the whole app: Bitchat, Matrix, Amber, Cyber, Hacker or Ghost |
 | **Chat layout** | Bubbles or compact IRC-style lines |
