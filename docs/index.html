@@ -3,125 +3,264 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Vuzol — Group Invitation</title>
+<title>Vuzol — private messenger</title>
+<meta name="description" content="Vuzol is a private peer-to-peer messenger for Android: offline Bluetooth mesh, end-to-end encrypted chats, photos, videos and files.">
 <style>
   :root {
     --bg: #0e1116;
     --card: #171b22;
+    --line: #232a33;
     --fg: #e6edf3;
     --muted: #9aa7b4;
     --accent: #4c9aff;
+    --accent-ink: #06121f;
   }
   * { box-sizing: border-box; }
   body {
     margin: 0;
-    padding: 24px 16px 48px;
+    padding: 24px 16px 56px;
     background: var(--bg);
     color: var(--fg);
     font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
     display: flex;
     justify-content: center;
   }
+  .wrap { width: 100%; max-width: 520px; }
   .card {
-    width: 100%;
-    max-width: 480px;
     background: var(--card);
-    border: 1px solid #232a33;
-    border-radius: 16px;
-    padding: 24px 20px;
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    padding: 22px 20px;
+    margin-bottom: 16px;
   }
-  h1 { font-size: 22px; margin: 0 0 4px; }
-  p { color: var(--muted); line-height: 1.5; margin: 8px 0; }
+  h1 { font-size: 26px; margin: 0 0 6px; letter-spacing: -0.5px; }
+  h2 { font-size: 17px; margin: 0 0 10px; }
+  p { color: var(--muted); line-height: 1.55; margin: 8px 0; }
   .code {
-    font-size: 32px;
+    font-size: 34px;
     font-weight: 700;
-    letter-spacing: 4px;
+    letter-spacing: 5px;
     text-align: center;
-    margin: 20px 0 8px;
+    margin: 18px 0 6px;
     color: var(--accent);
     word-break: break-all;
   }
-  a.button {
+  .label { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); }
+  a.button, button.button {
     display: block;
+    width: 100%;
     text-align: center;
     text-decoration: none;
     background: var(--accent);
-    color: #06121f;
+    color: var(--accent-ink);
     font-weight: 700;
-    padding: 14px 16px;
-    border-radius: 12px;
-    margin: 16px 0 4px;
+    padding: 15px 16px;
+    border-radius: 13px;
+    border: none;
+    font-size: 16px;
+    cursor: pointer;
+    margin-top: 10px;
+    font-family: inherit;
   }
-  button.copy {
-    width: 100%;
+  button.secondary {
     background: transparent;
     color: var(--fg);
     border: 1px solid #303a45;
-    border-radius: 12px;
+    font-weight: 500;
+    font-size: 14px;
     padding: 12px 16px;
+  }
+  .grid { display: grid; gap: 10px; }
+  .dl {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    padding: 13px 15px;
+    border: 1px solid var(--line);
+    border-radius: 13px;
+    background: #12161c;
+    text-decoration: none;
+    color: var(--fg);
+  }
+  .dl:hover { border-color: var(--accent); }
+  .dl .name { font-weight: 600; font-size: 15px; }
+  .dl .hint { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .dl .cta { color: var(--accent); font-weight: 700; font-size: 13px; white-space: nowrap; }
+  input {
+    width: 100%;
+    background: #0f1319;
+    border: 1px solid #303a45;
+    color: var(--fg);
+    border-radius: 12px;
+    padding: 13px 14px;
     font-size: 15px;
+    font-family: inherit;
     margin-top: 8px;
   }
-  ol { color: var(--muted); line-height: 1.6; padding-left: 20px; }
-  .hint { font-size: 13px; }
+  ol { color: var(--muted); line-height: 1.7; padding-left: 20px; margin: 8px 0 0; }
+  .status { font-size: 13px; color: var(--accent); min-height: 18px; }
   .hidden { display: none; }
+  footer { color: #6f7c89; font-size: 12px; text-align: center; margin-top: 18px; }
+  footer a { color: #6f7c89; }
+  .features { display: grid; gap: 8px; margin-top: 10px; }
+  .features div { color: var(--muted); font-size: 14px; }
 </style>
 </head>
 <body>
-  <div class="card">
-    <h1>Vuzol</h1>
-    <p>You have been invited to a private group chat.</p>
+  <div class="wrap">
 
-    <div id="withCode" class="hidden">
+    <div class="card" id="inviteCard" style="display:none">
+      <h1>You are invited</h1>
+      <p>Join the private group chat in Vuzol — a messenger that works even without the internet.</p>
       <div class="code" id="codeValue">—</div>
+      <div class="label" style="text-align:center">group invite code</div>
       <a class="button" id="openLink" href="#">Open in Vuzol</a>
-      <button class="copy" id="copyBtn">Copy invite code</button>
+      <button class="button secondary" id="copyLinkBtn">Copy invite link</button>
+      <button class="button secondary" id="copyCodeBtn">Copy invite code</button>
+      <p class="status" id="inviteStatus"></p>
     </div>
 
-    <div id="withoutCode" class="hidden">
-      <p>No invite code was found in this link. Ask the sender for the invite code and enter it in Vuzol.</p>
+    <div class="card">
+      <h1>Vuzol</h1>
+      <p>Private peer-to-peer messenger for Android. No accounts, no phone number, no central server.</p>
+      <div class="features">
+        <div>• Offline Bluetooth mesh — talk nearby with no internet</div>
+        <div>• End-to-end encrypted (Noise protocol) private chats and groups</div>
+        <div>• Photos, videos and files up to 50 MB</div>
+        <div>• Location channels and Nostr for online conversations</div>
+      </div>
     </div>
 
-    <p class="hint" id="status"></p>
+    <div class="card" id="joinCard" style="display:none">
+      <h2>Have an invite code?</h2>
+      <p>Paste the code or the whole invite link and we will open Vuzol for you.</p>
+      <input id="codeInput" type="text" inputmode="text" autocomplete="off" placeholder="e.g. 9g9dk3 or https://…/?code=9g9dk3">
+      <button class="button" id="joinBtn">Open in Vuzol</button>
+      <p class="status" id="joinStatus"></p>
+    </div>
 
-    <ol id="steps">
-      <li>Install Vuzol on this device (Android 9+).</li>
-      <li>Tap <strong>Open in Vuzol</strong> — the app joins the group automatically.</li>
-      <li>If the app is not installed yet, copy the code and paste it into Vuzol: <strong>Join group</strong>.</li>
-    </ol>
+    <div class="card">
+      <h2>Download the app</h2>
+      <p>Android 9 or newer. Pick the build for your device.</p>
+      <div class="grid">
+        <a class="dl" href="https://github.com/dneese/vuzol-android/releases/latest/download/vuzol-android-arm64.apk">
+          <div>
+            <div class="name">Vuzol for ARM64</div>
+            <div class="hint">Most modern phones (arm64-v8a) · smaller download</div>
+          </div>
+          <div class="cta">APK</div>
+        </a>
+        <a class="dl" href="https://github.com/dneese/vuzol-android/releases/latest/download/vuzol-android-universal.apk">
+          <div>
+            <div class="name">Universal build</div>
+            <div class="hint">Works on any phone, including older 32-bit devices</div>
+          </div>
+          <div class="cta">APK</div>
+        </a>
+        <a class="dl" href="https://github.com/dneese/vuzol-android/releases/latest/download/vuzol-android-x86_64.apk">
+          <div>
+            <div class="name">Vuzol for x86_64</div>
+            <div class="hint">Emulators and Chromebooks</div>
+          </div>
+          <div class="cta">APK</div>
+        </a>
+      </div>
+      <p style="font-size:13px"><a href="https://github.com/dneese/vuzol-android/releases/latest" style="color:var(--accent)">All releases and release notes</a></p>
+    </div>
+
+    <footer>Open source · <a href="https://github.com/dneese/vuzol-android">github.com/dneese/vuzol-android</a></footer>
   </div>
 
 <script>
   (function () {
-    var params = new URLSearchParams(window.location.search);
-    var code = (params.get('code') || '').trim().toLowerCase();
-    var valid = /^[a-z0-9]{4,12}$/.test(code);
-    var withCode = document.getElementById('withCode');
-    var withoutCode = document.getElementById('withoutCode');
-    var status = document.getElementById('status');
+    var DOWNLOADS = {
+      arm64: 'https://github.com/dneese/vuzol-android/releases/latest/download/vuzol-android-arm64.apk',
+      universal: 'https://github.com/dneese/vuzol-android/releases/latest/download/vuzol-android-universal.apk',
+      x86_64: 'https://github.com/dneese/vuzol-android/releases/latest/download/vuzol-android-x86_64.apk'
+    };
 
-    if (valid) {
-      withCode.classList.remove('hidden');
-      document.getElementById('codeValue').textContent = code;
-      document.getElementById('openLink').href = 'vuzol://join/group?code=' + code;
-      document.getElementById('copyBtn').addEventListener('click', function () {
-        var done = function () {
-          status.textContent = 'Invite code copied.';
-        };
-        if (navigator.clipboard && navigator.clipboard.writeText) {
-          navigator.clipboard.writeText(code).then(done, function () { status.textContent = 'Copy failed: ' + code; });
-        } else {
-          status.textContent = 'Invite code: ' + code;
-        }
-      });
-      status.textContent = 'Opening Vuzol…';
-      setTimeout(function () {
-        window.location.href = 'vuzol://join/group?code=' + code;
-      }, 400);
-    } else {
-      withoutCode.classList.remove('hidden');
-      status.textContent = '';
+    function normalize(value) {
+      if (!value) return '';
+      var match = String(value).toLowerCase().match(/[?&]code=([a-z0-9]+)/);
+      if (match) return match[1];
+      var plain = String(value).toLowerCase().replace(/[^a-z0-9]/g, '');
+      return plain;
     }
+
+    function isValid(code) {
+      return /^[a-z0-9]{4,12}$/.test(code);
+    }
+
+    function deepLink(code) {
+      return 'vuzol://join/group?code=' + code;
+    }
+
+    function webLink(code) {
+      return 'https://dneese.github.io/vuzol-android/?code=' + code;
+    }
+
+    function openApp(code) {
+      var deep = deepLink(code);
+      var hidden = document.createElement('iframe');
+      hidden.style.display = 'none';
+      hidden.src = deep;
+      document.body.appendChild(hidden);
+      setTimeout(function () {
+        try { window.location.href = deep; } catch (e) {}
+      }, 250);
+    }
+
+    function copy(text, statusNode, prefix) {
+      var done = function () { statusNode.textContent = prefix + ': ' + text; };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(done, function () { statusNode.textContent = text; });
+      } else {
+        var field = document.createElement('textarea');
+        field.value = text;
+        field.style.position = 'fixed';
+        field.style.opacity = '0';
+        document.body.appendChild(field);
+        field.select();
+        try { document.execCommand('copy'); done(); } catch (e) { statusNode.textContent = text; }
+        document.body.removeChild(field);
+      }
+    }
+
+    var params = new URLSearchParams(window.location.search);
+    var hash = window.location.hash || '';
+    var code = normalize(params.get('code') || hash.replace(/^#/, ''));
+
+    var inviteCard = document.getElementById('inviteCard');
+    var inviteStatus = document.getElementById('inviteStatus');
+    var joinCard = document.getElementById('joinCard');
+    var joinStatus = document.getElementById('joinStatus');
+
+    if (isValid(code)) {
+      inviteCard.style.display = 'block';
+      document.getElementById('codeValue').textContent = code;
+      document.getElementById('openLink').href = deepLink(code);
+      document.getElementById('copyLinkBtn').addEventListener('click', function () {
+        copy(webLink(code), inviteStatus, 'Invite link copied');
+      });
+      document.getElementById('copyCodeBtn').addEventListener('click', function () {
+        copy(code, inviteStatus, 'Invite code copied');
+      });
+      inviteStatus.textContent = 'Opening Vuzol…';
+      setTimeout(function () { openApp(code); }, 500);
+    } else {
+      joinCard.style.display = 'block';
+    }
+
+    document.getElementById('joinBtn').addEventListener('click', function () {
+      var value = normalize(document.getElementById('codeInput').value);
+      if (!isValid(value)) {
+        joinStatus.textContent = 'This link does not contain a group code.';
+        return;
+      }
+      joinStatus.textContent = 'Opening Vuzol…';
+      openApp(value);
+    });
   })();
 </script>
 </body>

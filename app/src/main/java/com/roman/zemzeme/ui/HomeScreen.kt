@@ -34,6 +34,7 @@ import androidx.compose.material.icons.outlined.DeleteForever
 import androidx.compose.material.icons.outlined.DeleteOutline
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Group
+import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material.icons.outlined.GroupAdd
 import androidx.compose.material.icons.outlined.Hub
 import androidx.compose.material.icons.outlined.LayersClear
@@ -1997,6 +1998,22 @@ private fun SettingsTabContent(
                 label = stringResource(R.string.settings_ghost_mode),
                 checked = ghostMode,
                 onCheckedChange = { GhostMode.setEnabled(context, it) }
+            )
+        }
+
+        item(key = "share_app_row") {
+            SettingsRow(
+                icon = Icons.Outlined.Share,
+                label = stringResource(R.string.settings_share_app),
+                onClick = {
+                    val sendIntent = Intent(Intent.ACTION_SEND).apply {
+                        type = "text/plain"
+                        putExtra(Intent.EXTRA_TEXT, context.getString(R.string.share_app_message))
+                    }
+                    try {
+                        context.startActivity(Intent.createChooser(sendIntent, null))
+                    } catch (_: Exception) { }
+                }
             )
         }
 

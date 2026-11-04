@@ -862,7 +862,6 @@
   <string name="group_invite_copy_code">Скопіювати код</string>
   <string name="group_invite_copy_link">Скопіювати посилання</string>
   <string name="group_invite_share">Поділитися</string>
-  <string name="group_invite_hint">Друг може відсканувати QR, відкрити посилання або ввести код вручну</string>
   <string name="action_invite">Запросити друзів</string>
   <string name="group_joined_toast">Ви приєдналися до групи %1$s</string>
   <string name="group_join_invalid">У цьому посилання немає коду групи</string>
@@ -875,4 +874,15 @@
   <string name="media_gallery_empty">У цьому чаті ще немає фото</string>
   <string name="video_play">Відтворити відео</string>
   <string name="video_save">Зберегти відео</string>
+  <string name="group_invite_open_app">Відкрити в Vuzol</string>
+  <string name="group_invite_link_label">Посилання-запрошення</string>
+  <string name="group_invite_hint">Посилання працює в будь-якому браузері: воно відкриває додаток, а якщо Vuzol ще не встановлено — пропонує завантажити</string>
+  <string name="group_invite_download_app">Завантажити Vuzol</string>
+  <string name="video_pause">Пауза</string>
+  <string name="video_fullscreen">На весь екран</string>
+  <string name="video_exit_fullscreen">Вийти з повноекранного режиму</string>
+  <string name="video_loading">Завантаження відео…</string>
+  <string name="image_zoom_hint">Розпіньте або двічі торкніться, щоб збільшити</string>
+  <string name="settings_share_app">Поділитися Vuzol з друзями</string>
+  <string name="share_app_message">Vuzol — приватний месенджер, який працює навіть без інтернету. Bluetooth mesh, чати з наскрізним шифруванням, фото, відео та файли.\n\nЗавантажити для Android: https://dneese.github.io/vuzol-android/</string>
 </resources>

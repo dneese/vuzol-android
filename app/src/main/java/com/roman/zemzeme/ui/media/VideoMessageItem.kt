@@ -2,14 +2,11 @@ package com.roman.zemzeme.ui.media
 
 import android.graphics.Bitmap
 import android.media.MediaMetadataRetriever
-import android.widget.MediaController
-import android.widget.VideoView
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
@@ -17,20 +14,15 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -44,12 +36,8 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.viewinterop.AndroidView
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import com.roman.zemzeme.R
 import com.roman.zemzeme.model.ZemzemeMessage
 import com.roman.zemzeme.ui.theme.NunitoFontFamily
@@ -159,83 +147,6 @@ fun VideoMessageItem(
                 ).show()
             }
         )
-    }
-}
-
-/** Fullscreen-ish player with the standard media controls. */
-@Composable
-fun VideoPlayerDialog(
-    path: String,
-    onClose: () -> Unit,
-    onSave: () -> Unit
-) {
-    Dialog(
-        onDismissRequest = onClose,
-        properties = DialogProperties(usePlatformDefaultWidth = false)
-    ) {
-        Surface(color = Color.Black) {
-            Column(modifier = Modifier.fillMaxWidth()) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(Color.Black)
-                ) {
-                    AndroidView(
-                        factory = { ctx ->
-                            VideoView(ctx).apply {
-                                setVideoPath(path)
-                                val controller = MediaController(ctx)
-                                controller.setAnchorView(this)
-                                setMediaController(controller)
-                                setOnPreparedListener { player ->
-                                    player.isLooping = false
-                                    start()
-                                }
-                                setOnErrorListener { _, _, _ -> true }
-                            }
-                        },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .aspectRatio(16f / 9f)
-                    )
-                }
-
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 12.dp, vertical = 10.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = File(path).name,
-                        fontSize = 13.sp,
-                        fontFamily = NunitoFontFamily,
-                        color = Color.White.copy(alpha = 0.85f),
-                        maxLines = 1,
-                        modifier = Modifier.weight(1f)
-                    )
-                    Icon(
-                        imageVector = Icons.Filled.Download,
-                        contentDescription = stringResource(R.string.video_save),
-                        tint = Color.White.copy(alpha = 0.85f),
-                        modifier = Modifier
-                            .size(24.dp)
-                            .clip(CircleShape)
-                            .clickable { onSave() }
-                    )
-                    Spacer(modifier = Modifier.width(14.dp))
-                    Icon(
-                        imageVector = Icons.Filled.Close,
-                        contentDescription = stringResource(R.string.cancel),
-                        tint = Color.White.copy(alpha = 0.85f),
-                        modifier = Modifier
-                            .size(24.dp)
-                            .clip(CircleShape)
-                            .clickable { onClose() }
-                    )
-                }
-            }
-        }
     }
 }
 

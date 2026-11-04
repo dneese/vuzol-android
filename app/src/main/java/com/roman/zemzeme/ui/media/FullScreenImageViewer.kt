@@ -18,8 +18,11 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -59,6 +62,7 @@ fun FullScreenImageViewer(path: String, onClose: () -> Unit) {
 fun FullScreenImageViewer(imagePaths: List<String>, initialIndex: Int = 0, onClose: () -> Unit) {
     val context = LocalContext.current
     val pagerState = rememberPagerState(initialPage = initialIndex, pageCount = imagePaths::size)
+    var zoomScale by remember { mutableFloatStateOf(1f) }
 
     if (imagePaths.isEmpty()) {
         onClose()
@@ -70,17 +74,18 @@ fun FullScreenImageViewer(imagePaths: List<String>, initialIndex: Int = 0, onClo
             Box(modifier = Modifier.fillMaxSize()) {
                 HorizontalPager(
                     state = pagerState,
+                    userScrollEnabled = zoomScale <= 1.01f,
                     modifier = Modifier.fillMaxSize()
                 ) { page ->
                     val currentPath = imagePaths[page]
                     val bmp = remember(currentPath) { try { android.graphics.BitmapFactory.decodeFile(currentPath) } catch (_: Exception) { null } }
 
                     bmp?.let {
-                        androidx.compose.foundation.Image(
+                        ZoomableImage(
                             bitmap = it.asImageBitmap(),
                             contentDescription = stringResource(R.string.cd_image_index_of, page + 1, imagePaths.size),
                             modifier = Modifier.fillMaxSize(),
-                            contentScale = ContentScale.Fit
+                            onScaleChange = { zoomScale = it }
                         )
                     } ?: run {
                         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -105,6 +110,21 @@ fun FullScreenImageViewer(imagePaths: List<String>, initialIndex: Int = 0, onClo
                             fontFamily = NunitoFontFamily
                         )
                     }
+                }
+
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(bottom = 26.dp)
+                        .background(Color(0x66000000), RoundedCornerShape(10.dp))
+                        .padding(horizontal = 12.dp, vertical = 6.dp)
+                ) {
+                    Text(
+                        text = stringResource(R.string.image_zoom_hint),
+                        color = Color.White.copy(alpha = 0.85f),
+                        fontSize = 12.sp,
+                        fontFamily = NunitoFontFamily
+                    )
                 }
 
                 Row(

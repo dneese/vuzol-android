@@ -258,7 +258,7 @@ private fun BundleCell(
 }
 
 /** Extracts the bundle file into individual files so they can be displayed. */
-private fun extractBundle(context: android.content.Context, path: String): List<BundleEntry> {
+internal fun extractBundle(context: android.content.Context, path: String): List<BundleEntry> {
     return try {
         val source = File(path)
         if (!source.exists()) return emptyList()
@@ -278,7 +278,7 @@ private fun extractBundle(context: android.content.Context, path: String): List<
 }
 
 /** Loads a small preview for an image or the first frame of a video. */
-private fun loadThumbnail(path: String, mimeType: String): Bitmap? {
+internal fun loadThumbnail(path: String, mimeType: String): Bitmap? {
     return try {
         if (mimeType.startsWith("video/")) {
             val retriever = MediaMetadataRetriever()

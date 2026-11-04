@@ -57,7 +57,8 @@ fun GroupInviteSheet(
     val context = LocalContext.current
     val clipboard = LocalClipboardManager.current
     val colorScheme = MaterialTheme.colorScheme
-    val link = GroupInvite.linkFor(groupCode)
+    val deepLink = GroupInvite.linkFor(groupCode)
+    val webLink = GroupInvite.webLinkFor(groupCode)
     val shareText = GroupInvite.shareText(groupName, groupCode)
 
     ZemzemeBottomSheet(onDismissRequest = onDismiss) {
@@ -95,7 +96,7 @@ fun GroupInviteSheet(
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     QRCodeImage(
-                        data = link,
+                        data = webLink,
                         size = 196.dp,
                         dotColor = androidx.compose.ui.graphics.Color.Black
                     )
@@ -147,12 +148,65 @@ fun GroupInviteSheet(
 
             Spacer(modifier = Modifier.height(14.dp))
 
+            // Web link: works in any browser and leads to the app
+            Surface(
+                shape = RoundedCornerShape(14.dp),
+                color = colorScheme.surfaceVariant.copy(alpha = 0.35f),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 18.dp, end = 10.dp, top = 10.dp, bottom = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = stringResource(R.string.group_invite_link_label),
+                            fontSize = 11.sp,
+                            fontFamily = NunitoFontFamily,
+                            color = colorScheme.onSurfaceVariant
+                        )
+                        Text(
+                            text = webLink,
+                            fontSize = 12.sp,
+                            fontFamily = NunitoFontFamily,
+                            color = colorScheme.onSurface,
+                            maxLines = 1
+                        )
+                    }
+                    Icon(
+                        imageVector = Icons.Filled.ContentCopy,
+                        contentDescription = stringResource(R.string.group_invite_copy_link),
+                        tint = colorScheme.onSurfaceVariant,
+                        modifier = Modifier
+                            .size(24.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .clickable { clipboard.setText(AnnotatedString(webLink)) }
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 OutlinedButton(
-                    onClick = { clipboard.setText(AnnotatedString(link)) },
+                    onClick = {
+                        val intent = Intent(Intent.ACTION_VIEW, android.net.Uri.parse(deepLink))
+                            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        try {
+                            context.startActivity(intent)
+                        } catch (_: Exception) {
+                            val downloadIntent = Intent(
+                                Intent.ACTION_VIEW,
+                                android.net.Uri.parse(GroupInvite.WEB_BASE)
+                            ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                            try { context.startActivity(downloadIntent) } catch (_: Exception) { }
+                        }
+                    },
                     shape = RoundedCornerShape(14.dp),
                     modifier = Modifier.weight(1f)
                 ) {
@@ -163,7 +217,7 @@ fun GroupInviteSheet(
                     )
                     Spacer(modifier = Modifier.size(6.dp))
                     Text(
-                        text = stringResource(R.string.group_invite_copy_link),
+                        text = stringResource(R.string.group_invite_open_app),
                         fontFamily = NunitoFontFamily,
                         fontSize = 13.sp
                     )

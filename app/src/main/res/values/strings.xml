@@ -968,7 +968,6 @@
   <string name="group_invite_copy_code">Copy code</string>
   <string name="group_invite_copy_link">Copy link</string>
   <string name="group_invite_share">Share</string>
-  <string name="group_invite_hint">The invitee can scan the code, tap the link or enter the code manually</string>
   <string name="action_invite">Invite friends</string>
   <string name="group_joined_toast">Joined the group %1$s</string>
   <string name="group_join_invalid">This link does not contain a group code</string>
@@ -981,4 +980,15 @@
   <string name="media_gallery_empty">No photos in this chat yet</string>
   <string name="video_play">Play video</string>
   <string name="video_save">Save video</string>
+  <string name="group_invite_open_app">Open in Vuzol</string>
+  <string name="group_invite_link_label">Invite link</string>
+  <string name="group_invite_hint">The link works in any browser: it opens the app, and offers the download if Vuzol is not installed yet</string>
+  <string name="group_invite_download_app">Download Vuzol</string>
+  <string name="video_pause">Pause</string>
+  <string name="video_fullscreen">Fullscreen</string>
+  <string name="video_exit_fullscreen">Exit fullscreen</string>
+  <string name="video_loading">Loading video…</string>
+  <string name="image_zoom_hint">Pinch or double-tap to zoom</string>
+  <string name="settings_share_app">Share Vuzol with friends</string>
+  <string name="share_app_message">Vuzol — a private messenger that works even without the internet. Bluetooth mesh, end-to-end encrypted chats, photos, video and files.\n\nDownload for Android: https://dneese.github.io/vuzol-android/</string>
 </resources>
