@@ -21,6 +21,7 @@ import androidx.compose.material.icons.outlined.Groups
 import androidx.compose.material.icons.outlined.NotificationsOff
 import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -46,6 +47,7 @@ import androidx.compose.ui.res.stringResource
  * auto-delete, selection, search, people, clear) now lives here, so the chat
  * bar stays clean.
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChatOptionsSheet(
     onDismiss: () -> Unit,

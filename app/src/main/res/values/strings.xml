@@ -941,4 +941,14 @@
   <string name="action_send_file">File</string>
   <string name="chat_options_title">Chat options</string>
   <string name="action_clear_chat">Clear chat</string>
+  <string name="profile_title">Your profile</string>
+  <string name="profile_avatar">Avatar</string>
+  <string name="profile_change_avatar">Change photo</string>
+  <string name="profile_nickname">Nickname</string>
+  <string name="profile_display_name">Display name</string>
+  <string name="profile_about">About you</string>
+  <string name="profile_publish_nostr">Publish to Nostr</string>
+  <string name="profile_published">Published</string>
+  <string name="profile_publish_failed">Could not publish the profile</string>
+  <string name="profile_section">Profile</string>
 </resources>

@@ -859,6 +859,114 @@ fun ChatScreen(viewModel: ChatViewModel, isBluetoothEnabled: Boolean = true, onB
         onBackToHome = onBackToHome,
     )
 
+    // Chat options (appearance, mute, auto-delete, selection, clear)
+    if (showChatOptions) {
+        val currentGeohash = (viewModel.selectedLocationChannel.value as? com.roman.zemzeme.geohash.ChannelID.Location)?.channel?.geohash
+        ChatOptionsSheet(
+            onDismiss = { showChatOptions = false },
+            onAppearance = { showAppearanceSheet = true },
+            muted = currentGeohash?.let { com.roman.zemzeme.services.MuteStore.isMuted(it) },
+            onToggleMute = currentGeohash?.let { geo ->
+                {
+                    val muted = com.roman.zemzeme.services.MuteStore.isMuted(geo)
+                    com.roman.zemzeme.services.MuteStore.setMuted(geo, !muted)
+                }
+            },
+            onAutoDelete = { showAutoDeleteDialog = true },
+            onSelect = { selectionMode = true },
+            onSearch = { showMessageSearch = true },
+            onClear = {
+                viewModel.sendMessage("/clear")
+            }
+        )
+    }
+
+    // Message actions (reply, copy, forward, save, pin, edit, delete, ...)
+    val actionClipboard = androidx.compose.ui.platform.LocalClipboardManager.current
+    messageForActions?.let { actionMessage ->
+        val (actionBaseName, actionSuffix) = splitSuffix(actionMessage.sender)
+        val actionIsSelf = actionMessage.sender == nickname ||
+            actionMessage.sender.startsWith("$nickname#") ||
+            actionMessage.senderPeerID == viewModel.meshService.myPeerID
+        MessageActionsSheet(
+            message = actionMessage,
+            authorName = actionBaseName + actionSuffix,
+            authorColor = getPeerColor(actionMessage, colorScheme.background.red + colorScheme.background.green + colorScheme.background.blue < 1.5f),
+            timeText = java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault()).format(actionMessage.timestamp),
+            isSelf = actionIsSelf,
+            onDismiss = { messageForActions = null },
+            onReply = { replyTo = actionMessage },
+            onReact = { emoji -> viewModel.sendReaction(actionMessage.id, emoji) },
+            onCopy = {
+                actionClipboard.setText(AnnotatedString(actionMessage.content))
+            },
+            onShare = {
+                val text = MessageReply.preview(actionMessage)
+                val sendIntent = Intent(Intent.ACTION_SEND).apply {
+                    type = "text/plain"
+                    putExtra(Intent.EXTRA_TEXT, text)
+                }
+                try { context.startActivity(Intent.createChooser(sendIntent, null)) } catch (_: Exception) { }
+            },
+            onForward = { handleMessageForward(actionMessage) },
+            onSave = { handleMessageSave(actionMessage) },
+            onPin = { handleMessagePin(actionMessage) },
+            onEdit = { handleMessageEdit(actionMessage) },
+            onDelete = { viewModel.deleteMessageLocally(actionMessage) },
+            onSelect = { handleMessageSelect(actionMessage) },
+            onDetails = { detailsMessage = actionMessage },
+            onMute = {
+                val geohash = (viewModel.selectedLocationChannel.value as? com.roman.zemzeme.geohash.ChannelID.Location)?.channel?.geohash
+                if (geohash != null) {
+                    val muted = com.roman.zemzeme.services.MuteStore.isMuted(geohash)
+                    com.roman.zemzeme.services.MuteStore.setMuted(geohash, !muted)
+                }
+            },
+            onAutoDelete = { showAutoDeleteDialog = true },
+            onBlock = { handleMessageBlock(actionMessage) }
+        )
+    }
+
+    // Auto-delete lifetime picker
+    if (showAutoDeleteDialog) {
+        val ttlOptions = listOf(0L, 2L, 3600L, 86400L, 604800L)
+        AlertDialog(
+            onDismissRequest = { showAutoDeleteDialog = false },
+            title = { Text(stringResource(com.roman.zemzeme.R.string.action_auto_delete_title)) },
+            text = {
+                Column {
+                    ttlOptions.forEach { seconds ->
+                        TextButton(
+                            onClick = {
+                                conversationKey?.let { key ->
+                                    com.roman.zemzeme.services.MessageTTLStore.setTtl(context, key, seconds)
+                                }
+                                showAutoDeleteDialog = false
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(
+                                text = when (seconds) {
+                                    0L -> stringResource(com.roman.zemzeme.R.string.action_auto_delete_off)
+                                    2L -> stringResource(com.roman.zemzeme.R.string.action_auto_delete_2s)
+                                    3600L -> stringResource(com.roman.zemzeme.R.string.action_auto_delete_1h)
+                                    86400L -> stringResource(com.roman.zemzeme.R.string.action_auto_delete_24h)
+                                    else -> stringResource(com.roman.zemzeme.R.string.action_auto_delete_7d)
+                                },
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showAutoDeleteDialog = false }) {
+                    Text(stringResource(com.roman.zemzeme.R.string.cancel))
+                }
+            }
+        )
+    }
+
     // Technical details of a message
     MessageDetailsSheet(
         isPresented = detailsMessage != null,
@@ -1449,114 +1557,6 @@ private fun ChatDialogs(
         },
         onDismiss = onProfileDismiss
     )
-
-    // Chat options (appearance, mute, auto-delete, selection, clear)
-    if (showChatOptions) {
-        val currentGeohash = (viewModel.selectedLocationChannel.value as? com.roman.zemzeme.geohash.ChannelID.Location)?.channel?.geohash
-        ChatOptionsSheet(
-            onDismiss = { showChatOptions = false },
-            onAppearance = { showAppearanceSheet = true },
-            muted = currentGeohash?.let { com.roman.zemzeme.services.MuteStore.isMuted(it) },
-            onToggleMute = currentGeohash?.let { geo ->
-                {
-                    val muted = com.roman.zemzeme.services.MuteStore.isMuted(geo)
-                    com.roman.zemzeme.services.MuteStore.setMuted(geo, !muted)
-                }
-            },
-            onAutoDelete = { showAutoDeleteDialog = true },
-            onSelect = { selectionMode = true },
-            onSearch = { showMessageSearch = true },
-            onClear = {
-                viewModel.sendMessage("/clear")
-            }
-        )
-    }
-
-    // Message actions (reply, copy, forward, save, pin, edit, delete, ...)
-    val actionClipboard = androidx.compose.ui.platform.LocalClipboardManager.current
-    messageForActions?.let { actionMessage ->
-        val (actionBaseName, actionSuffix) = splitSuffix(actionMessage.sender)
-        val actionIsSelf = actionMessage.sender == nickname ||
-            actionMessage.sender.startsWith("$nickname#") ||
-            actionMessage.senderPeerID == viewModel.meshService.myPeerID
-        MessageActionsSheet(
-            message = actionMessage,
-            authorName = actionBaseName + actionSuffix,
-            authorColor = getPeerColor(actionMessage, colorScheme.background.red + colorScheme.background.green + colorScheme.background.blue < 1.5f),
-            timeText = java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault()).format(actionMessage.timestamp),
-            isSelf = actionIsSelf,
-            onDismiss = { messageForActions = null },
-            onReply = { replyTo = actionMessage },
-            onReact = { emoji -> viewModel.sendReaction(actionMessage.id, emoji) },
-            onCopy = {
-                actionClipboard.setText(AnnotatedString(actionMessage.content))
-            },
-            onShare = {
-                val text = MessageReply.preview(actionMessage)
-                val sendIntent = Intent(Intent.ACTION_SEND).apply {
-                    type = "text/plain"
-                    putExtra(Intent.EXTRA_TEXT, text)
-                }
-                try { context.startActivity(Intent.createChooser(sendIntent, null)) } catch (_: Exception) { }
-            },
-            onForward = { handleMessageForward(actionMessage) },
-            onSave = { handleMessageSave(actionMessage) },
-            onPin = { handleMessagePin(actionMessage) },
-            onEdit = { handleMessageEdit(actionMessage) },
-            onDelete = { viewModel.deleteMessageLocally(actionMessage) },
-            onSelect = { handleMessageSelect(actionMessage) },
-            onDetails = { detailsMessage = actionMessage },
-            onMute = {
-                val geohash = (viewModel.selectedLocationChannel.value as? com.roman.zemzeme.geohash.ChannelID.Location)?.channel?.geohash
-                if (geohash != null) {
-                    val muted = com.roman.zemzeme.services.MuteStore.isMuted(geohash)
-                    com.roman.zemzeme.services.MuteStore.setMuted(geohash, !muted)
-                }
-            },
-            onAutoDelete = { showAutoDeleteDialog = true },
-            onBlock = { handleMessageBlock(actionMessage) }
-        )
-    }
-
-    // Auto-delete lifetime picker
-    if (showAutoDeleteDialog) {
-        val ttlOptions = listOf(0L, 2L, 3600L, 86400L, 604800L)
-        AlertDialog(
-            onDismissRequest = { showAutoDeleteDialog = false },
-            title = { Text(stringResource(com.roman.zemzeme.R.string.action_auto_delete_title)) },
-            text = {
-                Column {
-                    ttlOptions.forEach { seconds ->
-                        TextButton(
-                            onClick = {
-                                conversationKey?.let { key ->
-                                    com.roman.zemzeme.services.MessageTTLStore.setTtl(context, key, seconds)
-                                }
-                                showAutoDeleteDialog = false
-                            },
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Text(
-                                text = when (seconds) {
-                                    0L -> stringResource(com.roman.zemzeme.R.string.action_auto_delete_off)
-                                    2L -> stringResource(com.roman.zemzeme.R.string.action_auto_delete_2s)
-                                    3600L -> stringResource(com.roman.zemzeme.R.string.action_auto_delete_1h)
-                                    86400L -> stringResource(com.roman.zemzeme.R.string.action_auto_delete_24h)
-                                    else -> stringResource(com.roman.zemzeme.R.string.action_auto_delete_7d)
-                                },
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                        }
-                    }
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = { showAutoDeleteDialog = false }) {
-                    Text(stringResource(com.roman.zemzeme.R.string.cancel))
-                }
-            }
-        )
-    }
 
     // Forward message to another channel
     ForwardSheet(

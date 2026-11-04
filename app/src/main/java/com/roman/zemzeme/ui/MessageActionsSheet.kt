@@ -31,6 +31,7 @@ import androidx.compose.material.icons.outlined.ForwardToInbox
 import androidx.compose.material.icons.outlined.NotificationsOff
 import androidx.compose.material.icons.outlined.PushPin
 import androidx.compose.material.icons.outlined.Schedule
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -60,6 +61,7 @@ import androidx.compose.ui.res.stringResource
  * live in the peer sheet: long press a message (or tap the ⋮ button) and all
  * available operations are listed here in one clean, scrollable sheet.
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MessageActionsSheet(
     message: ZemzemeMessage,

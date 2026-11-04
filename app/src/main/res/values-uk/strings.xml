@@ -835,4 +835,14 @@
   <string name="action_send_file">Файл</string>
   <string name="chat_options_title">Параметри чату</string>
   <string name="action_clear_chat">Очистити чат</string>
+  <string name="profile_title">Ваш профіль</string>
+  <string name="profile_avatar">Аватар</string>
+  <string name="profile_change_avatar">Змінити фото</string>
+  <string name="profile_nickname">Нікнейм</string>
+  <string name="profile_display_name">Відображуване ім’я</string>
+  <string name="profile_about">Про себе</string>
+  <string name="profile_publish_nostr">Опублікувати в Nostr</string>
+  <string name="profile_published">Опубліковано</string>
+  <string name="profile_publish_failed">Не вдалося опублікувати профіль</string>
+  <string name="profile_section">Профіль</string>
 </resources>

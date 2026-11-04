@@ -60,6 +60,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
@@ -772,7 +773,9 @@ fun HomeScreen(
         )
         HomeTab.Settings -> SettingsTabContent(
             onAboutClick = onSettingsClick,
-            onResetIdentity = { showRefreshDialog = true }
+            onResetIdentity = { showRefreshDialog = true },
+            nickname = nickname,
+            onNicknameChange = { chatViewModel.setNickname(it) }
         )
       }
     }
@@ -1607,7 +1610,9 @@ private fun NearbyPersonRow(
 @Composable
 private fun SettingsTabContent(
     onAboutClick: () -> Unit,
-    onResetIdentity: () -> Unit
+    onResetIdentity: () -> Unit,
+    nickname: String,
+    onNicknameChange: (String) -> Unit
 ) {
     val context = LocalContext.current
     val colorScheme = MaterialTheme.colorScheme
@@ -1622,11 +1627,88 @@ private fun SettingsTabContent(
     val awayAutoReply = awayState.autoReply
     val ghostMode by GhostMode.enabled.collectAsState()
     var showBlockedWordsDialog by remember { mutableStateOf(false) }
+    var showProfileEditor by remember { mutableStateOf(false) }
+    val ownProfile by OwnProfile.state.collectAsState()
+    val ownAvatarBitmap = remember(ownProfile.avatarPath) {
+        ownProfile.avatarPath?.let { path ->
+            runCatching { android.graphics.BitmapFactory.decodeFile(path)?.asImageBitmap() }.getOrNull()
+        }
+    }
 
     LazyColumn(
         Modifier.fillMaxSize(),
         contentPadding = PaddingValues(vertical = 8.dp)
     ) {
+        item(key = "profile_header") {
+            SectionHeader(stringResource(R.string.profile_section))
+        }
+
+        item(key = "profile_card") {
+            Surface(
+                shape = androidx.compose.foundation.shape.RoundedCornerShape(20.dp),
+                color = colorScheme.surfaceVariant.copy(alpha = 0.45f),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 6.dp)
+                    .clickable { showProfileEditor = true }
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(14.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(56.dp)
+                            .clip(androidx.compose.foundation.shape.CircleShape)
+                            .background(colorScheme.surfaceVariant),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (ownAvatarBitmap != null) {
+                            androidx.compose.foundation.Image(
+                                bitmap = ownAvatarBitmap,
+                                contentDescription = null,
+                                contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        } else {
+                            Text(
+                                text = nickname.firstOrNull()?.uppercaseChar()?.toString() ?: "?",
+                                fontSize = 22.sp,
+                                fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                                color = colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = ownProfile.displayName.ifBlank { nickname },
+                            fontSize = 17.sp,
+                            fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
+                            color = colorScheme.onSurface,
+                            maxLines = 1,
+                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                        )
+                        Text(
+                            text = ownProfile.about.ifBlank { stringResource(R.string.profile_change_avatar) },
+                            fontSize = 13.sp,
+                            color = colorScheme.onSurface.copy(alpha = 0.65f),
+                            maxLines = 2,
+                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                        )
+                    }
+                    Icon(
+                        imageVector = androidx.compose.material.icons.Icons.Outlined.Edit,
+                        contentDescription = null,
+                        tint = colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+            }
+        }
+
         item(key = "appearance_header") {
             SectionHeader(stringResource(R.string.settings_section_appearance))
         }
@@ -1827,6 +1909,13 @@ private fun SettingsTabContent(
             )
         }
     }
+
+    ProfileEditorSheet(
+        isPresented = showProfileEditor,
+        nickname = nickname,
+        onNicknameChange = onNicknameChange,
+        onDismiss = { showProfileEditor = false }
+    )
 
     if (showBlockedWordsDialog) {
         var blockedInput by remember { mutableStateOf(blockedWords) }
