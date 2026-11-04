@@ -32,6 +32,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.roman.zemzeme.nostr.hexToByteArray
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.roman.zemzeme.R
 import com.roman.zemzeme.core.ui.utils.singleOrTripleClickable
@@ -919,15 +920,4 @@ private fun shortPeerLabel(peerId: String, peerPubkey: String?): String {
         return if (raw.length >= 4) "p2p…${raw.takeLast(4)}" else "p2p"
     }
     return peerId.take(12)
-}
-
-private fun String.hexToByteArray(): ByteArray {
-    val clean = filter { it.isDigit() || it in 'a'..'f' }
-    val out = ByteArray(clean.length / 2)
-    for (i in out.indices) {
-        val hi = Character.digit(clean[i * 2], 16)
-        val lo = Character.digit(clean[i * 2 + 1], 16)
-        out[i] = ((hi shl 4) or lo).toByte()
-    }
-    return out
 }
