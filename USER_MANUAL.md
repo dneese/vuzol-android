@@ -1,6 +1,6 @@
 # Vuzol — User Manual
 
-**Version 1.7.1**
+**Version 1.7.2**
 
 ---
 
@@ -241,7 +241,7 @@ Voice notes let you record and send short audio messages with a visual waveform 
 - Videos arrive as a thumbnail with a play button — tap it to play in an embedded player:
   - **play / pause** button,
   - **seek bar** with the current time and the total duration — drag it to jump anywhere in the video,
-  - **fullscreen** button (rotates the phone to landscape),
+  - **fullscreen** button — opens a dedicated fullscreen player that hides the system bars and rotates the phone to landscape without interrupting playback,
   - **Save** to store the video on the device.
 
 ### Media Gallery
@@ -299,7 +299,7 @@ You can invite people into a private group chat with a code or a link.
    - **Copy link** — copies `https://dneese.github.io/vuzol-android/?code=…`;
    - **Copy code** — copies just the code;
    - **Open in Vuzol** — opens the invite directly in the app.
-4. The web link works in **any browser**: it shows the group code, offers to open Vuzol and, if the app is not installed yet, offers the **APK download** for your device (ARM64, universal, x86_64).
+4. The web link works in **any browser**: it shows the group code, offers to open Vuzol and, if the app is not installed yet, offers the **APK download** for your device (ARM64, universal, x86_64). When Vuzol is already installed, the link opens the app and **the group is opened right away** — including when you are already a member of it.
 5. The QR code contains the same web link, so scanning it with any camera opens the invite page.
 
 > The recipient can also paste the code (or the whole link) into the **Join group** dialog inside Vuzol.
