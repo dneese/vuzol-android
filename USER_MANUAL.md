@@ -1,6 +1,6 @@
 # Vuzol — User Manual
 
-**Version 1.6.1**
+**Version 1.7.0**
 
 ---
 
@@ -12,7 +12,7 @@
 4. [The Three Communication Modes](#4-the-three-communication-modes)
 5. [Messaging](#5-messaging)
 6. [Voice Notes](#6-voice-notes)
-7. [Image Sharing](#7-image-sharing)
+7. [Photos, Videos & Files](#7-photos-videos--files)
 8. [Location Channels](#8-location-channels)
 9. [Identity & Verification](#9-identity--verification)
 10. [Privacy & Security](#10-privacy--security)
@@ -216,20 +216,38 @@ Voice notes let you record and send short audio messages with a visual waveform 
 
 ---
 
-## 7. Image Sharing
+## 7. Photos, Videos & Files
 
-### Sending an Image
+### Sending Photos, Videos and Files
 
 1. In the chat input bar, tap the **+ (attachment) button**.
-2. The system image picker opens — select the image you want to share.
-3. The image is automatically resized to a maximum of 512 px on the longest edge and compressed as JPEG before sending.
-4. A block-reveal animation shows upload progress on the sender's side.
+2. Choose **Photo or video**, **File**, or **Multiple files**.
+3. Photos and videos are resized to a maximum of 1600 px on the longest edge and compressed as JPEG (quality 90) before sending; other files are sent as-is.
+4. The maximum size of a single attachment is **50 MB** — larger files are rejected with a clear message.
+5. A block-reveal animation shows upload progress on the sender's side.
 
-### Receiving an Image
+### Sending Several Files at Once
+
+- Select up to **20** photos/videos, or several documents, and they are sent as **one message**.
+- The message shows a compact grid (up to four previews) with a `+N` badge for the rest.
+- Tap a photo in the grid to open it full screen, tap a video to play it right in the chat.
+
+### Receiving Photos and Videos
 
 - As an image arrives, it reveals progressively using a 24 × 16 grid animation.
 - Tap the image thumbnail to open it **full screen**.
 - In the full-screen view, tap **Save** to download the image to your device's Downloads folder.
+- Videos arrive as a thumbnail with a play button — tap it to play in an embedded player, then use **Save** to store the file.
+
+### Media Gallery
+
+1. Open a chat and tap the **⋮** button in the top bar.
+2. Choose **Gallery** to see every photo shared in that conversation.
+3. Tap any photo to open it full screen.
+
+### Saving a File
+
+- Open the **⋮** menu on any file message and choose **Save to device** — the file is written to your Downloads folder.
 
 ---
 
@@ -262,6 +280,19 @@ Location notes are persistent messages attached to a specific geohash that anyon
 4. The note is stored and visible to future visitors of that channel.
 
 > **Privacy reminder:** Do not screenshot location channel screens, as screenshots may reveal your approximate location.
+
+---
+
+## 8.1 Group Invites
+
+You can invite people into a private group chat with a code or a link.
+
+1. Open the group chat and tap the **⋮** button in the top bar.
+2. Choose **Invite friends** — the invite sheet opens with a QR code and a short invite code.
+3. Tap **Copy code** to copy the code, or **Share** to send the `vuzol://join/group?code=…` link to anyone.
+4. The recipient can paste the code (or the whole link) into the **Join group** dialog, or simply tap the link — Vuzol joins the group and opens it automatically.
+
+> Invite links work between Vuzol installations. For other messengers, send the invite code as plain text.
 
 ---
 
