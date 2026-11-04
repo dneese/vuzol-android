@@ -973,5 +973,5 @@
   <string name="group_joined_toast">Joined the group %1$s</string>
   <string name="group_join_invalid">This link does not contain a group code</string>
   <string name="group_invite_sheet_title">Invite</string>
-  <string name="media_send_no_connection">Немає прямого з'єднання з контактом — намагаємось встановити</string>
+  <string name="media_send_no_connection">Немає прямого з\'єднання з контактом — намагаємось встановити</string>
 </resources>
