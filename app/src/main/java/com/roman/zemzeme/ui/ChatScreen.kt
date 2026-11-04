@@ -6,6 +6,7 @@ package com.roman.zemzeme.ui
 
 import androidx.compose.animation.*
 import androidx.compose.foundation.*
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -25,6 +26,7 @@ import androidx.compose.material.icons.filled.AirplanemodeActive
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.outlined.Bookmark
+import androidx.compose.material.icons.outlined.ChatBubbleOutline
 import androidx.compose.material.icons.automirrored.filled.Forward
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.shape.CircleShape
@@ -36,6 +38,7 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.Dp
@@ -356,12 +359,20 @@ fun ChatScreen(viewModel: ChatViewModel, isBluetoothEnabled: Boolean = true, onB
             }
 
             // Messages area - takes up available space, will compress when keyboard appears
+            Box(
+                modifier = Modifier.weight(1f),
+                contentAlignment = Alignment.Center
+            ) {
+            if (displayMessages.isEmpty()) {
+                ChatEmptyState()
+            }
             MessagesList(
                 messages = displayMessages,
                 currentUserNickname = nickname,
                 meshService = viewModel.meshService,
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.fillMaxSize(),
                 forceScrollToBottom = forceScrollToBottom,
+                showOwnAvatar = selectedPrivatePeer == null,
                 onScrolledUpChanged = { isUp -> isScrolledUp = isUp },
                 onNicknameClick = { fullSenderName ->
                     // Single click - mention user in text input
@@ -442,6 +453,7 @@ fun ChatScreen(viewModel: ChatViewModel, isBluetoothEnabled: Boolean = true, onB
                 onBlock = handleMessageBlock,
                 lastReadAt = initialLastRead
             )
+            }
             // Input area - stays at bottom
         // Bridge file share from lower-level input to ViewModel
     androidx.compose.runtime.LaunchedEffect(Unit) {
@@ -973,6 +985,53 @@ fun ChatScreen(viewModel: ChatViewModel, isBluetoothEnabled: Boolean = true, onB
         message = detailsMessage,
         onDismiss = { detailsMessage = null }
     )
+}
+
+@Composable
+private fun ChatEmptyState() {
+    val colorScheme = MaterialTheme.colorScheme
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 40.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Box(
+            modifier = Modifier
+                .size(76.dp)
+                .clip(CircleShape)
+                .background(colorScheme.surfaceVariant.copy(alpha = 0.6f)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = Icons.Outlined.ChatBubbleOutline,
+                contentDescription = null,
+                tint = colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(36.dp)
+            )
+        }
+        Spacer(modifier = Modifier.height(16.dp))
+        Text(
+            text = stringResource(com.roman.zemzeme.R.string.chat_empty_title),
+            fontSize = 18.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = colorScheme.onSurface
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = stringResource(com.roman.zemzeme.R.string.chat_empty_subtitle),
+            fontSize = 14.sp,
+            color = colorScheme.onSurface.copy(alpha = 0.65f),
+            textAlign = TextAlign.Center
+        )
+        Spacer(modifier = Modifier.height(10.dp))
+        Text(
+            text = stringResource(com.roman.zemzeme.R.string.chat_empty_hint),
+            fontSize = 13.sp,
+            color = colorScheme.onSurface.copy(alpha = 0.45f),
+            textAlign = TextAlign.Center
+        )
+    }
 }
 
 private fun shouldShowBleMeshBanner(

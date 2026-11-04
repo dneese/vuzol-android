@@ -393,6 +393,7 @@ fun MessageInput(
 /**
  * Bottom sheet with the attachment options (photo / file).
  */
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 private fun AttachmentSheet(
     onDismiss: () -> Unit,

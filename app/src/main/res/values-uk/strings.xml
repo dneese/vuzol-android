@@ -845,4 +845,7 @@
   <string name="profile_published">Опубліковано</string>
   <string name="profile_publish_failed">Не вдалося опублікувати профіль</string>
   <string name="profile_section">Профіль</string>
+  <string name="chat_empty_title">Повідомлень ще немає</string>
+  <string name="chat_empty_subtitle">Повідомлення йдуть напряму між пристроями через Bluetooth mesh, P2P і Nostr. Без номерів телефонів і без центральних серверів.</string>
+  <string name="chat_empty_hint">Утримайте повідомлення, щоб відкрити дії.</string>
 </resources>

@@ -951,4 +951,7 @@
   <string name="profile_published">Published</string>
   <string name="profile_publish_failed">Could not publish the profile</string>
   <string name="profile_section">Profile</string>
+  <string name="chat_empty_title">No messages yet</string>
+  <string name="chat_empty_subtitle">Messages travel directly between devices over Bluetooth mesh, P2P and Nostr. No phone numbers, no central servers.</string>
+  <string name="chat_empty_hint">Hold a message to open its actions.</string>
 </resources>

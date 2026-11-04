@@ -83,6 +83,7 @@ fun MessagesList(
     meshService: BluetoothMeshService,
     modifier: Modifier = Modifier,
     forceScrollToBottom: Boolean = false,
+    showOwnAvatar: Boolean = false,
     onScrolledUpChanged: ((Boolean) -> Unit)? = null,
     onNicknameClick: ((String) -> Unit)? = null,
     onMessageLongPress: ((ZemzemeMessage) -> Unit)? = null,
@@ -181,6 +182,7 @@ fun MessagesList(
                     showHeader = row.showHeader,
                     showAvatar = row.isLastInGroup,
                     showTail = row.isLastInGroup,
+                    showOwnAvatar = showOwnAvatar,
                     onNicknameClick = onNicknameClick,
                     onMessageLongPress = onMessageLongPress,
                     onCancelTransfer = onCancelTransfer,
@@ -217,6 +219,7 @@ fun MessageItem(
     showHeader: Boolean = true,
     showAvatar: Boolean = true,
     showTail: Boolean = true,
+    showOwnAvatar: Boolean = false,
     onNicknameClick: ((String) -> Unit)? = null,
     onMessageLongPress: ((ZemzemeMessage) -> Unit)? = null,
     onCancelTransfer: ((ZemzemeMessage) -> Unit)? = null,
@@ -456,30 +459,18 @@ fun MessageItem(
             if (selectionMode && !isSelf) {
                 SelectionCheck(isSelected = isSelected)
             }
-        }
-        }
 
-        // Big touch target that opens the message menu without a long press
-        if (!selectionMode && compactLayout != ChatDisplaySettings.LAYOUT_COMPACT) {
-            Box(
-                modifier = Modifier
-                    .size(44.dp)
-                    .padding(start = 2.dp)
-                    .clip(CircleShape)
-                    .clickable {
-                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                        onMessageLongPress?.invoke(message)
-                    },
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Outlined.MoreHoriz,
-                    contentDescription = stringResource(R.string.action_more_actions),
-                    tint = colorScheme.onSurface.copy(alpha = 0.32f),
-                    modifier = Modifier.size(22.dp)
+            // Own avatar on the right side of outgoing messages (group chats)
+            if (isSelf && showOwnAvatar && showAvatar && !selectionMode) {
+                OwnProfileAvatar(
+                    nickname = currentUserNickname,
+                    size = 28.dp,
+                    modifier = Modifier.padding(start = 8.dp)
                 )
             }
         }
+        }
+
         }
 
     }

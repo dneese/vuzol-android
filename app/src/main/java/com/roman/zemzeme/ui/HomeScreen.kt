@@ -188,6 +188,9 @@ fun HomeScreen(
 
     // Long-press action sheet → confirmation flow
     var actionTarget by remember { mutableStateOf<ActionTarget?>(null) }
+
+    // Profile editor (avatar, name, bio)
+    var showProfileEditor by remember { mutableStateOf(false) }
     var pendingAction by remember { mutableStateOf<PendingAction?>(null) }
     var pendingActionTarget by remember { mutableStateOf<ActionTarget?>(null) }
 
@@ -364,24 +367,32 @@ fun HomeScreen(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        // Left: title + nickname subtitle (matching LocationChannelsButton layout)
-                        Column(
-                            modifier = Modifier.padding(start = 16.dp, end = 8.dp, top = 2.dp, bottom = 2.dp)
+                        // Left: avatar + title + nickname subtitle
+                        Row(
+                            modifier = Modifier
+                                .padding(start = 16.dp, end = 8.dp, top = 2.dp, bottom = 2.dp)
+                                .clip(RoundedCornerShape(24.dp))
+                                .clickable { showProfileEditor = true },
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
-                            Text(
-                                "Vuzol",
-                                fontSize = 22.sp,
-                                fontFamily = NunitoFontFamily,
-                                fontWeight = FontWeight.Bold,
-                                color = colorScheme.onSurface
-                            )
-                            Text(
-                                "@${nickname.ifEmpty { myPeerID.take(8) }}",
-                                fontSize = 12.sp,
-                                color = colorScheme.onSurface.copy(alpha = 0.5f),
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
+                            OwnProfileAvatar(nickname = nickname, size = 38.dp)
+                            Column {
+                                Text(
+                                    "Vuzol",
+                                    fontSize = 22.sp,
+                                    fontFamily = NunitoFontFamily,
+                                    fontWeight = FontWeight.Bold,
+                                    color = colorScheme.onSurface
+                                )
+                                Text(
+                                    "@${nickname.ifEmpty { myPeerID.take(8) }}",
+                                    fontSize = 12.sp,
+                                    color = colorScheme.onSurface.copy(alpha = 0.5f),
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
                         }
 
                         // Right: refresh + settings
@@ -775,10 +786,18 @@ fun HomeScreen(
             onAboutClick = onSettingsClick,
             onResetIdentity = { showRefreshDialog = true },
             nickname = nickname,
-            onNicknameChange = { chatViewModel.setNickname(it) }
+            onNicknameChange = { chatViewModel.setNickname(it) },
+            onOpenProfile = { showProfileEditor = true }
         )
       }
     }
+
+    ProfileEditorSheet(
+        isPresented = showProfileEditor,
+        nickname = nickname,
+        onNicknameChange = { chatViewModel.setNickname(it) },
+        onDismiss = { showProfileEditor = false }
+    )
 
     // ── Action sheet (centered dialog) ──
 
@@ -1612,7 +1631,8 @@ private fun SettingsTabContent(
     onAboutClick: () -> Unit,
     onResetIdentity: () -> Unit,
     nickname: String,
-    onNicknameChange: (String) -> Unit
+    onNicknameChange: (String) -> Unit,
+    onOpenProfile: () -> Unit
 ) {
     val context = LocalContext.current
     val colorScheme = MaterialTheme.colorScheme
@@ -1627,7 +1647,6 @@ private fun SettingsTabContent(
     val awayAutoReply = awayState.autoReply
     val ghostMode by GhostMode.enabled.collectAsState()
     var showBlockedWordsDialog by remember { mutableStateOf(false) }
-    var showProfileEditor by remember { mutableStateOf(false) }
     val ownProfile by OwnProfile.state.collectAsState()
     val ownAvatarBitmap = remember(ownProfile.avatarPath) {
         ownProfile.avatarPath?.let { path ->
@@ -1650,7 +1669,7 @@ private fun SettingsTabContent(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 6.dp)
-                    .clickable { showProfileEditor = true }
+                    .clickable { onOpenProfile() }
             ) {
                 Row(
                     modifier = Modifier
@@ -1909,13 +1928,6 @@ private fun SettingsTabContent(
             )
         }
     }
-
-    ProfileEditorSheet(
-        isPresented = showProfileEditor,
-        nickname = nickname,
-        onNicknameChange = onNicknameChange,
-        onDismiss = { showProfileEditor = false }
-    )
 
     if (showBlockedWordsDialog) {
         var blockedInput by remember { mutableStateOf(blockedWords) }
