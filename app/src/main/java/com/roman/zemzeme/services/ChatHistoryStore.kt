@@ -286,11 +286,12 @@ object ChatHistoryStore {
             ZemzemeMessage(
                 id = cursor.getString(0),
                 sender = cursor.getString(2),
-                content = cursor.getString(3),
+                // Column order is: id, conv, sender, sender_peer, content, type, ...
+                content = cursor.getString(4),
                 type = type,
                 timestamp = Date(cursor.getLong(6)),
                 isPrivate = cursor.getInt(7) != 0,
-                senderPeerID = cursor.getString(4),
+                senderPeerID = cursor.getString(3),
                 deliveryStatus = decodeDelivery(cursor.getString(8)),
                 powDifficulty = if (cursor.isNull(9)) null else cursor.getInt(9),
                 senderPubkey = if (cursor.isNull(10)) null else cursor.getString(10),

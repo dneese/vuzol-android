@@ -69,6 +69,7 @@ class VuzolApplication : Application() {
 
         // Global chat display settings (layout, text size, clock, keyword filter)
         try { com.roman.zemzeme.ui.ChatDisplaySettings.init(this) } catch (_: Exception) { }
+        try { com.roman.zemzeme.ui.GhostMode.init(this) } catch (_: Exception) { }
         try { com.roman.zemzeme.ui.AwayStatus.init(this) } catch (_: Exception) { }
 
         // Pinned conversations

@@ -1350,6 +1350,10 @@ class BluetoothMeshService(private val context: Context) {
             Log.d(TAG, "Skipping broadcast announce: BLE transport is not running")
             return
         }
+        if (com.roman.zemzeme.ui.GhostMode.isActive()) {
+            Log.d(TAG, "Skipping broadcast announce: ghost mode is active")
+            return
+        }
         Log.d(TAG, "Sending broadcast announce")
         serviceScope.launch {
             val nickname = try { com.roman.zemzeme.services.NicknameProvider.getNickname(context, myPeerID) } catch (_: Exception) { myPeerID }

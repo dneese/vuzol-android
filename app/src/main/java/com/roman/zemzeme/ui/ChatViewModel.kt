@@ -1118,6 +1118,7 @@ class ChatViewModel(
 
     /** Tell the current channel that the user is typing (throttled downstream). */
     fun notifyTyping() {
+        if (com.roman.zemzeme.ui.GhostMode.isActive()) return
         val loc = state.selectedLocationChannel.value
         if (loc is com.roman.zemzeme.geohash.ChannelID.Location) {
             geohashViewModel.sendTyping(loc.channel, state.getNicknameValue())

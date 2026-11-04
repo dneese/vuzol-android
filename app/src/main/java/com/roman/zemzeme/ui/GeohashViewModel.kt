@@ -333,6 +333,10 @@ class GeohashViewModel(
     }
 
     private suspend fun broadcastPresence(geohash: String) {
+        if (com.roman.zemzeme.ui.GhostMode.isActive()) {
+            Log.v(TAG, "👻 Ghost mode active: skipping presence heartbeat")
+            return
+        }
         try {
             val identity = NostrIdentityBridge.deriveIdentity(geohash, getApplication())
             val nickname = state.getNicknameValue()
