@@ -1646,6 +1646,7 @@ private fun SettingsTabContent(
     val awayState by AwayStatus.state.collectAsState()
     val awayAutoReply = awayState.autoReply
     val ghostMode by GhostMode.enabled.collectAsState()
+    val soundPack by com.roman.zemzeme.ui.NotificationPreferences.soundPack.collectAsState()
     var showBlockedWordsDialog by remember { mutableStateOf(false) }
     val ownProfile by OwnProfile.state.collectAsState()
     val ownAvatarBitmap = remember(ownProfile.avatarPath) {
@@ -1891,6 +1892,39 @@ private fun SettingsTabContent(
                 checked = blurImages,
                 onCheckedChange = { ChatDisplaySettings.setBlurImages(context, it) }
             )
+        }
+
+        item(key = "notifications_header") {
+            SectionHeader(stringResource(R.string.settings_section_notifications))
+        }
+
+        item(key = "sound_pack_row") {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                listOf(
+                    com.roman.zemzeme.ui.NotificationPreferences.PACK_SYSTEM to R.string.notif_sound_pack_system,
+                    com.roman.zemzeme.ui.NotificationPreferences.PACK_BEEP to R.string.notif_sound_pack_beep,
+                    com.roman.zemzeme.ui.NotificationPreferences.PACK_POP to R.string.notif_sound_pack_pop,
+                    com.roman.zemzeme.ui.NotificationPreferences.PACK_CHIME to R.string.notif_sound_pack_chime
+                ).forEach { (pack, labelRes) ->
+                    SettingsChip(
+                        label = stringResource(labelRes),
+                        selected = soundPack == pack,
+                        onClick = {
+                            com.roman.zemzeme.ui.NotificationPreferences.setSoundPack(pack)
+                        },
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+            }
+        }
+
+        item(key = "privacy_header") {
+            SectionHeader(stringResource(R.string.settings_section_privacy))
         }
 
         item(key = "away_auto_reply_row") {

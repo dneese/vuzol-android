@@ -954,4 +954,6 @@
   <string name="chat_empty_title">No messages yet</string>
   <string name="chat_empty_subtitle">Messages travel directly between devices over Bluetooth mesh, P2P and Nostr. No phone numbers, no central servers.</string>
   <string name="chat_empty_hint">Hold a message to open its actions.</string>
+  <string name="settings_section_privacy">Privacy</string>
+  <string name="settings_section_notifications">Notifications</string>
 </resources>
