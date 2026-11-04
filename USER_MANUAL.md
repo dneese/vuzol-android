@@ -1,6 +1,6 @@
 # Vuzol — User Manual
 
-**Version 1.7.0**
+**Version 1.7.1**
 
 ---
 
@@ -236,14 +236,19 @@ Voice notes let you record and send short audio messages with a visual waveform 
 
 - As an image arrives, it reveals progressively using a 24 × 16 grid animation.
 - Tap the image thumbnail to open it **full screen**.
+- **Zoom:** pinch with two fingers, or double-tap to zoom in and out; drag to pan while zoomed.
 - In the full-screen view, tap **Save** to download the image to your device's Downloads folder.
-- Videos arrive as a thumbnail with a play button — tap it to play in an embedded player, then use **Save** to store the file.
+- Videos arrive as a thumbnail with a play button — tap it to play in an embedded player:
+  - **play / pause** button,
+  - **seek bar** with the current time and the total duration — drag it to jump anywhere in the video,
+  - **fullscreen** button (rotates the phone to landscape),
+  - **Save** to store the video on the device.
 
 ### Media Gallery
 
 1. Open a chat and tap the **⋮** button in the top bar.
-2. Choose **Gallery** to see every photo shared in that conversation.
-3. Tap any photo to open it full screen.
+2. Choose **Gallery** to see every photo **and video** shared in that conversation.
+3. Tap a photo to open it full screen (with zoom), tap a video to play it.
 
 ### Saving a File
 
@@ -288,11 +293,21 @@ Location notes are persistent messages attached to a specific geohash that anyon
 You can invite people into a private group chat with a code or a link.
 
 1. Open the group chat and tap the **⋮** button in the top bar.
-2. Choose **Invite friends** — the invite sheet opens with a QR code and a short invite code.
-3. Tap **Copy code** to copy the code, or **Share** to send the `vuzol://join/group?code=…` link to anyone.
-4. The recipient can paste the code (or the whole link) into the **Join group** dialog, or simply tap the link — Vuzol joins the group and opens it automatically.
+2. Choose **Invite friends** — the invite sheet opens with a QR code, the short invite code and a web link.
+3. Send the invite any way you like:
+   - **Share** — sends the text with the code and the link to any messenger;
+   - **Copy link** — copies `https://dneese.github.io/vuzol-android/?code=…`;
+   - **Copy code** — copies just the code;
+   - **Open in Vuzol** — opens the invite directly in the app.
+4. The web link works in **any browser**: it shows the group code, offers to open Vuzol and, if the app is not installed yet, offers the **APK download** for your device (ARM64, universal, x86_64).
+5. The QR code contains the same web link, so scanning it with any camera opens the invite page.
 
-> Invite links work between Vuzol installations. For other messengers, send the invite code as plain text.
+> The recipient can also paste the code (or the whole link) into the **Join group** dialog inside Vuzol.
+
+### Growing the circle
+
+- In **Settings → Share Vuzol with friends** you can send the download link to anyone — the landing page picks the right APK automatically.
+- Invites inside Vuzol are one tap away: ⋮ → **Invite friends**.
 
 ---
 
