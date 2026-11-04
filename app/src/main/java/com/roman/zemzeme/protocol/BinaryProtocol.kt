@@ -198,7 +198,15 @@ object BinaryProtocol {
         }
     }
     
-    fun encode(packet: ZemzemePacket): ByteArray? {
+    fun encode(packet: ZemzemePacket): ByteArray? = encodeInternal(packet, applyPadding = true)
+
+    /**
+     * Encode a packet without traffic-analysis padding.
+     * Used by the fragmentation layer, which must split the exact frame bytes.
+     */
+    fun encodeUnpadded(packet: ZemzemePacket): ByteArray? = encodeInternal(packet, applyPadding = false)
+
+    private fun encodeInternal(packet: ZemzemePacket, applyPadding: Boolean): ByteArray? {
         try {
             // Try to compress payload if beneficial
             var payload = packet.payload
@@ -306,6 +314,10 @@ object BinaryProtocol {
             buffer.rewind()
             buffer.get(result)
             
+            if (!applyPadding) {
+                return result
+            }
+
             // Apply padding to standard block sizes for traffic analysis resistance
             val optimalSize = MessagePadding.optimalBlockSize(result.size)
             val paddedData = MessagePadding.pad(result, optimalSize)

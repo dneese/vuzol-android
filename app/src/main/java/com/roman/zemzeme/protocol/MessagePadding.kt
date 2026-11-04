@@ -54,7 +54,11 @@ object MessagePadding {
     }
     
     /**
-     * Remove padding from data - FIXED: strict PKCS#7 validation (iOS compatible)
+     * Remove padding from data - strict PKCS#7 validation (iOS compatible).
+     *
+     * Padding is only stripped when it is consistent with [optimalBlockSize],
+     * so unpadded frames (e.g. payloads where padding would exceed 255 bytes)
+     * are never truncated by accident.
      */
     fun unpad(data: ByteArray): ByteArray {
         if (data.isEmpty()) return data
@@ -71,6 +75,13 @@ object MessagePadding {
             if (data[i] != last) {
                 return data // Invalid padding, return original
             }
+        }
+        
+        // Only strip padding that matches the block size scheme we apply.
+        // Otherwise the data was never padded and must be left untouched.
+        val unpaddedSize = start
+        if (optimalBlockSize(unpaddedSize) - unpaddedSize != paddingLength) {
+            return data
         }
         
         return data.copyOfRange(0, start)

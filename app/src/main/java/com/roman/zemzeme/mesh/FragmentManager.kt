@@ -3,7 +3,7 @@ package com.roman.zemzeme.mesh
 import android.util.Log
 import com.roman.zemzeme.protocol.ZemzemePacket
 import com.roman.zemzeme.protocol.MessageType
-import com.roman.zemzeme.protocol.MessagePadding
+import com.roman.zemzeme.protocol.BinaryProtocol
 import com.roman.zemzeme.model.FragmentPayload
 import kotlinx.coroutines.*
 import java.util.concurrent.ConcurrentHashMap
@@ -50,21 +50,18 @@ class FragmentManager {
     fun createFragments(packet: ZemzemePacket): List<ZemzemePacket> {
         try {
             Log.d(TAG, "🔀 Creating fragments for packet type ${packet.type}, payload: ${packet.payload.size} bytes")
-        val encoded = packet.toBinaryData()
-            if (encoded == null) {
+        // Encode without padding: the frame must be split byte-exactly.
+        val fullData = try {
+                BinaryProtocol.encodeUnpadded(packet)
+            } catch (e: Exception) {
+                Log.e(TAG, "❌ Failed to encode packet: ${e.message}", e)
+                null
+            }
+            if (fullData == null) {
                 Log.e(TAG, "❌ Failed to encode packet to binary data")
                 return emptyList()
             }
-            Log.d(TAG, "📦 Encoded to ${encoded.size} bytes")
-        
-        // Fragment the unpadded frame; each fragment will be encoded (and padded) independently - iOS fix
-        val fullData = try {
-                MessagePadding.unpad(encoded)
-            } catch (e: Exception) {
-                Log.e(TAG, "❌ Failed to unpad data: ${e.message}", e)
-                return emptyList()
-            }
-            Log.d(TAG, "📏 Unpadded to ${fullData.size} bytes")
+            Log.d(TAG, "📦 Encoded to ${fullData.size} bytes (unpadded)")
         
         // iOS logic: if data.count > 512 && packet.type != MessageType.fragment.rawValue
         if (fullData.size <= FRAGMENT_SIZE_THRESHOLD) {

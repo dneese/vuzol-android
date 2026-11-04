@@ -180,6 +180,36 @@ class FragmentManagerTest {
         assertTrue("Payload content should match", originalPacket.payload.contentEquals(reassembledPacket.payload))
     }
 
+    @Test
+    fun `test reassembly with payload ending in padding-like byte`() {
+        // Regression: a frame whose payload ends with 0x01 must not be truncated by padding removal
+        val payload = ByteArray(1500)
+        Random().nextBytes(payload)
+        payload[payload.size - 1] = 0x01
+
+        val packet = ZemzemePacket(
+            version = 1u,
+            type = MessageType.FILE_TRANSFER.value,
+            senderID = hexStringToByteArray(senderID),
+            recipientID = hexStringToByteArray(recipientID),
+            timestamp = System.currentTimeMillis().toULong(),
+            payload = payload,
+            ttl = 7u
+        )
+
+        val fragments = fragmentManager.createFragments(packet)
+        assertTrue("Should create multiple fragments", fragments.size > 1)
+
+        var reassembled: ZemzemePacket? = null
+        for (fragment in fragments) {
+            fragmentManager.handleFragment(fragment)?.let { reassembled = it }
+        }
+
+        assertNotNull("Should have reassembled packet", reassembled)
+        assertEquals("Payload size should match", payload.size, reassembled!!.payload.size)
+        assertTrue("Payload content should match", payload.contentEquals(reassembled.payload))
+    }
+
     private fun hexStringToByteArray(hexString: String): ByteArray {
         val result = ByteArray(8)
         for (i in 0 until 8) {
