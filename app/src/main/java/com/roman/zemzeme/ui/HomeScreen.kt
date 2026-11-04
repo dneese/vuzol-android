@@ -50,6 +50,7 @@ import androidx.compose.material.icons.outlined.People
 import androidx.compose.material.icons.outlined.PushPin
 import androidx.compose.material.icons.outlined.Bookmark
 import androidx.compose.material.icons.outlined.VisibilityOff
+import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material.icons.outlined.DoNotDisturbOn
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material3.*
@@ -1619,6 +1620,7 @@ private fun SettingsTabContent(
     val blurImages by ChatDisplaySettings.blurImagesFlow.collectAsState()
     val awayState by AwayStatus.state.collectAsState()
     val awayAutoReply = awayState.autoReply
+    val ghostMode by GhostMode.enabled.collectAsState()
     var showBlockedWordsDialog by remember { mutableStateOf(false) }
 
     LazyColumn(
@@ -1796,6 +1798,15 @@ private fun SettingsTabContent(
                 label = stringResource(R.string.away_auto_reply_title),
                 checked = awayAutoReply,
                 onCheckedChange = { AwayStatus.setAutoReply(context, it) }
+            )
+        }
+
+        item(key = "ghost_mode_row") {
+            SettingsSwitchRow(
+                icon = Icons.Outlined.Visibility,
+                label = stringResource(R.string.settings_ghost_mode),
+                checked = ghostMode,
+                onCheckedChange = { GhostMode.setEnabled(context, it) }
             )
         }
 

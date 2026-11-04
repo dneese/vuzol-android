@@ -478,6 +478,33 @@ fun ChatScreen(viewModel: ChatViewModel, isBluetoothEnabled: Boolean = true, onB
         )
     }
 
+    val ghostMode by GhostMode.enabled.collectAsState()
+    if (ghostMode) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 4.dp)
+                .clip(RoundedCornerShape(10.dp))
+                .background(colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                .padding(horizontal = 12.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Filled.VisibilityOff,
+                contentDescription = null,
+                tint = colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(18.dp)
+            )
+            Text(
+                text = stringResource(com.roman.zemzeme.R.string.ghost_mode_banner),
+                color = colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.labelMedium,
+                modifier = Modifier.weight(1f)
+            )
+        }
+    }
+
     if (awayState.active) {
         Row(
             modifier = Modifier

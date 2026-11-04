@@ -932,4 +932,6 @@
     <string name="away_banner">Away: %1$s</string>
     <string name="away_banner_default">You are away</string>
     <string name="away_banner_cancel">Tap to cancel</string>
+    <string name="settings_ghost_mode">Ghost mode (stay invisible)</string>
+    <string name="ghost_mode_banner">Ghost mode: nobody can see you online</string>
 </resources>
