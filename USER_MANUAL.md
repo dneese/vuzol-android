@@ -1,6 +1,6 @@
 # Vuzol — User Manual
 
-**Version 1.6.0**
+**Version 1.6.1**
 
 ---
 
