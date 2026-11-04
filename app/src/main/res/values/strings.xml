@@ -935,4 +935,10 @@
     <string name="settings_ghost_mode">Ghost mode (stay invisible)</string>
     <string name="ghost_mode_banner">Ghost mode: nobody can see you online</string>
     <string name="action_share_message">Share</string>
+  <string name="cd_attach_file">Attach</string>
+  <string name="attachments_title">Send</string>
+  <string name="action_send_photo">Photo</string>
+  <string name="action_send_file">File</string>
+  <string name="chat_options_title">Chat options</string>
+  <string name="action_clear_chat">Clear chat</string>
 </resources>

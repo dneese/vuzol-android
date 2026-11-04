@@ -240,7 +240,6 @@ fun MessageItem(
     val colorScheme = MaterialTheme.colorScheme
     val use24h by ChatDisplaySettings.use24hFlow.collectAsState()
     val compactLayout by ChatDisplaySettings.layoutFlow.collectAsState()
-    var showActionPopup by remember { mutableStateOf(false) }
     val clipboardManager = androidx.compose.ui.platform.LocalClipboardManager.current
     val timeFormatter = remember(use24h) {
         SimpleDateFormat(if (use24h) "HH:mm" else "h:mm a", Locale.getDefault())
@@ -340,7 +339,7 @@ fun MessageItem(
                 detectTapGestures(
                     onLongPress = {
                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                        showActionPopup = true
+                        onMessageLongPress?.invoke(message)
                     },
                     onDoubleTap = {
                         if (!selectionMode && onReply != null) {
@@ -469,7 +468,7 @@ fun MessageItem(
                     .clip(CircleShape)
                     .clickable {
                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                        showActionPopup = true
+                        onMessageLongPress?.invoke(message)
                     },
                 contentAlignment = Alignment.Center
             ) {
@@ -483,40 +482,6 @@ fun MessageItem(
         }
         }
 
-        // Quick action popup anchored to the touched message
-        if (showActionPopup) {
-            androidx.compose.ui.window.Popup(
-                popupPositionProvider = MessagePopupPositionProvider(),
-                properties = androidx.compose.ui.window.PopupProperties(
-                    focusable = true,
-                    dismissOnBackPress = true,
-                    dismissOnClickOutside = true
-                ),
-                onDismissRequest = { showActionPopup = false }
-            ) {
-                MessageActionPopup(
-                    message = message,
-                    authorName = truncateNickname(baseName) + suffix,
-                    authorColor = baseColor,
-                    timeText = timeFormatter.format(message.timestamp),
-                    isSelf = isSelf,
-                    onDismiss = { showActionPopup = false },
-                    onReply = { onReply?.invoke(message) },
-                    onReact = { emoji -> onReact?.invoke(message, emoji) },
-                    onCopy = { clipboardManager.setText(AnnotatedString(message.content)) },
-                    onForward = onForward?.let { cb -> { cb(message) } },
-                    onShare = onShare?.let { cb -> { cb(message) } },
-                    onSave = onSave?.let { cb -> { cb(message) } },
-                    onPin = onPin?.let { cb -> { cb(message) } },
-                    onEdit = onEdit?.let { cb -> { cb(message) } },
-                    onDelete = onDelete?.let { cb -> { cb(message) } },
-                    onSelect = onSelect?.let { cb -> { cb(message) } },
-                    onDetails = onDetails?.let { cb -> { cb(message) } },
-                    onBlock = onBlock?.let { cb -> { cb(message) } },
-                    onMore = onMessageLongPress?.let { cb -> { cb(message) } }
-                )
-            }
-        }
     }
 }
 

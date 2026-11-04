@@ -952,17 +952,46 @@ fun PrivateChatSheet(
                         onImageClick = { _, _, _ -> /* handle image click */ }
                     )
 
+                    val actionContext = androidx.compose.ui.platform.LocalContext.current
+                    val actionClipboard = androidx.compose.ui.platform.LocalClipboardManager.current
                     if (showMessageActionSheet) {
-                        val senderName = selectedMessageForAction?.sender?.let {
-                            com.roman.zemzeme.ui.splitSuffix(it).first
-                        } ?: titleText
-                        ChatUserSheet(
-                            isPresented = true,
-                            onDismiss = { showMessageActionSheet = false },
-                            targetNickname = senderName,
-                            selectedMessage = selectedMessageForAction,
-                            viewModel = viewModel
-                        )
+                        val actionMessage = selectedMessageForAction
+                        if (actionMessage != null) {
+                            val (actionBaseName, actionSuffix) =
+                                com.roman.zemzeme.ui.splitSuffix(actionMessage.sender)
+                            MessageActionsSheet(
+                                message = actionMessage,
+                                authorName = actionBaseName + actionSuffix,
+                                authorColor = com.roman.zemzeme.ui.getPeerColor(actionMessage, false),
+                                timeText = java.text.SimpleDateFormat(
+                                    "HH:mm",
+                                    java.util.Locale.getDefault()
+                                ).format(actionMessage.timestamp),
+                                isSelf = actionMessage.sender == nickname,
+                                onDismiss = { showMessageActionSheet = false },
+                                onReply = { },
+                                onReact = { emoji -> viewModel.sendReaction(actionMessage.id, emoji) },
+                                onCopy = {
+                                    actionClipboard.setText(
+                                        androidx.compose.ui.text.AnnotatedString(actionMessage.content)
+                                    )
+                                },
+                                onShare = {
+                                    val sendIntent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                                        type = "text/plain"
+                                        putExtra(
+                                            android.content.Intent.EXTRA_TEXT,
+                                            com.roman.zemzeme.ui.MessageReply.preview(actionMessage)
+                                        )
+                                    }
+                                    try {
+                                        actionContext.startActivity(
+                                            android.content.Intent.createChooser(sendIntent, null)
+                                        )
+                                    } catch (_: Exception) { }
+                                }
+                            )
+                        }
                     }
 
                     HorizontalDivider(color = colorScheme.outline.copy(alpha = 0.3f))

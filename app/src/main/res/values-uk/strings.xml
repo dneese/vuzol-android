@@ -829,4 +829,10 @@
     <string name="settings_ghost_mode">Прихований режим (невидимість)</string>
     <string name="ghost_mode_banner">Прихований режим: вас ніхто не бачить онлайн</string>
     <string name="action_share_message">Поділитися</string>
+  <string name="cd_attach_file">Вкласти</string>
+  <string name="attachments_title">Надіслати</string>
+  <string name="action_send_photo">Фото</string>
+  <string name="action_send_file">Файл</string>
+  <string name="chat_options_title">Параметри чату</string>
+  <string name="action_clear_chat">Очистити чат</string>
 </resources>

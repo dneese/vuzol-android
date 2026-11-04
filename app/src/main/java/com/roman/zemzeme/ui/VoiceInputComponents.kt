@@ -56,7 +56,7 @@ fun VoiceRecordButton(
 
     Box(
         modifier = modifier
-            .size(32.dp)
+            .size(44.dp)
             .background(backgroundColor, CircleShape)
             .pointerInput(Unit) {
                 detectTapGestures(

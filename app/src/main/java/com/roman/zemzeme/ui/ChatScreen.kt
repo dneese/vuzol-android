@@ -32,6 +32,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.clip
 import androidx.compose.material3.IconButton
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.TextFieldValue
@@ -100,9 +101,6 @@ fun ChatScreen(viewModel: ChatViewModel, isBluetoothEnabled: Boolean = true, onB
     var selectionMode by remember { mutableStateOf(false) }
     var selectedMessageIds by remember { mutableStateOf<Set<String>>(emptySet()) }
     val pinnedMessages by com.roman.zemzeme.services.PinStore.pins.collectAsState()
-    var showUserSheet by remember { mutableStateOf(false) }
-    var selectedUserForSheet by remember { mutableStateOf("") }
-    var selectedMessageForSheet by remember { mutableStateOf<ZemzemeMessage?>(null) }
     var showFullScreenImageViewer by remember { mutableStateOf(false) }
     var viewerImagePaths by remember { mutableStateOf(emptyList<String>()) }
     var initialViewerIndex by remember { mutableStateOf(0) }
@@ -110,6 +108,9 @@ fun ChatScreen(viewModel: ChatViewModel, isBluetoothEnabled: Boolean = true, onB
     var isScrolledUp by remember { mutableStateOf(false) }
     var replyTo by remember { mutableStateOf<ZemzemeMessage?>(null) }
     var detailsMessage by remember { mutableStateOf<ZemzemeMessage?>(null) }
+    var messageForActions by remember { mutableStateOf<ZemzemeMessage?>(null) }
+    var showAutoDeleteDialog by remember { mutableStateOf(false) }
+    var showChatOptions by remember { mutableStateOf(false) }
 
 
     // Show password dialog when needed
@@ -391,12 +392,8 @@ fun ChatScreen(viewModel: ChatViewModel, isBluetoothEnabled: Boolean = true, onB
                     )
                 },
                 onMessageLongPress = { message ->
-                    // Message long press - open user action sheet with message context
-                    // Extract base nickname from message sender (contains all necessary info)
-                    val (baseName, _) = splitSuffix(message.sender)
-                    selectedUserForSheet = baseName
-                    selectedMessageForSheet = message
-                    showUserSheet = true
+                    // Long press (or the ⋮ button) opens the single message actions sheet
+                    messageForActions = message
                 },
                 onCancelTransfer = { msg ->
                     viewModel.cancelMediaSend(msg.id)
@@ -669,6 +666,7 @@ fun ChatScreen(viewModel: ChatViewModel, isBluetoothEnabled: Boolean = true, onB
             onLocationNotesClick = { showLocationNotesSheet = true },
             onSearchClick = { showMessageSearch = true },
             onAppearanceClick = { showAppearanceSheet = true },
+            onMenuClick = { showChatOptions = true },
             headerImage = headerImage,
             privatePeerPubkey = peerPubkey,
             privatePeerName = peerDisplayName
@@ -715,7 +713,7 @@ fun ChatScreen(viewModel: ChatViewModel, isBluetoothEnabled: Boolean = true, onB
             exit = slideOutVertically(targetOffsetY = { it / 2 }) + fadeOut(),
             modifier = Modifier
                 .align(Alignment.BottomEnd)
-                .padding(end = 16.dp, bottom = 64.dp)
+                .padding(end = 16.dp, bottom = 96.dp)
                 .zIndex(1.5f)
                 .windowInsetsPadding(WindowInsets.navigationBars)
                 .windowInsetsPadding(WindowInsets.ime)
@@ -850,13 +848,6 @@ fun ChatScreen(viewModel: ChatViewModel, isBluetoothEnabled: Boolean = true, onB
         onMessageForward = { message, channel ->
             viewModel.forwardMessage(message, channel)
         },
-        showUserSheet = showUserSheet,
-        onUserSheetDismiss = { 
-            showUserSheet = false
-            selectedMessageForSheet = null // Reset message when dismissing
-        },
-        selectedUserForSheet = selectedUserForSheet,
-        selectedMessageForSheet = selectedMessageForSheet,
         onReply = { msg -> replyTo = msg },
         viewModel = viewModel,
         showVerificationSheet = showVerificationSheet,
@@ -1239,6 +1230,7 @@ private fun ChatFloatingHeader(
     onLocationNotesClick: () -> Unit,
     onSearchClick: () -> Unit = {},
     onAppearanceClick: (() -> Unit)? = null,
+    onMenuClick: (() -> Unit)? = null,
     headerImage: androidx.compose.ui.graphics.ImageBitmap? = null,
     privatePeerPubkey: String? = null,
     privatePeerName: String? = null
@@ -1298,6 +1290,7 @@ private fun ChatFloatingHeader(
                 },
                 onSearchClick = onSearchClick,
                 onAppearanceClick = onAppearanceClick,
+                onMenuClick = onMenuClick,
                 privatePeerPubkey = privatePeerPubkey,
                 privatePeerName = privatePeerName
             )
@@ -1386,10 +1379,6 @@ private fun ChatDialogs(
     onLocationChannelsSheetDismiss: () -> Unit,
     showLocationNotesSheet: Boolean,
     onLocationNotesSheetDismiss: () -> Unit,
-    showUserSheet: Boolean,
-    onUserSheetDismiss: () -> Unit,
-    selectedUserForSheet: String,
-    selectedMessageForSheet: ZemzemeMessage?,
     onReply: (ZemzemeMessage) -> Unit,
     showMessageSearch: Boolean,
     onMessageSearchDismiss: () -> Unit,
@@ -1461,6 +1450,114 @@ private fun ChatDialogs(
         onDismiss = onProfileDismiss
     )
 
+    // Chat options (appearance, mute, auto-delete, selection, clear)
+    if (showChatOptions) {
+        val currentGeohash = (viewModel.selectedLocationChannel.value as? com.roman.zemzeme.geohash.ChannelID.Location)?.channel?.geohash
+        ChatOptionsSheet(
+            onDismiss = { showChatOptions = false },
+            onAppearance = { showAppearanceSheet = true },
+            muted = currentGeohash?.let { com.roman.zemzeme.services.MuteStore.isMuted(it) },
+            onToggleMute = currentGeohash?.let { geo ->
+                {
+                    val muted = com.roman.zemzeme.services.MuteStore.isMuted(geo)
+                    com.roman.zemzeme.services.MuteStore.setMuted(geo, !muted)
+                }
+            },
+            onAutoDelete = { showAutoDeleteDialog = true },
+            onSelect = { selectionMode = true },
+            onSearch = { showMessageSearch = true },
+            onClear = {
+                viewModel.sendMessage("/clear")
+            }
+        )
+    }
+
+    // Message actions (reply, copy, forward, save, pin, edit, delete, ...)
+    val actionClipboard = androidx.compose.ui.platform.LocalClipboardManager.current
+    messageForActions?.let { actionMessage ->
+        val (actionBaseName, actionSuffix) = splitSuffix(actionMessage.sender)
+        val actionIsSelf = actionMessage.sender == nickname ||
+            actionMessage.sender.startsWith("$nickname#") ||
+            actionMessage.senderPeerID == viewModel.meshService.myPeerID
+        MessageActionsSheet(
+            message = actionMessage,
+            authorName = actionBaseName + actionSuffix,
+            authorColor = getPeerColor(actionMessage, colorScheme.background.red + colorScheme.background.green + colorScheme.background.blue < 1.5f),
+            timeText = java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault()).format(actionMessage.timestamp),
+            isSelf = actionIsSelf,
+            onDismiss = { messageForActions = null },
+            onReply = { replyTo = actionMessage },
+            onReact = { emoji -> viewModel.sendReaction(actionMessage.id, emoji) },
+            onCopy = {
+                actionClipboard.setText(AnnotatedString(actionMessage.content))
+            },
+            onShare = {
+                val text = MessageReply.preview(actionMessage)
+                val sendIntent = Intent(Intent.ACTION_SEND).apply {
+                    type = "text/plain"
+                    putExtra(Intent.EXTRA_TEXT, text)
+                }
+                try { context.startActivity(Intent.createChooser(sendIntent, null)) } catch (_: Exception) { }
+            },
+            onForward = { handleMessageForward(actionMessage) },
+            onSave = { handleMessageSave(actionMessage) },
+            onPin = { handleMessagePin(actionMessage) },
+            onEdit = { handleMessageEdit(actionMessage) },
+            onDelete = { viewModel.deleteMessageLocally(actionMessage) },
+            onSelect = { handleMessageSelect(actionMessage) },
+            onDetails = { detailsMessage = actionMessage },
+            onMute = {
+                val geohash = (viewModel.selectedLocationChannel.value as? com.roman.zemzeme.geohash.ChannelID.Location)?.channel?.geohash
+                if (geohash != null) {
+                    val muted = com.roman.zemzeme.services.MuteStore.isMuted(geohash)
+                    com.roman.zemzeme.services.MuteStore.setMuted(geohash, !muted)
+                }
+            },
+            onAutoDelete = { showAutoDeleteDialog = true },
+            onBlock = { handleMessageBlock(actionMessage) }
+        )
+    }
+
+    // Auto-delete lifetime picker
+    if (showAutoDeleteDialog) {
+        val ttlOptions = listOf(0L, 2L, 3600L, 86400L, 604800L)
+        AlertDialog(
+            onDismissRequest = { showAutoDeleteDialog = false },
+            title = { Text(stringResource(com.roman.zemzeme.R.string.action_auto_delete_title)) },
+            text = {
+                Column {
+                    ttlOptions.forEach { seconds ->
+                        TextButton(
+                            onClick = {
+                                conversationKey?.let { key ->
+                                    com.roman.zemzeme.services.MessageTTLStore.setTtl(context, key, seconds)
+                                }
+                                showAutoDeleteDialog = false
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(
+                                text = when (seconds) {
+                                    0L -> stringResource(com.roman.zemzeme.R.string.action_auto_delete_off)
+                                    2L -> stringResource(com.roman.zemzeme.R.string.action_auto_delete_2s)
+                                    3600L -> stringResource(com.roman.zemzeme.R.string.action_auto_delete_1h)
+                                    86400L -> stringResource(com.roman.zemzeme.R.string.action_auto_delete_24h)
+                                    else -> stringResource(com.roman.zemzeme.R.string.action_auto_delete_7d)
+                                },
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showAutoDeleteDialog = false }) {
+                    Text(stringResource(com.roman.zemzeme.R.string.cancel))
+                }
+            }
+        )
+    }
+
     // Forward message to another channel
     ForwardSheet(
         isPresented = messageToForward != null,
@@ -1494,22 +1591,7 @@ private fun ChatDialogs(
         )
     }
     
-    // User action sheet
-    if (showUserSheet) {
-        ChatUserSheet(
-            isPresented = showUserSheet,
-            onDismiss = onUserSheetDismiss,
-            targetNickname = selectedUserForSheet,
-            selectedMessage = selectedMessageForSheet,
-            onReply = onReply,
-            onReact = { emoji -> selectedMessageForSheet?.let { viewModel.sendReaction(it.id, emoji) } },
-            onForward = { message -> onMessageForwardRequest(message) },
-            onEdit = { message -> onMessageEditRequest(message) },
-            onSave = { message -> onMessageSaveRequest(message) },
-            onSelectMultiple = { message -> onMessageSelectRequest(message) },
-            viewModel = viewModel
-        )
-    }
+    // (message actions live in MessageActionsSheet, person details in PeerProfileSheet)
     // MeshPeerList sheet (network view)
     if (showMeshPeerListSheet){
         MeshPeerListSheet(

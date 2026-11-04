@@ -11,6 +11,8 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -178,216 +180,324 @@ fun MessageInput(
     modifier: Modifier = Modifier
 ) {
     val colorScheme = MaterialTheme.colorScheme
+    val accent = LocalChatAccent.current
     val isFocused = remember { mutableStateOf(false) }
-    val hasText = value.text.isNotBlank() // Check if there's text for send button state
-    val keyboard = LocalSoftwareKeyboardController.current
+    val hasText = value.text.isNotBlank()
     val focusRequester = remember { FocusRequester() }
     var isRecording by remember { mutableStateOf(false) }
     var elapsedMs by remember { mutableStateOf(0L) }
     var amplitude by remember { mutableStateOf(0) }
     var showEmojiPicker by remember { mutableStateOf(false) }
+    var showAttachmentSheet by remember { mutableStateOf(false) }
+
+    val latestSelectedPeer = rememberUpdatedState(selectedPrivatePeer)
+    val latestChannel = rememberUpdatedState(currentChannel)
+    val latestOnSendVoiceNote = rememberUpdatedState(onSendVoiceNote)
 
     Column(modifier = modifier) {
-    if (showEmojiPicker) {
-        EmojiPickerPanel(
-            onPick = { emoji ->
-                val newText = value.text + emoji
-                onValueChange(value.copy(text = newText, selection = TextRange(newText.length)))
-            }
-        )
-    }
-    Row(
-        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp), // Reduced padding
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        // Text input with placeholder OR visualizer when recording
-        Box(
-            modifier = Modifier.weight(1f)
-        ) {
-            // Always keep the text field mounted to retain focus and avoid IME collapse
-            BasicTextField(
-                value = value,
-                onValueChange = onValueChange,
-                enabled = enabled,
-                textStyle = MaterialTheme.typography.bodyMedium.copy(
-                    color = if (enabled) colorScheme.primary else colorScheme.onSurface.copy(alpha = 0.3f),
-                    fontFamily = NunitoFontFamily
-                ),
-                cursorBrush = SolidColor(if (isRecording) Color.Transparent else LocalChatAccent.current),
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
-                keyboardActions = KeyboardActions(onSend = {
-                    if (hasText && enabled) onSend()
-                }),
-                visualTransformation = CombinedVisualTransformation(
-                    listOf(SlashCommandVisualTransformation(), MentionVisualTransformation())
-                ),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .focusRequester(focusRequester)
-                    .onFocusChanged { focusState ->
-                        isFocused.value = focusState.isFocused
-                    }
-            )
-
-            // Show placeholder when there's no text and not recording
-            if (value.text.isEmpty() && !isRecording) {
-                Text(
-                    text = stringResource(R.string.type_a_message_placeholder),
-                    style = MaterialTheme.typography.bodyMedium.copy(
-                        fontFamily = NunitoFontFamily
-                    ),
-                    color = colorScheme.onSurface.copy(alpha = 0.5f), // Muted grey
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-
-            // Overlay the real-time scrolling waveform while recording
-            if (isRecording) {
-                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-                    RealtimeScrollingWaveform(
-                        modifier = Modifier.weight(1f).height(32.dp),
-                        amplitudeNorm = normalizeAmplitudeSample(amplitude)
-                    )
-                    Spacer(Modifier.width(20.dp))
-                    val secs = (elapsedMs / 1000).toInt()
-                    val mm = secs / 60
-                    val ss = secs % 60
-                    val maxSecs = 10 // 10 second max recording time
-                    val maxMm = maxSecs / 60
-                    val maxSs = maxSecs % 60
-                    Text(
-                        text = String.format("%02d:%02d / %02d:%02d", mm, ss, maxMm, maxSs),
-                        fontFamily = NunitoFontFamily,
-                        color = colorScheme.primary,
-                        fontSize = (BASE_FONT_SIZE - 4).sp
-                    )
+        if (showEmojiPicker) {
+            EmojiPickerPanel(
+                onPick = { emoji ->
+                    val newText = value.text + emoji
+                    onValueChange(value.copy(text = newText, selection = TextRange(newText.length)))
                 }
-            }
-        }
-        
-        Spacer(modifier = Modifier.width(8.dp)) // Reduced spacing
-
-        // Emoji picker toggle
-        IconButton(
-            onClick = { showEmojiPicker = !showEmojiPicker },
-            modifier = Modifier.size(32.dp)
-        ) {
-            Icon(
-                imageVector = Icons.Filled.EmojiEmotions,
-                contentDescription = stringResource(id = R.string.emoji_picker),
-                tint = colorScheme.primary.copy(alpha = 0.8f),
-                modifier = Modifier.size(22.dp)
             )
         }
 
-        // Voice and image buttons when no text (only visible in Mesh chat)
-        if (value.text.isEmpty() && showMediaButtons && enabled) {
-            // Hold-to-record microphone
-            val bg = colorScheme.primary.copy(alpha = 0.75f)
-
-            // Ensure latest values are used when finishing recording
-            val latestSelectedPeer = rememberUpdatedState(selectedPrivatePeer)
-            val latestChannel = rememberUpdatedState(currentChannel)
-            val latestOnSendVoiceNote = rememberUpdatedState(onSendVoiceNote)
-
-            // Image button (image picker) - hide during recording
-            if (!isRecording) {
-                // Revert to original separate buttons: round File button (left) and the old Image plus button (right)
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
-                    // DISABLE FILE PICKER
-                    //FilePickerButton(
-                    //    onFileReady = { path ->
-                    //        onSendFileNote(latestSelectedPeer.value, latestChannel.value, path)
-                    //    }
-                    //)
-                    ImagePickerButton(
-                        onImageReady = { outPath ->
-                            onSendImageNote(latestSelectedPeer.value, latestChannel.value, outPath)
-                        }
-                    )
-                }
-            }
-
-            Spacer(Modifier.width(1.dp))
-
-            VoiceRecordButton(
-                backgroundColor = bg,
-                onStart = {
-                    isRecording = true
-                    elapsedMs = 0L
-                    // Keep existing focus to avoid IME collapse, but do not force-show keyboard
-                    if (isFocused.value) {
-                        try { focusRequester.requestFocus() } catch (_: Exception) {}
-                    }
-                },
-                onAmplitude = { amp, ms ->
-                    amplitude = amp
-                    elapsedMs = ms
-                },
-                onFinish = { path ->
-                    isRecording = false
-                    // Extract and cache waveform from the actual audio file to match receiver rendering
-                    AudioWaveformExtractor.extractAsync(path, sampleCount = 120) { arr ->
-                        if (arr != null) {
-                            try { com.roman.zemzeme.features.voice.VoiceWaveformCache.put(path, arr) } catch (_: Exception) {}
-                        }
-                    }
-                    // BLE path (private or public) — use latest values to avoid stale captures
-                    latestOnSendVoiceNote.value(
-                        latestSelectedPeer.value,
-                        latestChannel.value,
-                        path
-                    )
-                }
-            )
-            
-        } else {
-            // Send button with enabled/disabled state
-            IconButton(
-                onClick = { if (hasText && enabled) onSend() },
-                enabled = hasText && enabled,
-                modifier = Modifier.size(32.dp)
-            ) {
-                // Update send button to match input field colors
+        Row(
+            modifier = Modifier.padding(start = 10.dp, end = 10.dp, top = 6.dp, bottom = 10.dp),
+            verticalAlignment = Alignment.Bottom,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            // Attachments
+            if (showMediaButtons && enabled) {
                 Box(
                     modifier = Modifier
-                        .size(30.dp)
-                        .background(
-                            color = if (!hasText) {
-                                // Disabled state - muted grey
-                                colorScheme.onSurface.copy(alpha = 0.3f)
-                            } else if (selectedPrivatePeer != null || currentChannel != null) {
-                                // Orange for both private messages and channels when enabled
-                                Color(0xFFFF9500).copy(alpha = 0.75f)
-                            } else {
-                                LocalChatAccent.current.copy(alpha = 0.85f)
-                            },
-                            shape = CircleShape
-                        ),
+                        .size(46.dp)
+                        .clip(CircleShape)
+                        .background(colorScheme.surfaceVariant.copy(alpha = 0.55f))
+                        .clickable { showAttachmentSheet = true },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Add,
+                        contentDescription = stringResource(R.string.cd_attach_file),
+                        tint = colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+            }
+
+            // Rounded composer
+            Surface(
+                shape = RoundedCornerShape(26.dp),
+                color = colorScheme.surfaceVariant.copy(alpha = 0.55f),
+                modifier = Modifier.weight(1f)
+            ) {
+                Row(
+                    modifier = Modifier.padding(start = 16.dp, end = 2.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(vertical = 13.dp),
+                        contentAlignment = Alignment.CenterStart
+                    ) {
+                        // Always keep the text field mounted to retain focus and avoid IME collapse
+                        BasicTextField(
+                            value = value,
+                            onValueChange = onValueChange,
+                            enabled = enabled,
+                            textStyle = MaterialTheme.typography.bodyMedium.copy(
+                                color = if (enabled) colorScheme.onSurface else colorScheme.onSurface.copy(alpha = 0.3f),
+                                fontFamily = NunitoFontFamily
+                            ),
+                            cursorBrush = SolidColor(LocalChatAccent.current),
+                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
+                            keyboardActions = KeyboardActions(onSend = {
+                                if (hasText && enabled) onSend()
+                            }),
+                            visualTransformation = CombinedVisualTransformation(
+                                listOf(SlashCommandVisualTransformation(), MentionVisualTransformation())
+                            ),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .focusRequester(focusRequester)
+                                .onFocusChanged { focusState ->
+                                    isFocused.value = focusState.isFocused
+                                }
+                        )
+
+                        // Show placeholder when there's no text and not recording
+                        if (value.text.isEmpty() && !isRecording) {
+                            Text(
+                                text = stringResource(R.string.type_a_message_placeholder),
+                                style = MaterialTheme.typography.bodyMedium.copy(
+                                    fontFamily = NunitoFontFamily
+                                ),
+                                color = colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
+
+                        // Overlay the real-time scrolling waveform while recording
+                        if (isRecording) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                RealtimeScrollingWaveform(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .height(32.dp),
+                                    amplitudeNorm = normalizeAmplitudeSample(amplitude)
+                                )
+                                Spacer(Modifier.width(12.dp))
+                                val secs = (elapsedMs / 1000).toInt()
+                                val mm = secs / 60
+                                val ss = secs % 60
+                                val maxSecs = 10
+                                val maxMm = maxSecs / 60
+                                val maxSs = maxSecs % 60
+                                Text(
+                                    text = String.format("%02d:%02d / %02d:%02d", mm, ss, maxMm, maxSs),
+                                    fontFamily = NunitoFontFamily,
+                                    color = colorScheme.onSurfaceVariant,
+                                    fontSize = 12.sp
+                                )
+                            }
+                        }
+                    }
+
+                    // Emoji picker toggle
+                    Box(
+                        modifier = Modifier
+                            .size(42.dp)
+                            .clip(CircleShape)
+                            .clickable { showEmojiPicker = !showEmojiPicker },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.EmojiEmotions,
+                            contentDescription = stringResource(id = R.string.emoji_picker),
+                            tint = colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(22.dp)
+                        )
+                    }
+                }
+            }
+
+            // Send / record
+            if (hasText) {
+                Box(
+                    modifier = Modifier
+                        .size(46.dp)
+                        .clip(CircleShape)
+                        .background(accent)
+                        .clickable(enabled = enabled) { if (hasText && enabled) onSend() },
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         imageVector = Icons.Filled.ArrowUpward,
                         contentDescription = stringResource(id = R.string.send_message),
-                        modifier = Modifier.size(20.dp),
-                        tint = if (!hasText) {
-                            // Disabled state - muted grey icon
-                            colorScheme.onSurface.copy(alpha = 0.5f)
-                        } else if (selectedPrivatePeer != null || currentChannel != null) {
-                            // Black arrow on orange for both private and channel modes
-                            Color.Black
-                        } else {
-                            colorScheme.onPrimary
-                        }
+                        tint = Color.White,
+                        modifier = Modifier.size(24.dp)
                     )
                 }
+            } else if (showMediaButtons && enabled) {
+                VoiceRecordButton(
+                    backgroundColor = accent,
+                    onStart = {
+                        isRecording = true
+                        elapsedMs = 0L
+                    },
+                    onAmplitude = { amp, ms ->
+                        amplitude = amp
+                        elapsedMs = ms
+                    },
+                    onFinish = { path ->
+                        isRecording = false
+                        AudioWaveformExtractor.extractAsync(path, sampleCount = 120) { arr ->
+                            if (arr != null) {
+                                try { com.roman.zemzeme.features.voice.VoiceWaveformCache.put(path, arr) } catch (_: Exception) {}
+                            }
+                        }
+                        latestOnSendVoiceNote.value(
+                            latestSelectedPeer.value,
+                            latestChannel.value,
+                            path
+                        )
+                    }
+                )
             }
         }
     }
+
+    // Attachment options
+    if (showAttachmentSheet) {
+        AttachmentSheet(
+            onDismiss = { showAttachmentSheet = false },
+            onPhoto = { path ->
+                showAttachmentSheet = false
+                onSendImageNote(latestSelectedPeer.value, latestChannel.value, path)
+            },
+            onFile = { path ->
+                showAttachmentSheet = false
+                onSendFileNote(latestSelectedPeer.value, latestChannel.value, path)
+            }
+        )
+    }
+}
+
+/**
+ * Bottom sheet with the attachment options (photo / file).
+ */
+@Composable
+private fun AttachmentSheet(
+    onDismiss: () -> Unit,
+    onPhoto: (String) -> Unit,
+    onFile: (String) -> Unit
+) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+
+    val photoPicker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: android.net.Uri? ->
+        if (uri != null) {
+            val outPath = com.roman.zemzeme.features.media.ImageUtils
+                .downscaleAndSaveToAppFiles(context, uri)
+            if (!outPath.isNullOrBlank()) onPhoto(outPath)
+        }
     }
 
-    // Auto-stop handled inside VoiceRecordButton
+    val filePicker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri: android.net.Uri? ->
+        if (uri != null) {
+            try {
+                context.contentResolver.takePersistableUriPermission(
+                    uri,
+                    android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION
+                )
+            } catch (_: Exception) { }
+            val path = com.roman.zemzeme.features.file.FileUtils.copyFileForSending(context, uri)
+            if (!path.isNullOrBlank()) onFile(path)
+        }
+    }
+
+    com.roman.zemzeme.core.ui.component.sheet.ZemzemeBottomSheet(onDismissRequest = onDismiss) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp)
+                .padding(bottom = 28.dp)
+        ) {
+            Text(
+                text = stringResource(R.string.attachments_title),
+                style = MaterialTheme.typography.titleMedium,
+                fontFamily = NunitoFontFamily,
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.padding(bottom = 12.dp)
+            )
+            AttachmentRow(
+                icon = Icons.Filled.Photo,
+                label = stringResource(R.string.action_send_photo),
+                onClick = {
+                    onDismiss()
+                    photoPicker.launch("image/*")
+                }
+            )
+            AttachmentRow(
+                icon = Icons.Filled.Attachment,
+                label = stringResource(R.string.action_send_file),
+                onClick = {
+                    onDismiss()
+                    filePicker.launch(arrayOf("*/*"))
+                }
+            )
+        }
+    }
+}
+
+@Composable
+private fun AttachmentRow(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String,
+    onClick: () -> Unit
+) {
+    val colorScheme = MaterialTheme.colorScheme
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(14.dp))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 8.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(40.dp)
+                .clip(CircleShape)
+                .background(colorScheme.surfaceVariant.copy(alpha = 0.6f)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = colorScheme.onSurface,
+                modifier = Modifier.size(20.dp)
+            )
+        }
+        Text(
+            text = label,
+            fontSize = 15.sp,
+            fontFamily = NunitoFontFamily,
+            fontWeight = FontWeight.Medium,
+            color = colorScheme.onSurface
+        )
+    }
 }
 
 @Composable

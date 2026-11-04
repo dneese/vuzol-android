@@ -288,6 +288,7 @@ fun ChatHeaderContent(
     onLocationNotesClick: () -> Unit,
     onSearchClick: () -> Unit = {},
     onAppearanceClick: (() -> Unit)? = null,
+    onMenuClick: (() -> Unit)? = null,
     privatePeerPubkey: String? = null,
     privatePeerName: String? = null
 ) {
@@ -302,7 +303,8 @@ fun ChatHeaderContent(
                 peerName = privatePeerName ?: selectedPrivatePeer,
                 onBackClick = onBackClick,
                 onSearchClick = onSearchClick,
-                onAppearanceClick = onAppearanceClick
+                onAppearanceClick = onAppearanceClick,
+                onMenuClick = onMenuClick
             )
         }
         currentChannel != null -> {
@@ -358,7 +360,8 @@ fun ChatHeaderContent(
                 ),
                 hasP2P = chHasP2P || p2pConnected,
                 hasNostr = chHasNostr || chNostrConnected,
-                onAppearanceClick = onAppearanceClick
+                onAppearanceClick = onAppearanceClick,
+                onMenuClick = onMenuClick
             )
         }
         else -> {
@@ -368,7 +371,8 @@ fun ChatHeaderContent(
                 onSidebarClick = onSidebarClick,
                 viewModel = viewModel,
                 onSearchClick = onSearchClick,
-                onAppearanceClick = onAppearanceClick
+                onAppearanceClick = onAppearanceClick,
+                onMenuClick = onMenuClick
             )
         }
     }
@@ -383,7 +387,8 @@ private fun PrivateChatHeader(
     peerName: String,
     onBackClick: () -> Unit,
     onSearchClick: () -> Unit,
-    onAppearanceClick: (() -> Unit)? = null
+    onAppearanceClick: (() -> Unit)? = null,
+    onMenuClick: (() -> Unit)? = null
 ) {
     val colorScheme = MaterialTheme.colorScheme
     val accent = LocalChatAccent.current
@@ -456,15 +461,15 @@ private fun PrivateChatHeader(
                     tint = accent
                 )
             }
-            if (onAppearanceClick != null) {
+            if (onMenuClick != null) {
                 IconButton(
-                    onClick = onAppearanceClick,
-                    modifier = Modifier.size(36.dp)
+                    onClick = onMenuClick,
+                    modifier = Modifier.size(40.dp)
                 ) {
                     Icon(
-                        imageVector = Icons.Outlined.Palette,
-                        contentDescription = stringResource(R.string.cd_chat_appearance),
-                        modifier = Modifier.size(22.dp),
+                        imageVector = Icons.Outlined.MoreVert,
+                        contentDescription = stringResource(R.string.chat_options_title),
+                        modifier = Modifier.size(24.dp),
                         tint = accent
                     )
                 }
@@ -482,7 +487,8 @@ private fun ChannelHeader(
     channelConnectionData: ConnectionDisplayData.ChannelConnection? = null,
     hasP2P: Boolean = false,
     hasNostr: Boolean = false,
-    onAppearanceClick: (() -> Unit)? = null
+    onAppearanceClick: (() -> Unit)? = null,
+    onMenuClick: (() -> Unit)? = null
 ) {
     val colorScheme = MaterialTheme.colorScheme
     val accent = LocalChatAccent.current
@@ -533,15 +539,15 @@ private fun ChannelHeader(
 
         // Right: appearance + leave button
         Row(verticalAlignment = Alignment.CenterVertically) {
-            if (onAppearanceClick != null) {
+            if (onMenuClick != null) {
                 IconButton(
-                    onClick = onAppearanceClick,
+                    onClick = onMenuClick,
                     modifier = Modifier.size(40.dp)
                 ) {
                     Icon(
-                        imageVector = Icons.Outlined.Palette,
-                        contentDescription = stringResource(R.string.cd_chat_appearance),
-                        modifier = Modifier.size(22.dp),
+                        imageVector = Icons.Outlined.MoreVert,
+                        contentDescription = stringResource(R.string.chat_options_title),
+                        modifier = Modifier.size(24.dp),
                         tint = accent
                     )
                 }
@@ -563,7 +569,8 @@ private fun MainHeader(
     onSidebarClick: () -> Unit,
     viewModel: ChatViewModel,
     onSearchClick: () -> Unit = {},
-    onAppearanceClick: (() -> Unit)? = null
+    onAppearanceClick: (() -> Unit)? = null,
+    onMenuClick: (() -> Unit)? = null
 ) {
     val colorScheme = MaterialTheme.colorScheme
     val accent = LocalChatAccent.current
@@ -654,15 +661,15 @@ private fun MainHeader(
                 )
             }
 
-            if (onAppearanceClick != null) {
+            if (onMenuClick != null) {
                 IconButton(
-                    onClick = onAppearanceClick,
-                    modifier = Modifier.size(36.dp)
+                    onClick = onMenuClick,
+                    modifier = Modifier.size(40.dp)
                 ) {
                     Icon(
-                        imageVector = Icons.Outlined.Palette,
-                        contentDescription = stringResource(R.string.cd_chat_appearance),
-                        modifier = Modifier.size(22.dp),
+                        imageVector = Icons.Outlined.MoreVert,
+                        contentDescription = stringResource(R.string.chat_options_title),
+                        modifier = Modifier.size(24.dp),
                         tint = accent
                     )
                 }
