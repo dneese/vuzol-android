@@ -392,6 +392,9 @@ fun MessageInput(
 
 /**
  * Bottom sheet with the attachment options (photo / file).
+ *
+ * The picked file is shown before sending, so the user always knows what and
+ * how much is about to leave the device.
  */
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
@@ -401,6 +404,13 @@ private fun AttachmentSheet(
     onFile: (String) -> Unit
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
+    val colorScheme = MaterialTheme.colorScheme
+    val maxBytes = com.roman.zemzeme.util.AppConstants.Media.MAX_FILE_SIZE_BYTES
+
+    var pendingPath by remember { mutableStateOf<String?>(null) }
+    var pendingName by remember { mutableStateOf("") }
+    var pendingSize by remember { mutableStateOf(0L) }
+    var pendingIsImage by remember { mutableStateOf(false) }
 
     val photoPicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
@@ -408,7 +418,13 @@ private fun AttachmentSheet(
         if (uri != null) {
             val outPath = com.roman.zemzeme.features.media.ImageUtils
                 .downscaleAndSaveToAppFiles(context, uri)
-            if (!outPath.isNullOrBlank()) onPhoto(outPath)
+            if (!outPath.isNullOrBlank()) {
+                val file = java.io.File(outPath)
+                pendingPath = outPath
+                pendingName = file.name
+                pendingSize = file.length()
+                pendingIsImage = true
+            }
         }
     }
 
@@ -423,7 +439,13 @@ private fun AttachmentSheet(
                 )
             } catch (_: Exception) { }
             val path = com.roman.zemzeme.features.file.FileUtils.copyFileForSending(context, uri)
-            if (!path.isNullOrBlank()) onFile(path)
+            if (!path.isNullOrBlank()) {
+                val file = java.io.File(path)
+                pendingPath = path
+                pendingName = file.name
+                pendingSize = file.length()
+                pendingIsImage = false
+            }
         }
     }
 
@@ -438,28 +460,96 @@ private fun AttachmentSheet(
                 text = stringResource(R.string.attachments_title),
                 style = MaterialTheme.typography.titleMedium,
                 fontFamily = NunitoFontFamily,
-                color = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.padding(bottom = 12.dp)
+                color = colorScheme.onSurface,
+                modifier = Modifier.padding(bottom = 4.dp)
             )
+            Text(
+                text = stringResource(
+                    R.string.attachment_size_limit,
+                    com.roman.zemzeme.features.file.FileUtils.formatFileSize(maxBytes)
+                ),
+                style = MaterialTheme.typography.bodySmall,
+                fontFamily = NunitoFontFamily,
+                color = colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(bottom = 10.dp)
+            )
+
             AttachmentRow(
                 icon = Icons.Filled.Photo,
                 label = stringResource(R.string.action_send_photo),
-                onClick = {
-                    onDismiss()
-                    photoPicker.launch("image/*")
-                }
+                onClick = { photoPicker.launch("image/*") }
             )
             AttachmentRow(
                 icon = Icons.Filled.Attachment,
                 label = stringResource(R.string.action_send_file),
-                onClick = {
-                    onDismiss()
-                    filePicker.launch(arrayOf("*/*"))
-                }
+                onClick = { filePicker.launch(arrayOf("*/*")) }
             )
+
+            val path = pendingPath
+            if (path != null) {
+                Spacer(modifier = Modifier.height(14.dp))
+                Surface(
+                    shape = RoundedCornerShape(14.dp),
+                    color = colorScheme.surfaceVariant.copy(alpha = 0.55f),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Icon(
+                            imageVector = if (pendingIsImage) Icons.Filled.Photo else Icons.Filled.Description,
+                            contentDescription = null,
+                            tint = colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = pendingName,
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontFamily = NunitoFontFamily,
+                                maxLines = 1,
+                                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                            )
+                            Text(
+                                text = com.roman.zemzeme.features.file.FileUtils.formatFileSize(pendingSize),
+                                style = MaterialTheme.typography.bodySmall,
+                                fontFamily = NunitoFontFamily,
+                                color = colorScheme.onSurfaceVariant
+                            )
+                        }
+                        TextButton(onClick = {
+                            pendingPath = null
+                            pendingName = ""
+                            pendingSize = 0L
+                        }) {
+                            Text(
+                                text = stringResource(R.string.attachment_cancel),
+                                fontFamily = NunitoFontFamily,
+                                color = colorScheme.error
+                            )
+                        }
+                        Button(
+                            onClick = {
+                                pendingPath = null
+                                if (pendingIsImage) onPhoto(path) else onFile(path)
+                            },
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Text(
+                                text = stringResource(R.string.attachment_send),
+                                fontFamily = NunitoFontFamily
+                            )
+                        }
+                    }
+                }
+            }
         }
     }
 }
+
+
 
 @Composable
 private fun AttachmentRow(

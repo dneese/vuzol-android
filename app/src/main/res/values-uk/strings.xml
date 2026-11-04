@@ -850,4 +850,11 @@
   <string name="chat_empty_hint">Утримайте повідомлення, щоб відкрити дії.</string>
   <string name="settings_section_privacy">Приватність</string>
   <string name="settings_section_notifications">Сповіщення</string>
+  <string name="file_too_large">Файл завеликий: %1$s. Максимум — %2$s</string>
+  <string name="file_not_found">Файл не знайдено</string>
+  <string name="attachment_size_limit">До %1$s · будь-який тип файлу</string>
+  <string name="attachment_send">Надіслати</string>
+  <string name="attachment_cancel">Скасувати</string>
+  <string name="toast_file_saved">Файл збережено</string>
+  <string name="toast_failed_to_save_file">Не вдалося зберегти файл</string>
 </resources>

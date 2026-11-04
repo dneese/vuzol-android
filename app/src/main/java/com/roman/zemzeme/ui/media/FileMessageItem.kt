@@ -45,6 +45,7 @@ fun FileMessageItem(
     modifier: Modifier = Modifier
 ) {
     var showDialog by remember { mutableStateOf(false) }
+    val context = androidx.compose.ui.platform.LocalContext.current
 
     Card(
         modifier = modifier
@@ -105,9 +106,20 @@ fun FileMessageItem(
             packet = packet,
             onDismiss = { showDialog = false },
             onSaveToDevice = { content, fileName ->
-                // In a real implementation, this would save to Downloads
-                // For now, just log that file was "saved"
-                android.util.Log.d("FileSharing", "Would save file: $fileName")
+                val ok = com.roman.zemzeme.features.file.FileUtils.saveToDownloads(
+                    context = context,
+                    fileName = fileName,
+                    mimeType = packet.mimeType,
+                    content = content
+                )
+                android.widget.Toast.makeText(
+                    context,
+                    context.getString(
+                        if (ok) com.roman.zemzeme.R.string.toast_file_saved
+                        else com.roman.zemzeme.R.string.toast_failed_to_save_file
+                    ),
+                    android.widget.Toast.LENGTH_SHORT
+                ).show()
             }
         )
     }

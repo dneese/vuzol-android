@@ -16,6 +16,45 @@ object FileUtils {
     private const val TAG = "FileUtils"
 
     /**
+     * Saves a received file into the public Downloads folder.
+     * Returns true when the file was written successfully.
+     */
+    fun saveToDownloads(
+        context: Context,
+        fileName: String,
+        mimeType: String,
+        content: ByteArray
+    ): Boolean {
+        return try {
+            val safeName = fileName.substringAfterLast('/').ifBlank { "file.bin" }
+            val values = android.content.ContentValues().apply {
+                put(android.provider.MediaStore.Downloads.DISPLAY_NAME, safeName)
+                put(android.provider.MediaStore.Downloads.MIME_TYPE, mimeType)
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+                    put(android.provider.MediaStore.Downloads.IS_PENDING, 1)
+                }
+            }
+            val resolver = context.contentResolver
+            val uri = resolver.insert(
+                android.provider.MediaStore.Downloads.EXTERNAL_CONTENT_URI,
+                values
+            ) ?: return false
+            resolver.openOutputStream(uri)?.use { out -> out.write(content) }
+                ?: return false
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+                val done = android.content.ContentValues().apply {
+                    put(android.provider.MediaStore.Downloads.IS_PENDING, 0)
+                }
+                resolver.update(uri, done, null, null)
+            }
+            true
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to save file to Downloads: ${e.message}")
+            false
+        }
+    }
+
+    /**
      * Save a file from URI to app's file directory with unique filename
      */
     fun saveFileFromUri(

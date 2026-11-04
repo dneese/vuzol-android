@@ -55,7 +55,39 @@ class ChatViewModel(
         const val MAX_P2P_GROUPS = 10
     }
 
+    /**
+     * Checks that a media file can be sent and tells the user when it cannot.
+     * Returns true when the file is ready to be transferred.
+     */
+    private fun validateMediaFile(filePath: String): Boolean {
+        val context = getApplication<Application>()
+        val file = java.io.File(filePath)
+        if (!file.exists()) {
+            android.widget.Toast.makeText(
+                context,
+                context.getString(com.roman.zemzeme.R.string.file_not_found),
+                android.widget.Toast.LENGTH_SHORT
+            ).show()
+            return false
+        }
+        val maxBytes = com.roman.zemzeme.util.AppConstants.Media.MAX_FILE_SIZE_BYTES
+        if (file.length() > maxBytes) {
+            android.widget.Toast.makeText(
+                context,
+                context.getString(
+                    com.roman.zemzeme.R.string.file_too_large,
+                    com.roman.zemzeme.features.file.FileUtils.formatFileSize(file.length()),
+                    com.roman.zemzeme.features.file.FileUtils.formatFileSize(maxBytes)
+                ),
+                android.widget.Toast.LENGTH_LONG
+            ).show()
+            return false
+        }
+        return true
+    }
+
     fun sendVoiceNote(toPeerIDOrNull: String?, channelOrNull: String?, filePath: String) {
+        if (!validateMediaFile(filePath)) return
         val targetPeer = resolveMediaRecipientForSend(toPeerIDOrNull)
         if (toPeerIDOrNull != null && targetPeer == null) return
 
@@ -71,6 +103,7 @@ class ChatViewModel(
     }
 
     fun sendFileNote(toPeerIDOrNull: String?, channelOrNull: String?, filePath: String) {
+        if (!validateMediaFile(filePath)) return
         val targetPeer = resolveMediaRecipientForSend(toPeerIDOrNull)
         if (toPeerIDOrNull != null && targetPeer == null) return
 
@@ -93,6 +126,7 @@ class ChatViewModel(
     }
 
     fun sendImageNote(toPeerIDOrNull: String?, channelOrNull: String?, filePath: String) {
+        if (!validateMediaFile(filePath)) return
         val targetPeer = resolveMediaRecipientForSend(toPeerIDOrNull)
         if (toPeerIDOrNull != null && targetPeer == null) return
 
