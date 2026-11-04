@@ -17,7 +17,7 @@ object GroupInvite {
 
     /** Text that is shared with the invitee. */
     fun shareText(groupName: String, code: String): String =
-        "Vuzol: join the group \"$groupName\"\nCode: $code\n$linkFor(code)"
+        "Vuzol: join the group \"$groupName\"\nCode: $code\n${linkFor(code)}"
 
     /**
      * Extracts a group code from a link, a QR payload or plain text.
