@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vuzol — Group Invitation</title>
+<style>
+  :root {
+    --bg: #0e1116;
+    --card: #171b22;
+    --fg: #e6edf3;
+    --muted: #9aa7b4;
+    --accent: #4c9aff;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 24px 16px 48px;
+    background: var(--bg);
+    color: var(--fg);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    display: flex;
+    justify-content: center;
+  }
+  .card {
+    width: 100%;
+    max-width: 480px;
+    background: var(--card);
+    border: 1px solid #232a33;
+    border-radius: 16px;
+    padding: 24px 20px;
+  }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  p { color: var(--muted); line-height: 1.5; margin: 8px 0; }
+  .code {
+    font-size: 32px;
+    font-weight: 700;
+    letter-spacing: 4px;
+    text-align: center;
+    margin: 20px 0 8px;
+    color: var(--accent);
+    word-break: break-all;
+  }
+  a.button {
+    display: block;
+    text-align: center;
+    text-decoration: none;
+    background: var(--accent);
+    color: #06121f;
+    font-weight: 700;
+    padding: 14px 16px;
+    border-radius: 12px;
+    margin: 16px 0 4px;
+  }
+  button.copy {
+    width: 100%;
+    background: transparent;
+    color: var(--fg);
+    border: 1px solid #303a45;
+    border-radius: 12px;
+    padding: 12px 16px;
+    font-size: 15px;
+    margin-top: 8px;
+  }
+  ol { color: var(--muted); line-height: 1.6; padding-left: 20px; }
+  .hint { font-size: 13px; }
+  .hidden { display: none; }
+</style>
+</head>
+<body>
+  <div class="card">
+    <h1>Vuzol</h1>
+    <p>You have been invited to a private group chat.</p>
+
+    <div id="withCode" class="hidden">
+      <div class="code" id="codeValue">—</div>
+      <a class="button" id="openLink" href="#">Open in Vuzol</a>
+      <button class="copy" id="copyBtn">Copy invite code</button>
+    </div>
+
+    <div id="withoutCode" class="hidden">
+      <p>No invite code was found in this link. Ask the sender for the invite code and enter it in Vuzol.</p>
+    </div>
+
+    <p class="hint" id="status"></p>
+
+    <ol id="steps">
+      <li>Install Vuzol on this device (Android 9+).</li>
+      <li>Tap <strong>Open in Vuzol</strong> — the app joins the group automatically.</li>
+      <li>If the app is not installed yet, copy the code and paste it into Vuzol: <strong>Join group</strong>.</li>
+    </ol>
+  </div>
+
+<script>
+  (function () {
+    var params = new URLSearchParams(window.location.search);
+    var code = (params.get('code') || '').trim().toLowerCase();
+    var valid = /^[a-z0-9]{4,12}$/.test(code);
+    var withCode = document.getElementById('withCode');
+    var withoutCode = document.getElementById('withoutCode');
+    var status = document.getElementById('status');
+
+    if (valid) {
+      withCode.classList.remove('hidden');
+      document.getElementById('codeValue').textContent = code;
+      document.getElementById('openLink').href = 'vuzol://join/group?code=' + code;
+      document.getElementById('copyBtn').addEventListener('click', function () {
+        var done = function () {
+          status.textContent = 'Invite code copied.';
+        };
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(code).then(done, function () { status.textContent = 'Copy failed: ' + code; });
+        } else {
+          status.textContent = 'Invite code: ' + code;
+        }
+      });
+      status.textContent = 'Opening Vuzol…';
+      setTimeout(function () {
+        window.location.href = 'vuzol://join/group?code=' + code;
+      }, 400);
+    } else {
+      withoutCode.classList.remove('hidden');
+      status.textContent = '';
+    }
+  })();
+</script>
+</body>
+</html>
