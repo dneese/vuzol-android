@@ -974,4 +974,7 @@
   <string name="group_join_invalid">This link does not contain a group code</string>
   <string name="group_invite_sheet_title">Invite</string>
   <string name="media_send_no_connection">Немає прямого з\'єднання з контактом — намагаємось встановити</string>
+  <string name="attachment_selected_count">Selected: %1$d</string>
+  <string name="attachment_more_files">and %1$d more</string>
+  <string name="action_send_media">Photo or video</string>
 </resources>

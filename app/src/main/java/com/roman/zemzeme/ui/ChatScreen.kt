@@ -598,6 +598,9 @@ fun ChatScreen(viewModel: ChatViewModel, isBluetoothEnabled: Boolean = true, onB
         onSendFileNote = { peer, onionOrChannel, path ->
             viewModel.sendFileNote(peer, onionOrChannel, path)
         },
+        onSendMediaBundle = { peer, onionOrChannel, paths ->
+            viewModel.sendMediaBundle(peer, onionOrChannel, paths)
+        },
         
         showCommandSuggestions = showCommandSuggestions,
         commandSuggestions = commandSuggestions,
@@ -1335,6 +1338,7 @@ fun ChatInputSection(
     onSendVoiceNote: (String?, String?, String) -> Unit,
     onSendImageNote: (String?, String?, String) -> Unit,
     onSendFileNote: (String?, String?, String) -> Unit,
+    onSendMediaBundle: (String?, String?, List<String>) -> Unit = { _, _, _ -> },
     showCommandSuggestions: Boolean,
     commandSuggestions: List<CommandSuggestion>,
     showMentionSuggestions: Boolean,
@@ -1379,6 +1383,7 @@ fun ChatInputSection(
                 HorizontalDivider(color = colorScheme.outline.copy(alpha = 0.2f))
             }
             MessageInput(
+                onSendMediaBundle = onSendMediaBundle,
                 value = messageText,
                 onValueChange = onMessageTextChange,
                 onSend = onSend,

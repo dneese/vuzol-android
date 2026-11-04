@@ -12,7 +12,9 @@ enum class ZemzemeMessageType : Parcelable {
     Message,
     Audio,
     Image,
-    File
+    File,
+    /** Several photos / videos / files sent as one message. */
+    Media
 }
 
 /**

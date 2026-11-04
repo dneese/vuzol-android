@@ -172,6 +172,36 @@ class MediaSendingManager(
     }
 
     /**
+     * Sends several media files as one message (album).
+     */
+    fun sendBundle(
+        toPeerIDOrNull: String?,
+        channelOrNull: String?,
+        filePacket: com.roman.zemzeme.model.ZemzemeFilePacket,
+        localPath: String
+    ) {
+        try {
+            if (toPeerIDOrNull != null) {
+                sendPrivateFile(
+                    toPeerIDOrNull,
+                    filePacket,
+                    localPath,
+                    com.roman.zemzeme.model.ZemzemeMessageType.Media
+                )
+            } else {
+                sendPublicFile(
+                    channelOrNull,
+                    filePacket,
+                    localPath,
+                    com.roman.zemzeme.model.ZemzemeMessageType.Media
+                )
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "❌ Bundle send failed: ${e.message}")
+        }
+    }
+
+    /**
      * Send a file privately (encrypted).
      * Routes to P2P, Nostr, or BLE mesh depending on the [toPeerID] prefix.
      */

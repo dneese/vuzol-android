@@ -307,6 +307,8 @@ object FileUtils {
     fun messageTypeForMime(mime: String): com.roman.zemzeme.model.ZemzemeMessageType {
         val lower = mime.lowercase()
         return when {
+            lower == com.roman.zemzeme.model.MediaBundle.MIME ->
+                com.roman.zemzeme.model.ZemzemeMessageType.Media
             lower.startsWith("image/") -> com.roman.zemzeme.model.ZemzemeMessageType.Image
             lower.startsWith("audio/") -> com.roman.zemzeme.model.ZemzemeMessageType.Audio
             else -> com.roman.zemzeme.model.ZemzemeMessageType.File

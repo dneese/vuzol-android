@@ -1632,6 +1632,89 @@ class ChatViewModel(
     }
 
     /**
+     * Sends several photos / videos / files as a single message.
+     */
+    fun sendMediaBundle(toPeerIDOrNull: String?, channelOrNull: String?, paths: List<String>) {
+        if (paths.isEmpty()) return
+        val context = getApplication<Application>()
+        val maxBytes = com.roman.zemzeme.util.AppConstants.Media.MAX_FILE_SIZE_BYTES
+
+        val items = ArrayList<com.roman.zemzeme.model.MediaBundleItem>()
+        var total = 0L
+        for (path in paths) {
+            val file = java.io.File(path)
+            if (!file.exists()) continue
+            if (total + file.length() > maxBytes) {
+                android.widget.Toast.makeText(
+                    context,
+                    context.getString(
+                        com.roman.zemzeme.R.string.file_too_large,
+                        com.roman.zemzeme.features.file.FileUtils.formatFileSize(total + file.length()),
+                        com.roman.zemzeme.features.file.FileUtils.formatFileSize(maxBytes)
+                    ),
+                    android.widget.Toast.LENGTH_LONG
+                ).show()
+                break
+            }
+            val mime = try {
+                com.roman.zemzeme.features.file.FileUtils.getMimeTypeFromExtension(file.name)
+            } catch (_: Exception) {
+                "application/octet-stream"
+            }
+            items.add(
+                com.roman.zemzeme.model.MediaBundleItem(file.name, mime, file.readBytes())
+            )
+            total += file.length()
+        }
+        if (items.isEmpty()) return
+
+        val bundleBytes = com.roman.zemzeme.model.MediaBundle.encode(items)
+        val dir = java.io.File(context.filesDir, "media/bundles").apply { mkdirs() }
+        val bundleFile = java.io.File(dir, "bundle_${System.currentTimeMillis()}.vuzol")
+        try {
+            bundleFile.writeBytes(bundleBytes)
+        } catch (e: Exception) {
+            android.widget.Toast.makeText(
+                context,
+                context.getString(com.roman.zemzeme.R.string.toast_failed_to_save_file),
+                android.widget.Toast.LENGTH_SHORT
+            ).show()
+            return
+        }
+
+        val targetPeer = resolveMediaRecipientForSend(toPeerIDOrNull)
+        if (toPeerIDOrNull != null && targetPeer == null) {
+            notifyMediaSendBlocked(toPeerIDOrNull)
+            return
+        }
+
+        val packet = com.roman.zemzeme.model.ZemzemeFilePacket(
+            fileName = bundleFile.name,
+            fileSize = bundleBytes.size.toLong(),
+            mimeType = com.roman.zemzeme.model.MediaBundle.MIME,
+            content = bundleBytes
+        )
+
+        // Geohash channels have their own media pipeline
+        if (targetPeer == null) {
+            val loc = state.selectedLocationChannel.value
+            if (loc is com.roman.zemzeme.geohash.ChannelID.Location) {
+                geohashViewModel.sendGeohashMedia(
+                    bundleFile.absolutePath,
+                    com.roman.zemzeme.model.MediaBundle.MIME,
+                    com.roman.zemzeme.model.ZemzemeMessageType.Media,
+                    loc.channel,
+                    meshService.myPeerID,
+                    state.getNicknameValue()
+                )
+                return
+            }
+        }
+
+        mediaSendingManager.sendBundle(targetPeer, channelOrNull, packet, bundleFile.absolutePath)
+    }
+
+    /**
      * Joins a group from an invite code. Returns true when the group was
      * actually added (false when it was already joined).
      */

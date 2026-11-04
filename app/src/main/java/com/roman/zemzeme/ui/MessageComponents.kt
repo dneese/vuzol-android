@@ -855,6 +855,15 @@ private fun MessageBubbleContent(
             )
             return
         }
+        ZemzemeMessageType.Media -> {
+            com.roman.zemzeme.ui.media.MediaBundleItem(
+                message = message,
+                timeFormatter = timeFormatter,
+                onImageClick = onImageClick,
+                modifier = Modifier.fillMaxWidth()
+            )
+            return
+        }
         ZemzemeMessageType.File -> {
             RenderFileMessage(
                 message = message,

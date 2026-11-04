@@ -868,4 +868,7 @@
   <string name="group_join_invalid">У цьому посилання немає коду групи</string>
   <string name="group_invite_sheet_title">Запрошення</string>
   <string name="media_send_no_connection">Немає прямого з\'єднання з контактом — намагаємось встановити</string>
+  <string name="attachment_selected_count">Вибрано: %1$d</string>
+  <string name="attachment_more_files">та ще %1$d</string>
+  <string name="action_send_media">Фото або відео</string>
 </resources>
