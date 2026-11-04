@@ -432,12 +432,12 @@ private fun appendModernFormattedContent(
         if (lastEnd < range.first) {
             val beforeText = content.substring(lastEnd, range.first)
             if (beforeText.isNotEmpty()) {
-                builder.pushStyle(SpanStyle(
-                    color = contentColor,
-                    fontWeight = if (isMentioned) FontWeight.Bold else FontWeight.Normal
-                ))
-                builder.append(beforeText)
-                builder.pop()
+                appendMarkdownSegment(
+                    builder = builder,
+                    text = beforeText,
+                    baseColor = contentColor,
+                    baseWeight = if (isMentioned) FontWeight.Bold else FontWeight.Normal
+                )
             }
         }
 
@@ -506,14 +506,95 @@ private fun appendModernFormattedContent(
     // Add remaining text
     if (lastEnd < content.length) {
         val remainingText = content.substring(lastEnd)
-        builder.pushStyle(SpanStyle(
-            color = contentColor,
-            fontWeight = if (isMentioned) FontWeight.Bold else FontWeight.Normal
-        ))
-        builder.append(remainingText)
-        builder.pop()
+        appendMarkdownSegment(
+            builder = builder,
+            text = remainingText,
+            baseColor = contentColor,
+            baseWeight = if (isMentioned) FontWeight.Bold else FontWeight.Normal
+        )
     }
 }
+
+/**
+ * Appends a plain text segment and applies light markdown formatting:
+ * **bold**, *italic*, `code` and ~~strikethrough~~.
+ */
+private fun appendMarkdownSegment(
+    builder: AnnotatedString.Builder,
+    text: String,
+    baseColor: Color,
+    baseWeight: FontWeight
+) {
+    fun flush(from: Int, to: Int) {
+        if (to <= from) return
+        builder.pushStyle(SpanStyle(color = baseColor, fontWeight = baseWeight))
+        builder.append(text.substring(from, to))
+        builder.pop()
+    }
+
+    var plainStart = 0
+    var index = 0
+    while (index < text.length) {
+        val marker = detectMarkdownMarker(text, index)
+        if (marker == null) {
+            index++
+            continue
+        }
+        val closeIndex = text.indexOf(marker, index + marker.length)
+        if (closeIndex <= index + marker.length) {
+            index += marker.length
+            continue
+        }
+        val inner = text.substring(index + marker.length, closeIndex)
+        val startsClean = inner.isNotEmpty() && !inner.first().isWhitespace()
+        val endsClean = inner.isNotEmpty() && !inner.last().isWhitespace()
+        if (!startsClean || !endsClean || inner.contains('\n')) {
+            index += marker.length
+            continue
+        }
+        flush(plainStart, index)
+        builder.pushStyle(markdownStyle(marker, baseColor, baseWeight))
+        builder.append(inner)
+        builder.pop()
+        index = closeIndex + marker.length
+        plainStart = index
+    }
+    flush(plainStart, text.length)
+}
+
+/** Returns the markdown marker starting at [index], if any. */
+private fun detectMarkdownMarker(text: String, index: Int): String? {
+    if (text.startsWith("**", index)) return "**"
+    if (text.startsWith("__", index)) return "__"
+    if (text.startsWith("~~", index)) return "~~"
+    if (text.startsWith("`", index)) return "`"
+    if (text.startsWith("*", index)) return "*"
+    if (text.startsWith("_", index)) {
+        // Ignore underscores inside words (snake_case)
+        val previous = if (index > 0) text[index - 1] else ' '
+        if (previous.isLetterOrDigit()) return null
+        return "_"
+    }
+    return null
+}
+
+/** Style used for a markdown marker. */
+private fun markdownStyle(marker: String, baseColor: Color, baseWeight: FontWeight): SpanStyle =
+    when (marker) {
+        "**", "__" -> SpanStyle(color = baseColor, fontWeight = FontWeight.Bold)
+        "*", "_" -> SpanStyle(color = baseColor, fontWeight = baseWeight, fontStyle = FontStyle.Italic)
+        "~~" -> SpanStyle(
+            color = baseColor,
+            fontWeight = baseWeight,
+            textDecoration = TextDecoration.LineThrough
+        )
+        "`" -> SpanStyle(
+            color = baseColor,
+            fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+            background = baseColor.copy(alpha = 0.12f)
+        )
+        else -> SpanStyle(color = baseColor, fontWeight = baseWeight)
+    }
 
 /**
  * iOS-style content formatting with proper hashtag and mention handling

@@ -113,10 +113,22 @@ fun MessageActionPopup(
     val colorScheme = MaterialTheme.colorScheme
     val accent = LocalChatAccent.current
 
+    val replyLabel = stringResource(R.string.action_reply_title)
+    val copyLabel = stringResource(R.string.action_copy_message_title)
+    val forwardLabel = stringResource(R.string.action_forward_title)
+    val saveLabel = stringResource(R.string.action_save_message_title)
+    val pinLabel = stringResource(R.string.action_pin_title)
+    val editLabel = stringResource(R.string.action_edit_title)
+    val selectLabel = stringResource(R.string.action_select_multiple_title)
+    val detailsLabel = stringResource(R.string.message_details_title)
+    val blockLabel = stringResource(R.string.action_block_title_short)
+    val deleteLabel = stringResource(R.string.action_delete_title)
+    val moreLabel = stringResource(R.string.action_more_actions)
+
     val actions = buildList {
         add(
             QuickAction(
-                label = stringResource(R.string.action_reply_title),
+                label = replyLabel,
                 icon = Icons.AutoMirrored.Filled.Reply,
                 tint = accent,
                 onClick = onReply
@@ -124,7 +136,7 @@ fun MessageActionPopup(
         )
         add(
             QuickAction(
-                label = stringResource(R.string.action_copy_message_title),
+                label = copyLabel,
                 icon = Icons.Outlined.ContentCopy,
                 onClick = onCopy
             )
@@ -132,7 +144,7 @@ fun MessageActionPopup(
         onForward?.let {
             add(
                 QuickAction(
-                    label = stringResource(R.string.action_forward_title),
+                    label = forwardLabel,
                     icon = Icons.AutoMirrored.Filled.Forward,
                     onClick = it
                 )
@@ -141,7 +153,7 @@ fun MessageActionPopup(
         onSave?.let {
             add(
                 QuickAction(
-                    label = stringResource(R.string.action_save_message_title),
+                    label = saveLabel,
                     icon = Icons.Filled.Bookmark,
                     onClick = it
                 )
@@ -150,7 +162,7 @@ fun MessageActionPopup(
         onPin?.let {
             add(
                 QuickAction(
-                    label = stringResource(R.string.action_pin_title),
+                    label = pinLabel,
                     icon = Icons.Outlined.PushPin,
                     onClick = it
                 )
@@ -159,7 +171,7 @@ fun MessageActionPopup(
         onEdit?.let {
             add(
                 QuickAction(
-                    label = stringResource(R.string.action_edit_title),
+                    label = editLabel,
                     icon = Icons.Outlined.Edit,
                     onClick = it
                 )
@@ -168,7 +180,7 @@ fun MessageActionPopup(
         onSelect?.let {
             add(
                 QuickAction(
-                    label = stringResource(R.string.action_select_multiple_title),
+                    label = selectLabel,
                     icon = Icons.Outlined.Checklist,
                     onClick = it
                 )
@@ -177,7 +189,7 @@ fun MessageActionPopup(
         onDetails?.let {
             add(
                 QuickAction(
-                    label = stringResource(R.string.message_details_title),
+                    label = detailsLabel,
                     icon = Icons.Filled.Info,
                     onClick = it
                 )
@@ -187,7 +199,7 @@ fun MessageActionPopup(
             onBlock?.let {
                 add(
                     QuickAction(
-                        label = stringResource(R.string.action_block_title_short),
+                        label = blockLabel,
                         icon = Icons.Outlined.Block,
                         tint = colorScheme.error,
                         onClick = it
@@ -198,7 +210,7 @@ fun MessageActionPopup(
         onDelete?.let {
             add(
                 QuickAction(
-                    label = stringResource(R.string.action_delete_title),
+                    label = deleteLabel,
                     icon = Icons.Filled.Delete,
                     tint = colorScheme.error,
                     onClick = it
@@ -208,7 +220,7 @@ fun MessageActionPopup(
         onMore?.let {
             add(
                 QuickAction(
-                    label = stringResource(R.string.action_more_actions),
+                    label = moreLabel,
                     icon = Icons.Outlined.MoreHoriz,
                     onClick = it
                 )

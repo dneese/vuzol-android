@@ -352,7 +352,7 @@ fun MessageItem(
             },
         horizontalArrangement = if (isSelf) Arrangement.End else Arrangement.Start
     ) {
-        if (compactLayout && message.type == ZemzemeMessageType.Message) {
+        if (compactLayout == ChatDisplaySettings.LAYOUT_COMPACT && message.type == ZemzemeMessageType.Message) {
             CompactMessageContent(
                 message = message,
                 messages = messages,
@@ -459,7 +459,7 @@ fun MessageItem(
         // Quick action popup anchored to the touched message
         if (showActionPopup) {
             androidx.compose.ui.window.Popup(
-                positionProvider = MessagePopupPositionProvider(),
+                popupPositionProvider = MessagePopupPositionProvider(),
                 properties = androidx.compose.ui.window.PopupProperties(
                     focusable = true,
                     dismissOnBackPress = true,
