@@ -813,4 +813,17 @@
     <string name="debug_connection_failed">помилка з\'єднання</string>
     <string name="debug_error_fmt">помилка: %1$s</string>
 
+    <string name="notif_sound_pack_title">Звук сповіщення</string>
+    <string name="notif_sound_pack_system">Системний</string>
+    <string name="notif_sound_pack_beep">Буп</string>
+    <string name="notif_sound_pack_pop">Поп</string>
+    <string name="notif_sound_pack_chime">Дзвін</string>
+    <string name="settings_blur_images">Ховати зображення до натискання</string>
+    <string name="chat_image_tap_to_reveal">Натисніть, щоб показати</string>
+    <string name="away_auto_reply_title">Автовідповідь у режимі «не на місці»</string>
+    <string name="away_auto_reply">Я зараз не на місці (%1$s)</string>
+    <string name="away_auto_reply_default">Я зараз не на місці</string>
+    <string name="away_banner">Не на місці: %1$s</string>
+    <string name="away_banner_default">Ви не на місці</string>
+    <string name="away_banner_cancel">Натисніть, щоб скасувати</string>
 </resources>

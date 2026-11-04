@@ -49,6 +49,8 @@ import androidx.compose.material.icons.outlined.Chat
 import androidx.compose.material.icons.outlined.People
 import androidx.compose.material.icons.outlined.PushPin
 import androidx.compose.material.icons.outlined.Bookmark
+import androidx.compose.material.icons.outlined.VisibilityOff
+import androidx.compose.material.icons.outlined.DoNotDisturbOn
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -1608,6 +1610,9 @@ private fun SettingsTabContent(
     val textSize by ChatDisplaySettings.textSizeFlow.collectAsState()
     val use24h by ChatDisplaySettings.use24hFlow.collectAsState()
     val blockedWords by ChatDisplaySettings.blockedWordsFlow.collectAsState()
+    val blurImages by ChatDisplaySettings.blurImagesFlow.collectAsState()
+    val awayState by AwayStatus.state.collectAsState()
+    val awayAutoReply = awayState.autoReply
     var showBlockedWordsDialog by remember { mutableStateOf(false) }
 
     LazyColumn(
@@ -1767,6 +1772,24 @@ private fun SettingsTabContent(
                 icon = Icons.Outlined.Block,
                 label = stringResource(R.string.settings_blocked_words),
                 onClick = { showBlockedWordsDialog = true }
+            )
+        }
+
+        item(key = "blur_images_row") {
+            SettingsSwitchRow(
+                icon = Icons.Outlined.VisibilityOff,
+                label = stringResource(R.string.settings_blur_images),
+                checked = blurImages,
+                onCheckedChange = { ChatDisplaySettings.setBlurImages(context, it) }
+            )
+        }
+
+        item(key = "away_auto_reply_row") {
+            SettingsSwitchRow(
+                icon = Icons.Outlined.DoNotDisturbOn,
+                label = stringResource(R.string.away_auto_reply_title),
+                checked = awayAutoReply,
+                onCheckedChange = { AwayStatus.setAutoReply(context, it) }
             )
         }
 

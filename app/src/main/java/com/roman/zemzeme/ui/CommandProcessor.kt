@@ -1,5 +1,6 @@
 package com.roman.zemzeme.ui
 
+import android.content.Context
 import com.roman.zemzeme.mesh.BluetoothMeshService
 import com.roman.zemzeme.model.ZemzemeMessage
 import java.util.Date
@@ -13,6 +14,13 @@ class CommandProcessor(
     private val channelManager: ChannelManager,
     private val privateChatManager: PrivateChatManager
 ) {
+
+    private var meshServiceContext: Context? = null
+
+    /** Set by the view model so commands can access application context. */
+    fun attachContext(context: Context) {
+        meshServiceContext = context.applicationContext
+    }
     
     // Available commands list
     private val baseCommands = listOf(
@@ -22,7 +30,9 @@ class CommandProcessor(
         CommandSuggestion("/j", listOf("/join"), "<channel>", "join or create a channel"),
         CommandSuggestion("/m", listOf("/msg"), "<nickname> [message]", "send private message"),
         CommandSuggestion("/unblock", emptyList(), "<nickname>", "unblock a peer"),
-        CommandSuggestion("/w", emptyList(), null, "see who's online")
+        CommandSuggestion("/w", emptyList(), null, "see who's online"),
+        CommandSuggestion("/brb", listOf("/away"), "[reason]", "mark yourself as away"),
+        CommandSuggestion("/back", listOf("/back"), null, "clear the away status")
     )
     
     // MARK: - Command Processing
@@ -41,12 +51,44 @@ class CommandProcessor(
             "/block" -> handleBlockCommand(parts, meshService)
             "/unblock" -> handleUnblockCommand(parts, meshService)
             "/channels" -> handleChannelsCommand()
+            "/brb", "/away" -> handleAwayCommand(parts)
+            "/back" -> handleBackCommand()
             else -> handleUnknownCommand(cmd)
         }
         
         return true
     }
     
+    private fun handleAwayCommand(parts: List<String>) {
+        val reason = if (parts.size > 1) parts.drop(1).joinToString(" ") else ""
+        AwayStatus.setAway(stateContext(), reason)
+        val systemMessage = ZemzemeMessage(
+            sender = "system",
+            content = if (reason.isBlank()) {
+                "you are away"
+            } else {
+                "you are away: $reason"
+            },
+            timestamp = Date(),
+            isRelay = false
+        )
+        messageManager.addMessage(systemMessage)
+    }
+
+    private fun handleBackCommand() {
+        AwayStatus.clear(stateContext())
+        val systemMessage = ZemzemeMessage(
+            sender = "system",
+            content = "you are back",
+            timestamp = Date(),
+            isRelay = false
+        )
+        messageManager.addMessage(systemMessage)
+    }
+
+    private fun stateContext(): Context =
+        meshServiceContext ?: throw IllegalStateException("no context")
+
     private fun handleJoinCommand(parts: List<String>, myPeerID: String) {
         if (parts.size > 1) {
             val channelName = parts[1]

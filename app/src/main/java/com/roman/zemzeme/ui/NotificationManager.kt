@@ -58,6 +58,7 @@ class NotificationManager(
             val soundEnabled = NotificationPreferences.soundEnabled.value
             val vibrationEnabled = NotificationPreferences.vibrationEnabled.value
 
+            val soundPack = NotificationPreferences.soundPack.value
             syncChannel(
                 systemManager,
                 context,
@@ -65,7 +66,8 @@ class NotificationManager(
                 context.getString(R.string.notification_channel_direct_messages),
                 context.getString(R.string.notification_channel_dm_desc),
                 soundEnabled,
-                vibrationEnabled
+                vibrationEnabled,
+                soundPack
             )
             syncChannel(
                 systemManager,
@@ -74,7 +76,8 @@ class NotificationManager(
                 context.getString(R.string.notification_channel_geohash_chats),
                 context.getString(R.string.notification_channel_geohash_desc),
                 soundEnabled,
-                vibrationEnabled
+                vibrationEnabled,
+                soundPack
             )
         }
 
@@ -85,14 +88,17 @@ class NotificationManager(
             name: String,
             descriptionText: String,
             soundEnabled: Boolean,
-            vibrationEnabled: Boolean
+            vibrationEnabled: Boolean,
+            soundPack: Int
         ) {
+            val desiredSound = if (soundEnabled) soundUriFor(context, soundPack) else null
             try {
                 val existing = systemManager.getNotificationChannel(id)
                 if (existing != null) {
                     val hasSound = existing.sound != null
                     val hasVibration = existing.shouldVibrate()
-                    if (hasSound == soundEnabled && hasVibration == vibrationEnabled) {
+                    val sameSound = existing.sound?.toString() == desiredSound?.toString()
+                    if (hasSound == soundEnabled && hasVibration == vibrationEnabled && sameSound) {
                         return
                     }
                     Log.i(
@@ -119,19 +125,29 @@ class NotificationManager(
                 if (soundEnabled) {
                     // A channel with no sound is a silent channel: Android plays
                     // nothing for it, whatever the notification says.
-                    val sound = android.media.RingtoneManager.getDefaultUri(
-                        android.media.RingtoneManager.TYPE_NOTIFICATION
-                    )
                     val audioAttributes = android.media.AudioAttributes.Builder()
                         .setUsage(android.media.AudioAttributes.USAGE_NOTIFICATION_EVENT)
                         .setContentType(android.media.AudioAttributes.CONTENT_TYPE_SONIFICATION)
                         .build()
-                    setSound(sound, audioAttributes)
+                    setSound(desiredSound, audioAttributes)
                 } else {
                     setSound(null, null)
                 }
             }
             systemManager.createNotificationChannel(channel)
+        }
+
+        /** Uri of the notification sound for the selected sound pack. */
+        private fun soundUriFor(context: Context, pack: Int): android.net.Uri? = when (pack) {
+            NotificationPreferences.PACK_BEEP ->
+                android.net.Uri.parse("android.resource://${context.packageName}/${com.roman.zemzeme.R.raw.notify_beep}")
+            NotificationPreferences.PACK_POP ->
+                android.net.Uri.parse("android.resource://${context.packageName}/${com.roman.zemzeme.R.raw.notify_pop}")
+            NotificationPreferences.PACK_CHIME ->
+                android.net.Uri.parse("android.resource://${context.packageName}/${com.roman.zemzeme.R.raw.notify_chime}")
+            else -> android.media.RingtoneManager.getDefaultUri(
+                android.media.RingtoneManager.TYPE_NOTIFICATION
+            )
         }
     }
 

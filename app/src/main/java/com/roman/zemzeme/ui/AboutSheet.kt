@@ -994,6 +994,36 @@ fun AboutSheet(
                                         }
                                     )
 
+                                    // Notification sound pack
+                                    val soundPack by com.roman.zemzeme.ui.NotificationPreferences.soundPack.collectAsState()
+                                    Column(
+                                        modifier = Modifier
+                                            .padding(start = 56.dp, end = 16.dp, bottom = 12.dp)
+                                    ) {
+                                        Text(
+                                            text = stringResource(R.string.notif_sound_pack_title),
+                                            style = MaterialTheme.typography.labelMedium,
+                                            color = colorScheme.onBackground.copy(alpha = 0.7f)
+                                        )
+                                        Spacer(modifier = Modifier.height(8.dp))
+                                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                            listOf(
+                                                com.roman.zemzeme.ui.NotificationPreferences.PACK_SYSTEM to R.string.notif_sound_pack_system,
+                                                com.roman.zemzeme.ui.NotificationPreferences.PACK_BEEP to R.string.notif_sound_pack_beep,
+                                                com.roman.zemzeme.ui.NotificationPreferences.PACK_POP to R.string.notif_sound_pack_pop,
+                                                com.roman.zemzeme.ui.NotificationPreferences.PACK_CHIME to R.string.notif_sound_pack_chime
+                                            ).forEach { (pack, labelRes) ->
+                                                FilterChip(
+                                                    selected = soundPack == pack,
+                                                    onClick = {
+                                                        com.roman.zemzeme.ui.NotificationPreferences.setSoundPack(pack)
+                                                    },
+                                                    label = { Text(stringResource(labelRes)) }
+                                                )
+                                            }
+                                        }
+                                    }
+
                                     HorizontalDivider(
                                         modifier = Modifier.padding(start = 56.dp),
                                         color = colorScheme.outline.copy(alpha = 0.12f)

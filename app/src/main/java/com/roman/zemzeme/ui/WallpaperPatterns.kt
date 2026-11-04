@@ -184,7 +184,7 @@ object WallpaperPatterns {
             val steps = 48
             for (i in 0..steps) {
                 val angle = 2.0 * PI * i / steps
-                val wobble = 1f + 0.08f * sin(angle * 3.0 + ring)
+                val wobble = (1.0 + 0.08 * sin(angle * 3.0 + ring)).toFloat()
                 val px = cx + radius * wobble * cos(angle).toFloat()
                 val py = cy + radius * wobble * sin(angle).toFloat() * 0.8f
                 if (i == 0) path.moveTo(px, py) else path.lineTo(px, py)

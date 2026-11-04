@@ -18,6 +18,7 @@ object ChatDisplaySettings {
     private const val KEY_TEXT_SIZE = "text_size"
     private const val KEY_USE_24H = "use_24h"
     private const val KEY_BLOCKED_WORDS = "blocked_words"
+    private const val KEY_BLUR_IMAGES = "blur_images"
 
     private val _layoutFlow = MutableStateFlow(LAYOUT_BUBBLES)
     val layoutFlow: StateFlow<Int> = _layoutFlow.asStateFlow()
@@ -31,12 +32,16 @@ object ChatDisplaySettings {
     private val _blockedWordsFlow = MutableStateFlow("")
     val blockedWordsFlow: StateFlow<String> = _blockedWordsFlow.asStateFlow()
 
+    private val _blurImagesFlow = MutableStateFlow(false)
+    val blurImagesFlow: StateFlow<Boolean> = _blurImagesFlow.asStateFlow()
+
     fun init(context: Context) {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         _layoutFlow.value = prefs.getInt(KEY_LAYOUT, LAYOUT_BUBBLES)
         _textSizeFlow.value = prefs.getInt(KEY_TEXT_SIZE, 15).coerceIn(12, 22)
         _use24hFlow.value = prefs.getBoolean(KEY_USE_24H, true)
         _blockedWordsFlow.value = prefs.getString(KEY_BLOCKED_WORDS, "") ?: ""
+        _blurImagesFlow.value = prefs.getBoolean(KEY_BLUR_IMAGES, false)
     }
 
     fun setLayout(context: Context, layout: Int) {
@@ -58,6 +63,11 @@ object ChatDisplaySettings {
     fun setBlockedWords(context: Context, words: String) {
         prefs(context).edit().putString(KEY_BLOCKED_WORDS, words.trim()).apply()
         _blockedWordsFlow.value = words.trim()
+    }
+
+    fun setBlurImages(context: Context, enabled: Boolean) {
+        prefs(context).edit().putBoolean(KEY_BLUR_IMAGES, enabled).apply()
+        _blurImagesFlow.value = enabled
     }
 
     /** Returns true when the message content should be hidden by the keyword filter. */

@@ -919,4 +919,17 @@
     <string name="debug_connection_failed">connection failed</string>
     <string name="debug_error_fmt">error: %1$s</string>
 
+    <string name="notif_sound_pack_title">Notification sound</string>
+    <string name="notif_sound_pack_system">System</string>
+    <string name="notif_sound_pack_beep">Beep</string>
+    <string name="notif_sound_pack_pop">Pop</string>
+    <string name="notif_sound_pack_chime">Chime</string>
+    <string name="settings_blur_images">Hide images until tapped</string>
+    <string name="chat_image_tap_to_reveal">Tap to reveal</string>
+    <string name="away_auto_reply_title">Auto-reply when away</string>
+    <string name="away_auto_reply">I am away right now (%1$s)</string>
+    <string name="away_auto_reply_default">I am away right now</string>
+    <string name="away_banner">Away: %1$s</string>
+    <string name="away_banner_default">You are away</string>
+    <string name="away_banner_cancel">Tap to cancel</string>
 </resources>

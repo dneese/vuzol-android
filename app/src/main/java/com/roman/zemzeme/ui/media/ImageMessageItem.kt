@@ -8,6 +8,9 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.ui.draw.blur
+import com.roman.zemzeme.ui.ChatDisplaySettings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -81,6 +84,12 @@ fun ImageMessageItem(
         val context = LocalContext.current
         val bmp = remember(path) { try { android.graphics.BitmapFactory.decodeFile(path) } catch (_: Exception) { null } }
 
+        // Privacy: images received from other people can stay hidden until tapped
+        val blurImages by ChatDisplaySettings.blurImagesFlow.collectAsState()
+        var revealed by remember(message.id) { mutableStateOf(false) }
+        val hidden = blurImages && message.sender != currentUserNickname && !revealed
+        val blurModifier = if (hidden) Modifier.blur(16.dp) else Modifier
+
         // Collect all image paths from messages for swipe navigation
         val imagePaths = remember(messages) {
             messages.filter { it.type == ZemzemeMessageType.Image }
@@ -117,16 +126,45 @@ fun ImageMessageItem(
                         Image(
                             bitmap = img,
                             contentDescription = stringResource(com.roman.zemzeme.R.string.cd_image),
-                            modifier = Modifier
+                            modifier = blurModifier
                                 .widthIn(max = 300.dp)
                                 .aspectRatio(aspect)
                                 .clip(androidx.compose.foundation.shape.RoundedCornerShape(10.dp))
                                 .clickable {
-                                    val currentIndex = imagePaths.indexOf(path)
-                                    onImageClick?.invoke(path, imagePaths, currentIndex)
+                                    if (hidden) {
+                                        revealed = true
+                                    } else {
+                                        val currentIndex = imagePaths.indexOf(path)
+                                        onImageClick?.invoke(path, imagePaths, currentIndex)
+                                    }
                                 },
                             contentScale = ContentScale.Fit
                         )
+                    }
+                    if (hidden) {
+                        Box(
+                            modifier = Modifier
+                                .matchParentSize()
+                                .clip(androidx.compose.foundation.shape.RoundedCornerShape(10.dp))
+                                .background(colorScheme.onSurface.copy(alpha = 0.45f))
+                                .clickable { revealed = true },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Icon(
+                                    imageVector = Icons.Filled.Lock,
+                                    contentDescription = null,
+                                    tint = colorScheme.onSurface,
+                                    modifier = Modifier.size(22.dp)
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = stringResource(com.roman.zemzeme.R.string.chat_image_tap_to_reveal),
+                                    color = colorScheme.onSurface,
+                                    style = MaterialTheme.typography.labelSmall
+                                )
+                            }
+                        }
                     }
                     // Cancel button overlay during sending
                     val showCancel = message.sender == currentUserNickname && (message.deliveryStatus is com.roman.zemzeme.model.DeliveryStatus.PartiallyDelivered)

@@ -27,6 +27,8 @@ import androidx.compose.material.icons.outlined.Bookmark
 import androidx.compose.material.icons.automirrored.filled.Forward
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
 import androidx.compose.material3.IconButton
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextRange
@@ -219,6 +221,24 @@ fun ChatScreen(viewModel: ChatViewModel, isBluetoothEnabled: Boolean = true, onB
                 viewModel.markMessageRead(lastIncoming.id)
             }
         }
+    }
+
+    // Away mode: automatic reply to mentions while the user is away
+    val awayState by AwayStatus.state.collectAsState()
+    val awayRepliedIds = remember { mutableSetOf<String>() }
+    LaunchedEffect(displayMessages.size, awayState.active, awayState.autoReply) {
+        val last = displayMessages.lastOrNull() ?: return@LaunchedEffect
+        if (!awayState.active || !awayState.autoReply) return@LaunchedEffect
+        if (last.sender == nickname || last.sender.startsWith("$nickname#")) return@LaunchedEffect
+        if (last.sender == "system") return@LaunchedEffect
+        if (!last.content.contains("@$nickname", ignoreCase = true)) return@LaunchedEffect
+        if (!awayRepliedIds.add(last.id)) return@LaunchedEffect
+        val replyText = if (awayState.message.isBlank()) {
+            context.getString(com.roman.zemzeme.R.string.away_auto_reply_default)
+        } else {
+            context.getString(com.roman.zemzeme.R.string.away_auto_reply, awayState.message)
+        }
+        viewModel.sendMessage(replyText)
     }
 
     // Auto-delete (disappearing) messages timer for this conversation
@@ -449,6 +469,42 @@ fun ChatScreen(viewModel: ChatViewModel, isBluetoothEnabled: Boolean = true, onB
             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
             modifier = Modifier.padding(start = 16.dp, bottom = 2.dp)
         )
+    }
+
+    if (awayState.active) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 4.dp)
+                .clip(RoundedCornerShape(10.dp))
+                .background(colorScheme.secondaryContainer.copy(alpha = 0.6f))
+                .clickable { AwayStatus.clear(context) }
+                .padding(horizontal = 12.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Icon(
+                imageVector = androidx.compose.material.icons.Icons.Filled.VisibilityOff,
+                contentDescription = null,
+                tint = colorScheme.onSecondaryContainer,
+                modifier = Modifier.size(18.dp)
+            )
+            Text(
+                text = if (awayState.message.isBlank()) {
+                    stringResource(com.roman.zemzeme.R.string.away_banner_default)
+                } else {
+                    stringResource(com.roman.zemzeme.R.string.away_banner, awayState.message)
+                },
+                color = colorScheme.onSecondaryContainer,
+                style = MaterialTheme.typography.labelMedium,
+                modifier = Modifier.weight(1f)
+            )
+            Text(
+                text = stringResource(com.roman.zemzeme.R.string.away_banner_cancel),
+                color = colorScheme.onSecondaryContainer.copy(alpha = 0.8f),
+                style = MaterialTheme.typography.labelSmall
+            )
+        }
     }
 
     ChatInputSection(
