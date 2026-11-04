@@ -141,11 +141,41 @@ Tap the **palette icon** in the chat header to change:
 
 - **Chat color** — one of eight accent colors used for the header, your bubbles and the send button.
 - **Wallpaper** — solid, soft gradient, or your own photo (picked from the gallery).
+- **Pattern** — a vector pattern drawn behind the chat: dots, geometry, waves, hexagons, circuit or topography.
+
+### Message Menu
+
+Long-press a message — or tap the **⋮** button next to the bubble — to open the quick menu:
+
+- Quick reactions (👍 ❤️ 😂 😮 😢 🔥)
+- **Reply**, **Copy**, **Forward**, **Save**, **Pin**, **Edit**, **Select**, **Details**, **Block**, **Delete**
+- **Details** opens a sheet with the message id, sender, time, delivery status and PoW difficulty.
+
+Swipe a message right to reply, swipe left on your own message to delete it.
+
+### Markdown in Messages
+
+Inside chat text you can use light formatting:
+
+| Markup | Result |
+|---|---|
+| `**text**` | bold |
+| `*text*` or `_text_` | italic |
+| `` `text` `` | monospace code |
+| `~~text~~` | crossed out |
+
+### Away Mode
+
+- Type `/brb` (optionally `/brb at the shop`) in any chat to mark yourself as away.
+- A banner appears above the input; tap it to cancel.
+- Type `/back` to clear the status.
+- While away, mentions are answered automatically with your away text (can be switched off in settings).
 
 ### Notifications
 
 - Notifications support an inline **Reply** field and a **Mark as read** action.
 - Sound, vibration and per-channel mute can be changed in **Settings → Notifications**.
+- Four notification sound packs: **System**, **Beep**, **Pop**, **Chime**.
 
 ### Home Screen
 
@@ -282,6 +312,14 @@ Open settings by tapping the **gear icon** on the main screen.
 | Setting | Description |
 |---|---|
 | **Theme** | Choose System, Light, Dark or AMOLED (pure black) |
+| **Theme pack** | Color pack for the whole app: Bitchat, Matrix, Amber, Cyber, Hacker or Ghost |
+| **Chat layout** | Bubbles or compact IRC-style lines |
+| **Text size** | Chat font size from 12 to 22 |
+| **Time format** | 24-hour or 12-hour clock |
+| **Blocked words** | Messages containing these words are hidden |
+| **Hide images until tapped** | Privacy mode for pictures received from other people |
+| **Auto-reply when away** | Answer mentions automatically while you are away |
+| **Ghost mode** | Stay invisible: no presence, no mesh announcements, no typing indicator |
 | **Proof of Work (PoW)** | Set the difficulty for outgoing Nostr messages. Higher values slow down spam bots but also slightly slow your own sending. Range: 0 (off) to extreme (very slow). |
 | **Tor** | Enable/disable Tor routing for internet connections |
 | **Battery Optimization** | Re-open Android battery settings to adjust optimization for Vuzol |

@@ -828,4 +828,5 @@
     <string name="away_banner_cancel">Натисніть, щоб скасувати</string>
     <string name="settings_ghost_mode">Прихований режим (невидимість)</string>
     <string name="ghost_mode_banner">Прихований режим: вас ніхто не бачить онлайн</string>
+    <string name="action_share_message">Поділитися</string>
 </resources>

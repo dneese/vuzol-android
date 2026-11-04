@@ -427,6 +427,16 @@ fun ChatScreen(viewModel: ChatViewModel, isBluetoothEnabled: Boolean = true, onB
                     ).show()
                 },
                 onForward = handleMessageForward,
+                onShare = { msg ->
+                    val text = MessageReply.preview(msg)
+                    val sendIntent = Intent(Intent.ACTION_SEND).apply {
+                        type = "text/plain"
+                        putExtra(Intent.EXTRA_TEXT, text)
+                    }
+                    try {
+                        context.startActivity(Intent.createChooser(sendIntent, null))
+                    } catch (_: Exception) { }
+                },
                 onSave = handleMessageSave,
                 onSelect = handleMessageSelect,
                 onEdit = handleMessageEdit,

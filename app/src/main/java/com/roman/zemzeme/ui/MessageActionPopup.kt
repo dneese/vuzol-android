@@ -20,6 +20,7 @@ import androidx.compose.material.icons.automirrored.filled.Reply
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.outlined.Block
 import androidx.compose.material.icons.outlined.Checklist
 import androidx.compose.material.icons.outlined.ContentCopy
@@ -110,6 +111,7 @@ fun MessageActionPopup(
     onSelect: (() -> Unit)? = null,
     onDetails: (() -> Unit)? = null,
     onBlock: (() -> Unit)? = null,
+    onShare: (() -> Unit)? = null,
     onMore: (() -> Unit)? = null
 ) {
     val colorScheme = MaterialTheme.colorScheme
@@ -125,6 +127,7 @@ fun MessageActionPopup(
     val detailsLabel = stringResource(R.string.message_details_title)
     val blockLabel = stringResource(R.string.action_block_title_short)
     val deleteLabel = stringResource(R.string.action_delete_title)
+    val shareLabel = stringResource(R.string.action_share_message)
     val moreLabel = stringResource(R.string.action_more_actions)
 
     val actions = buildList {
@@ -215,6 +218,15 @@ fun MessageActionPopup(
                     label = deleteLabel,
                     icon = Icons.Filled.Delete,
                     tint = colorScheme.error,
+                    onClick = it
+                )
+            )
+        }
+        onShare?.let {
+            add(
+                QuickAction(
+                    label = shareLabel,
+                    icon = Icons.Filled.Share,
                     onClick = it
                 )
             )
