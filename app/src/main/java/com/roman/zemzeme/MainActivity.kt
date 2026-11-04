@@ -684,6 +684,7 @@ class MainActivity : OrientationAwareActivity() {
                 // Handle any notification intent
                 handleNotificationIntent(intent)
                 handleVerificationIntent(intent)
+                handleJoinIntent(intent)
                 
                 // Small delay to ensure mesh service is fully initialized
                 delay(500)
@@ -720,6 +721,7 @@ class MainActivity : OrientationAwareActivity() {
         if (mainViewModel.onboardingState.value == OnboardingState.COMPLETE) {
             handleNotificationIntent(intent)
             handleVerificationIntent(intent)
+            handleJoinIntent(intent)
         }
     }
     
@@ -854,6 +856,35 @@ class MainActivity : OrientationAwareActivity() {
                 }
             }
         }
+    }
+
+    /**
+     * Handles `vuzol://join/group?code=XXXXXX` invite links: the peer joins
+     * the shared group right away.
+     */
+    private fun handleJoinIntent(intent: Intent) {
+        val uri = intent.data ?: return
+        if (uri.scheme != "vuzol" || uri.host != "join") return
+
+        val code = com.roman.zemzeme.ui.GroupInvite.codeFrom(uri.toString())
+        if (code == null) {
+            android.widget.Toast.makeText(
+                this,
+                getString(com.roman.zemzeme.R.string.group_join_invalid),
+                android.widget.Toast.LENGTH_SHORT
+            ).show()
+            return
+        }
+        val joined = chatViewModel.joinGroupByCode(code)
+        android.widget.Toast.makeText(
+            this,
+            getString(
+                if (joined) com.roman.zemzeme.R.string.group_joined_toast
+                else com.roman.zemzeme.R.string.group_join_invalid,
+                code
+            ),
+            android.widget.Toast.LENGTH_SHORT
+        ).show()
     }
 
     private fun handleVerificationIntent(intent: Intent) {

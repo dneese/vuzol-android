@@ -963,4 +963,15 @@
   <string name="attachment_cancel">Скасувати</string>
   <string name="toast_file_saved">Файл збережено</string>
   <string name="toast_failed_to_save_file">Не вдалося зберегти файл</string>
+  <string name="group_invite_title">Invite to the group</string>
+  <string name="group_invite_code_label">Group code</string>
+  <string name="group_invite_copy_code">Copy code</string>
+  <string name="group_invite_copy_link">Copy link</string>
+  <string name="group_invite_share">Share</string>
+  <string name="group_invite_hint">The invitee can scan the code, tap the link or enter the code manually</string>
+  <string name="action_invite">Invite friends</string>
+  <string name="group_joined_toast">Joined the group %1$s</string>
+  <string name="group_join_invalid">This link does not contain a group code</string>
+  <string name="group_invite_sheet_title">Invite</string>
+  <string name="media_send_no_connection">Немає прямого з'єднання з контактом — намагаємось встановити</string>
 </resources>

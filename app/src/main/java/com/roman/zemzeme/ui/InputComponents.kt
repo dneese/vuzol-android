@@ -374,21 +374,70 @@ fun MessageInput(
         }
     }
 
-    // Attachment options
+    // Attachments — the pickers live here (not inside the sheet) so that the
+    // result is never lost when the sheet is recomposed or closed.
+    val attachmentContext = androidx.compose.ui.platform.LocalContext.current
+    var pendingAttachment by remember { mutableStateOf<PendingAttachment?>(null) }
+
+    val photoPicker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: android.net.Uri? ->
+        if (uri != null) {
+            val outPath = com.roman.zemzeme.features.media.ImageUtils
+                .downscaleAndSaveToAppFiles(attachmentContext, uri)
+            if (!outPath.isNullOrBlank()) {
+                val file = java.io.File(outPath)
+                pendingAttachment = PendingAttachment(outPath, file.name, file.length(), isImage = true)
+            }
+        }
+    }
+
+    val filePicker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri: android.net.Uri? ->
+        if (uri != null) {
+            try {
+                attachmentContext.contentResolver.takePersistableUriPermission(
+                    uri,
+                    android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION
+                )
+            } catch (_: Exception) { }
+            val path = com.roman.zemzeme.features.file.FileUtils
+                .copyFileForSending(attachmentContext, uri)
+            if (!path.isNullOrBlank()) {
+                val file = java.io.File(path)
+                pendingAttachment = PendingAttachment(path, file.name, file.length(), isImage = false)
+            }
+        }
+    }
+
     if (showAttachmentSheet) {
         AttachmentSheet(
+            pending = pendingAttachment,
             onDismiss = { showAttachmentSheet = false },
-            onPhoto = { path ->
+            onPickPhoto = { photoPicker.launch("image/*") },
+            onPickFile = { filePicker.launch(arrayOf("*/*")) },
+            onCancelPending = { pendingAttachment = null },
+            onConfirm = { attachment ->
+                pendingAttachment = null
                 showAttachmentSheet = false
-                onSendImageNote(latestSelectedPeer.value, latestChannel.value, path)
-            },
-            onFile = { path ->
-                showAttachmentSheet = false
-                onSendFileNote(latestSelectedPeer.value, latestChannel.value, path)
+                if (attachment.isImage) {
+                    onSendImageNote(latestSelectedPeer.value, latestChannel.value, attachment.path)
+                } else {
+                    onSendFileNote(latestSelectedPeer.value, latestChannel.value, attachment.path)
+                }
             }
         )
     }
 }
+
+/** A file that was picked and is waiting for confirmation. */
+private data class PendingAttachment(
+    val path: String,
+    val name: String,
+    val size: Long,
+    val isImage: Boolean
+)
 
 /**
  * Bottom sheet with the attachment options (photo / file).
@@ -399,55 +448,15 @@ fun MessageInput(
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 private fun AttachmentSheet(
+    pending: PendingAttachment?,
     onDismiss: () -> Unit,
-    onPhoto: (String) -> Unit,
-    onFile: (String) -> Unit
+    onPickPhoto: () -> Unit,
+    onPickFile: () -> Unit,
+    onCancelPending: () -> Unit,
+    onConfirm: (PendingAttachment) -> Unit
 ) {
-    val context = androidx.compose.ui.platform.LocalContext.current
     val colorScheme = MaterialTheme.colorScheme
     val maxBytes = com.roman.zemzeme.util.AppConstants.Media.MAX_FILE_SIZE_BYTES
-
-    var pendingPath by remember { mutableStateOf<String?>(null) }
-    var pendingName by remember { mutableStateOf("") }
-    var pendingSize by remember { mutableStateOf(0L) }
-    var pendingIsImage by remember { mutableStateOf(false) }
-
-    val photoPicker = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.GetContent()
-    ) { uri: android.net.Uri? ->
-        if (uri != null) {
-            val outPath = com.roman.zemzeme.features.media.ImageUtils
-                .downscaleAndSaveToAppFiles(context, uri)
-            if (!outPath.isNullOrBlank()) {
-                val file = java.io.File(outPath)
-                pendingPath = outPath
-                pendingName = file.name
-                pendingSize = file.length()
-                pendingIsImage = true
-            }
-        }
-    }
-
-    val filePicker = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.OpenDocument()
-    ) { uri: android.net.Uri? ->
-        if (uri != null) {
-            try {
-                context.contentResolver.takePersistableUriPermission(
-                    uri,
-                    android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION
-                )
-            } catch (_: Exception) { }
-            val path = com.roman.zemzeme.features.file.FileUtils.copyFileForSending(context, uri)
-            if (!path.isNullOrBlank()) {
-                val file = java.io.File(path)
-                pendingPath = path
-                pendingName = file.name
-                pendingSize = file.length()
-                pendingIsImage = false
-            }
-        }
-    }
 
     com.roman.zemzeme.core.ui.component.sheet.ZemzemeBottomSheet(onDismissRequest = onDismiss) {
         Column(
@@ -477,16 +486,16 @@ private fun AttachmentSheet(
             AttachmentRow(
                 icon = Icons.Filled.Photo,
                 label = stringResource(R.string.action_send_photo),
-                onClick = { photoPicker.launch("image/*") }
+                onClick = onPickPhoto
             )
             AttachmentRow(
                 icon = Icons.Filled.Attachment,
                 label = stringResource(R.string.action_send_file),
-                onClick = { filePicker.launch(arrayOf("*/*")) }
+                onClick = onPickFile
             )
 
-            val path = pendingPath
-            if (path != null) {
+            val attachment = pending
+            if (attachment != null) {
                 Spacer(modifier = Modifier.height(14.dp))
                 Surface(
                     shape = RoundedCornerShape(14.dp),
@@ -499,31 +508,27 @@ private fun AttachmentSheet(
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         Icon(
-                            imageVector = if (pendingIsImage) Icons.Filled.Photo else Icons.Filled.Description,
+                            imageVector = if (attachment.isImage) Icons.Filled.Photo else Icons.Filled.Description,
                             contentDescription = null,
                             tint = colorScheme.onSurfaceVariant,
                             modifier = Modifier.size(24.dp)
                         )
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                text = pendingName,
+                                text = attachment.name,
                                 style = MaterialTheme.typography.bodyMedium,
                                 fontFamily = NunitoFontFamily,
                                 maxLines = 1,
                                 overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                             )
                             Text(
-                                text = com.roman.zemzeme.features.file.FileUtils.formatFileSize(pendingSize),
+                                text = com.roman.zemzeme.features.file.FileUtils.formatFileSize(attachment.size),
                                 style = MaterialTheme.typography.bodySmall,
                                 fontFamily = NunitoFontFamily,
                                 color = colorScheme.onSurfaceVariant
                             )
                         }
-                        TextButton(onClick = {
-                            pendingPath = null
-                            pendingName = ""
-                            pendingSize = 0L
-                        }) {
+                        TextButton(onClick = onCancelPending) {
                             Text(
                                 text = stringResource(R.string.attachment_cancel),
                                 fontFamily = NunitoFontFamily,
@@ -531,10 +536,7 @@ private fun AttachmentSheet(
                             )
                         }
                         Button(
-                            onClick = {
-                                pendingPath = null
-                                if (pendingIsImage) onPhoto(path) else onFile(path)
-                            },
+                            onClick = { onConfirm(attachment) },
                             shape = RoundedCornerShape(12.dp)
                         ) {
                             Text(
@@ -548,8 +550,6 @@ private fun AttachmentSheet(
         }
     }
 }
-
-
 
 @Composable
 private fun AttachmentRow(

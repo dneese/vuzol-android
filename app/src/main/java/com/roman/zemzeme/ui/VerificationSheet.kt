@@ -588,7 +588,7 @@ private fun ScannerView(
 }
 
 @Composable
-private fun QRCodeImage(data: String, size: Dp, dotColor: Color = Color.Black) {
+fun QRCodeImage(data: String, size: Dp, dotColor: Color = Color.Black) {
     val sizePx = with(LocalDensity.current) { size.toPx().toInt() }
     val dotArgb = dotColor.value.toLong().let { android.graphics.Color.argb(
         ((dotColor.alpha) * 255).toInt(),
@@ -606,7 +606,7 @@ private fun QRCodeImage(data: String, size: Dp, dotColor: Color = Color.Black) {
     }
 }
 
-private fun generateQrBitmap(data: String, sizePx: Int, dotArgb: Int = android.graphics.Color.BLACK): Bitmap? {
+internal fun generateQrBitmap(data: String, sizePx: Int, dotArgb: Int = android.graphics.Color.BLACK): Bitmap? {
     if (data.isBlank() || sizePx <= 0) return null
     return try {
         val matrix = QRCodeWriter().encode(data, BarcodeFormat.QR_CODE, sizePx, sizePx)

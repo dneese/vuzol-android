@@ -47,6 +47,7 @@ import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Chat
 import androidx.compose.material.icons.outlined.People
+import androidx.compose.material.icons.outlined.PersonAdd
 import androidx.compose.material.icons.outlined.PushPin
 import androidx.compose.material.icons.outlined.Bookmark
 import androidx.compose.material.icons.outlined.VisibilityOff
@@ -191,6 +192,9 @@ fun HomeScreen(
 
     // Profile editor (avatar, name, bio)
     var showProfileEditor by remember { mutableStateOf(false) }
+
+    // Group invite sheet
+    var inviteTarget by remember { mutableStateOf<ActionTarget?>(null) }
     var pendingAction by remember { mutableStateOf<PendingAction?>(null) }
     var pendingActionTarget by remember { mutableStateOf<ActionTarget?>(null) }
 
@@ -792,6 +796,15 @@ fun HomeScreen(
       }
     }
 
+    inviteTarget?.let { target ->
+        GroupInviteSheet(
+            isPresented = true,
+            groupName = target.displayName,
+            groupCode = target.key,
+            onDismiss = { inviteTarget = null }
+        )
+    }
+
     ProfileEditorSheet(
         isPresented = showProfileEditor,
         nickname = nickname,
@@ -817,6 +830,10 @@ fun HomeScreen(
             showDelete = target.type != "mesh" && target.type != "location",
             deleteLabel = if (target.type == "dm") stringResource(R.string.dialog_delete_chat) else stringResource(R.string.dialog_delete_group),
             showRename = target.type == "group",
+            onInvite = if (target.type == "group") {{
+                inviteTarget = target
+                actionTarget = null
+            }} else null,
             onRename = {
                 pendingActionTarget = target
                 actionTarget = null
@@ -1195,6 +1212,7 @@ private fun GroupActionSheet(
     isPinned: Boolean = false,
     onPin: () -> Unit = {},
     onRename: () -> Unit = {},
+    onInvite: (() -> Unit)? = null,
     onDelete: () -> Unit,
     onClear: () -> Unit,
     onDismiss: () -> Unit
@@ -1259,6 +1277,37 @@ private fun GroupActionSheet(
                                 color = if (isPinned) colorScheme.primary else colorScheme.onSurfaceVariant
                             )
                         )
+                    }
+                }
+
+                // Invite friends button
+                if (onInvite != null) {
+                    Surface(
+                        onClick = onInvite,
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(14.dp),
+                        color = colorScheme.surfaceVariant
+                    ) {
+                        Row(
+                            Modifier.padding(horizontal = 20.dp, vertical = 16.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(14.dp)
+                        ) {
+                            Icon(
+                                Icons.Outlined.PersonAdd,
+                                contentDescription = null,
+                                tint = colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(22.dp)
+                            )
+                            Text(
+                                stringResource(R.string.action_invite),
+                                style = MaterialTheme.typography.bodyLarge.copy(
+                                    fontFamily = NunitoFontFamily,
+                                    fontWeight = FontWeight.Medium,
+                                    color = colorScheme.onSurfaceVariant
+                                )
+                            )
+                        }
                     }
                 }
 
@@ -1436,8 +1485,14 @@ private fun JoinGroupDialog(onDismiss: () -> Unit, onConfirm: (String, String) -
                 OutlinedTextField(
                     value = geohash,
                     onValueChange = { input ->
-                        val filtered = input.lowercase().filter { it in "0123456789bcdefghjkmnpqrstuvwxyz" }
-                        geohash = filtered.take(6)
+                        // Accept a pasted invite link or a plain code
+                        val parsed = GroupInvite.codeFrom(input)
+                        if (parsed != null && input.contains("://")) {
+                            geohash = parsed
+                        } else {
+                            val filtered = input.lowercase().filter { it in "0123456789bcdefghjkmnpqrstuvwxyz" }
+                            geohash = filtered.take(6)
+                        }
                     },
                     label = { Text(stringResource(R.string.label_group_id)) }, singleLine = true,
                     modifier = Modifier.fillMaxWidth()

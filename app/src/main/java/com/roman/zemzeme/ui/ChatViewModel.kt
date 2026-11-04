@@ -56,6 +56,24 @@ class ChatViewModel(
     }
 
     /**
+     * Tells the user that the peer is not reachable and tries to open a
+     * connection, so the next attempt can succeed.
+     */
+    private fun notifyMediaSendBlocked(peerID: String) {
+        val context = getApplication<Application>()
+        try {
+            android.widget.Toast.makeText(
+                context,
+                context.getString(com.roman.zemzeme.R.string.media_send_no_connection),
+                android.widget.Toast.LENGTH_LONG
+            ).show()
+        } catch (_: Exception) { }
+        try {
+            meshService.initiateNoiseHandshake(peerID)
+        } catch (_: Exception) { }
+    }
+
+    /**
      * Checks that a media file can be sent and tells the user when it cannot.
      * Returns true when the file is ready to be transferred.
      */
@@ -89,7 +107,10 @@ class ChatViewModel(
     fun sendVoiceNote(toPeerIDOrNull: String?, channelOrNull: String?, filePath: String) {
         if (!validateMediaFile(filePath)) return
         val targetPeer = resolveMediaRecipientForSend(toPeerIDOrNull)
-        if (toPeerIDOrNull != null && targetPeer == null) return
+        if (toPeerIDOrNull != null && targetPeer == null) {
+            notifyMediaSendBlocked(toPeerIDOrNull)
+            return
+        }
 
         if (targetPeer == null) {
             val loc = state.selectedLocationChannel.value
@@ -105,7 +126,10 @@ class ChatViewModel(
     fun sendFileNote(toPeerIDOrNull: String?, channelOrNull: String?, filePath: String) {
         if (!validateMediaFile(filePath)) return
         val targetPeer = resolveMediaRecipientForSend(toPeerIDOrNull)
-        if (toPeerIDOrNull != null && targetPeer == null) return
+        if (toPeerIDOrNull != null && targetPeer == null) {
+            notifyMediaSendBlocked(toPeerIDOrNull)
+            return
+        }
 
         if (targetPeer == null) {
             val loc = state.selectedLocationChannel.value
@@ -128,7 +152,10 @@ class ChatViewModel(
     fun sendImageNote(toPeerIDOrNull: String?, channelOrNull: String?, filePath: String) {
         if (!validateMediaFile(filePath)) return
         val targetPeer = resolveMediaRecipientForSend(toPeerIDOrNull)
-        if (toPeerIDOrNull != null && targetPeer == null) return
+        if (toPeerIDOrNull != null && targetPeer == null) {
+            notifyMediaSendBlocked(toPeerIDOrNull)
+            return
+        }
 
         if (targetPeer == null) {
             val loc = state.selectedLocationChannel.value
@@ -1602,6 +1629,19 @@ class ChatViewModel(
         state.setGroupNicknames(dataManager.loadAllGroupNicknames())
         subscribeP2PTopics(geohash)
         return geohash
+    }
+
+    /**
+     * Joins a group from an invite code. Returns true when the group was
+     * actually added (false when it was already joined).
+     */
+    fun joinGroupByCode(code: String): Boolean {
+        val normalized = code.trim().lowercase()
+        if (!GroupInvite.isValidCode(normalized)) return false
+        val groups = state.getCustomGroupsValue().toMutableSet()
+        if (normalized in groups) return false
+        joinGroup(normalized, normalized)
+        return true
     }
 
     fun joinGroup(geohash: String, nickname: String) {

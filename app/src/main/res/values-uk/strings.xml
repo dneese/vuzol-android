@@ -857,4 +857,15 @@
   <string name="attachment_cancel">Скасувати</string>
   <string name="toast_file_saved">Файл збережено</string>
   <string name="toast_failed_to_save_file">Не вдалося зберегти файл</string>
+  <string name="group_invite_title">Запрошення до групи</string>
+  <string name="group_invite_code_label">Код групи</string>
+  <string name="group_invite_copy_code">Скопіювати код</string>
+  <string name="group_invite_copy_link">Скопіювати посилання</string>
+  <string name="group_invite_share">Поділитися</string>
+  <string name="group_invite_hint">Друг може відсканувати QR, відкрити посилання або ввести код вручну</string>
+  <string name="action_invite">Запросити друзів</string>
+  <string name="group_joined_toast">Ви приєдналися до групи %1$s</string>
+  <string name="group_join_invalid">У цьому посилання немає коду групи</string>
+  <string name="group_invite_sheet_title">Запрошення</string>
+  <string name="media_send_no_connection">Немає прямого з'єднання з контактом — намагаємось встановити</string>
 </resources>

@@ -20,6 +20,7 @@ import androidx.compose.material.icons.outlined.DeleteSweep
 import androidx.compose.material.icons.outlined.Groups
 import androidx.compose.material.icons.outlined.NotificationsOff
 import androidx.compose.material.icons.outlined.Palette
+import androidx.compose.material.icons.outlined.PersonAdd
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -58,6 +59,7 @@ fun ChatOptionsSheet(
     onSelect: (() -> Unit)? = null,
     onSearch: (() -> Unit)? = null,
     onPeople: (() -> Unit)? = null,
+    onInvite: (() -> Unit)? = null,
     onClear: (() -> Unit)? = null
 ) {
     val colorScheme = MaterialTheme.colorScheme
@@ -98,6 +100,13 @@ fun ChatOptionsSheet(
                     icon = Icons.Outlined.Groups,
                     label = stringResource(R.string.section_people_nearby),
                     onClick = { onPeople(); onDismiss() }
+                )
+            }
+            if (onInvite != null) {
+                OptionsRow(
+                    icon = Icons.Outlined.PersonAdd,
+                    label = stringResource(R.string.action_invite),
+                    onClick = { onInvite(); onDismiss() }
                 )
             }
             if (onToggleMute != null) {

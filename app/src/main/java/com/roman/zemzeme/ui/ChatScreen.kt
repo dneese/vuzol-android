@@ -114,6 +114,9 @@ fun ChatScreen(viewModel: ChatViewModel, isBluetoothEnabled: Boolean = true, onB
     var messageForActions by remember { mutableStateOf<ZemzemeMessage?>(null) }
     var showAutoDeleteDialog by remember { mutableStateOf(false) }
     var showChatOptions by remember { mutableStateOf(false) }
+    var showGroupInvite by remember { mutableStateOf(false) }
+    val customGroups by viewModel.customGroups.collectAsStateWithLifecycle()
+    val groupNicknames by viewModel.groupNicknames.collectAsStateWithLifecycle()
 
 
     // Show password dialog when needed
@@ -614,7 +617,7 @@ fun ChatScreen(viewModel: ChatViewModel, isBluetoothEnabled: Boolean = true, onB
                         selection = TextRange(mentionText.length)
                     )
                 },
-                selectedPrivatePeer = null,
+                selectedPrivatePeer = selectedPrivatePeer,
                 currentChannel = currentChannel,
                 nickname = nickname,
                 colorScheme = colorScheme,
@@ -874,6 +877,7 @@ fun ChatScreen(viewModel: ChatViewModel, isBluetoothEnabled: Boolean = true, onB
     // Chat options (appearance, mute, auto-delete, selection, clear)
     if (showChatOptions) {
         val currentGeohash = (viewModel.selectedLocationChannel.value as? com.roman.zemzeme.geohash.ChannelID.Location)?.channel?.geohash
+        val currentGroupCode = currentGeohash?.takeIf { it in customGroups }
         ChatOptionsSheet(
             onDismiss = { showChatOptions = false },
             onAppearance = { showAppearanceSheet = true },
@@ -887,6 +891,7 @@ fun ChatScreen(viewModel: ChatViewModel, isBluetoothEnabled: Boolean = true, onB
             onAutoDelete = { showAutoDeleteDialog = true },
             onSelect = { selectionMode = true },
             onSearch = { showMessageSearch = true },
+            onInvite = if (currentGroupCode != null) { { showGroupInvite = true } } else null,
             onClear = {
                 viewModel.sendMessage("/clear")
             }
@@ -978,6 +983,16 @@ fun ChatScreen(viewModel: ChatViewModel, isBluetoothEnabled: Boolean = true, onB
             }
         )
     }
+
+    // Invite sheet for a private group
+    val inviteCode = (viewModel.selectedLocationChannel.value as? com.roman.zemzeme.geohash.ChannelID.Location)
+        ?.channel?.geohash?.takeIf { it in customGroups }
+    GroupInviteSheet(
+        isPresented = showGroupInvite && inviteCode != null,
+        groupName = inviteCode?.let { groupNicknames[it] ?: it } ?: "",
+        groupCode = inviteCode ?: "",
+        onDismiss = { showGroupInvite = false }
+    )
 
     // Technical details of a message
     MessageDetailsSheet(
