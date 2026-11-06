@@ -75,6 +75,41 @@ jobs:
             [ "$f" = "$target" ] || mv "$f" "$target"
           done
 
+      - name: Prepare release notes
+        id: notes
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          NOTES_FILE="$RUNNER_TEMP/release-notes.md"
+          # Curated notes from CHANGELOG.md for this exact tag
+          if [ -f CHANGELOG.md ]; then
+            awk -v tag="$TAG" '
+              $0 ~ "^## " tag "$" { found=1; next }
+              found && /^## / { exit }
+              found { print }
+            ' CHANGELOG.md > "$NOTES_FILE"
+          fi
+          # Fallback: list the commits of this release
+          if [ ! -s "$NOTES_FILE" ]; then
+            PREV=$(git tag --sort=-v:refname | grep -v "^${TAG}$" | head -1)
+            if [ -n "$PREV" ]; then
+              git log --no-merges --pretty=format:'- %s' "${PREV}..${TAG}" > "$NOTES_FILE"
+            else
+              git log --no-merges --pretty=format:'- %s' > "$NOTES_FILE"
+            fi
+          fi
+          {
+            echo "### What changed"
+            echo
+            cat "$NOTES_FILE"
+            echo
+            echo "### Downloads"
+            echo
+            echo "- **vuzol-android-arm64.apk** — ARM64 (most phones)"
+            echo "- **vuzol-android-x86_64.apk** — x86_64 (Chromebooks, tablets)"
+            echo "- **vuzol-android-universal.apk** — all architectures (fallback)"
+          } > "$RUNNER_TEMP/release-body.md"
+          echo "notes prepared"
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
@@ -83,9 +118,6 @@ jobs:
             app/build/outputs/apk/release/vuzol-android-x86_64.apk
             app/build/outputs/apk/release/vuzol-android-universal.apk
           name: Release ${{ github.ref_name }}
-          body: |
-            **vuzol-android-arm64.apk** - ARM64 (most phones)
-            **vuzol-android-x86_64.apk** - x86_64 (Chromebooks, tablets)
-            **vuzol-android-universal.apk** - All architectures (fallback)
+          body_path: ${{ runner.temp }}/release-body.md
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

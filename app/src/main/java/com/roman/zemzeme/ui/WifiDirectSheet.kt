@@ -4,7 +4,6 @@ import android.Manifest
 import android.os.Build
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -26,6 +25,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -57,8 +57,8 @@ import java.util.Date
 import java.util.Locale
 
 /**
- * Offline room over WiFi Direct. Works without router and internet, the
- * host phone relays the messages so every phone in range sees them.
+ * Offline room over WiFi Direct. Works without router and internet, the host
+ * phone relays the messages so every phone in range sees them.
  */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalPermissionsApi::class)
 @Composable
@@ -80,6 +80,7 @@ fun WifiDirectSheet(
     var status by remember { mutableStateOf(transport.status) }
     var peers by remember { mutableStateOf(0) }
     val timeFormatter = remember { SimpleDateFormat("HH:mm", Locale.getDefault()) }
+    val supported = WifiDirectTransport.isSupported
 
     val nearbyPermission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
         Manifest.permission.NEARBY_WIFI_DEVICES
@@ -93,8 +94,8 @@ fun WifiDirectSheet(
         transport.onMessage = { message ->
             messages.add(message)
         }
-        transport.onStatusChanged = { value -> status = it }
-        transport.onPeersChanged = { value -> peers = it }
+        transport.onStatusChanged = { value -> status = value }
+        transport.onPeersChanged = { value -> peers = value }
         onDispose {
             transport.onMessage = null
             transport.onStatusChanged = null
@@ -163,6 +164,13 @@ fun WifiDirectSheet(
                             fontSize = 14.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
+                        if (!supported) {
+                            Text(
+                                text = stringResource(R.string.wifi_direct_needs_android15),
+                                fontSize = 13.sp,
+                                color = MaterialTheme.colorScheme.error
+                            )
+                        }
                         OutlinedTextField(
                             value = roomCode,
                             onValueChange = { roomCode = it },
@@ -177,15 +185,27 @@ fun WifiDirectSheet(
                             singleLine = true,
                             modifier = Modifier.fillMaxWidth()
                         )
-                        Button(
-                            onClick = {
-                                transport.startRoom(roomCode, password.ifBlank { null })
-                                started = true
-                            },
-                            enabled = roomCode.isNotBlank() && permissionGranted,
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Text(stringResource(R.string.wifi_direct_connect))
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Button(
+                                onClick = {
+                                    transport.startRoom(roomCode, password.ifBlank { null }, asHost = true)
+                                    started = true
+                                },
+                                enabled = roomCode.isNotBlank() && permissionGranted && supported,
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text(stringResource(R.string.wifi_direct_host))
+                            }
+                            OutlinedButton(
+                                onClick = {
+                                    transport.startRoom(roomCode, password.ifBlank { null }, asHost = false)
+                                    started = true
+                                },
+                                enabled = roomCode.isNotBlank() && permissionGranted && supported,
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text(stringResource(R.string.wifi_direct_join))
+                            }
                         }
                         if (!permissionGranted) {
                             Text(
