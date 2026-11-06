@@ -1000,4 +1000,13 @@
   <string name="image_zoom_hint">Pinch or double-tap to zoom</string>
   <string name="settings_share_app">Share Vuzol with friends</string>
   <string name="share_app_message">Vuzol — a private messenger that works even without the internet. Bluetooth mesh, end-to-end encrypted chats, photos, video and files.\n\nDownload for Android: https://dneese.github.io/vuzol-android/</string>
+  <string name="wifi_direct_title">WiFi Direct</string>
+  <string name="wifi_direct_intro">Offline room without router and internet. One phone hosts the room and relays the messages, so everybody in range hears everybody. Use the same room code and password on all phones.</string>
+  <string name="wifi_direct_room_code">Room code</string>
+  <string name="wifi_direct_room_password">Password (optional)</string>
+  <string name="wifi_direct_connect">Join the room</string>
+  <string name="wifi_direct_permission_needed">Vuzol needs the nearby devices permission for WiFi Direct</string>
+  <string name="wifi_direct_message_hint">Message</string>
+  <string name="wifi_direct_send">Send</string>
+  <string name="wifi_direct_open">WiFi Direct room</string>
 </resources>

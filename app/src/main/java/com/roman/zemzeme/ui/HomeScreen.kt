@@ -52,6 +52,7 @@ import androidx.compose.material.icons.outlined.Chat
 import androidx.compose.material.icons.outlined.People
 import androidx.compose.material.icons.outlined.PersonAdd
 import androidx.compose.material.icons.outlined.PushPin
+import androidx.compose.material.icons.outlined.Wifi
 import androidx.compose.material.icons.outlined.Bookmark
 import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material.icons.outlined.Visibility
@@ -208,6 +209,7 @@ fun HomeScreen(
 
     // Saved messages
     var showSavedMessages by remember { mutableStateOf(false) }
+    var showWifiDirect by remember { mutableStateOf(false) }
 
     // Mesh intro dialog (first-time only)
     val meshIntroPrefs = remember { context.getSharedPreferences("mesh_intro", android.content.Context.MODE_PRIVATE) }
@@ -542,6 +544,11 @@ fun HomeScreen(
                             if (canAdd) colorScheme.primaryContainer else colorScheme.surfaceVariant
                         ) {
                             if (canAdd) { fabExpanded = false; showCreateDialog = true }
+                        }
+                        FabMenuItem(stringResource(R.string.wifi_direct_open), Icons.Outlined.Wifi,
+                            colorScheme.tertiaryContainer
+                        ) {
+                            fabExpanded = false; showWifiDirect = true
                         }
                     }
                 }
@@ -1016,6 +1023,13 @@ fun HomeScreen(
     SavedMessagesSheet(
         isPresented = showSavedMessages,
         onDismiss = { showSavedMessages = false },
+        myNickname = nickname
+    )
+
+    // Offline room over WiFi Direct
+    WifiDirectSheet(
+        isPresented = showWifiDirect,
+        onDismiss = { showWifiDirect = false },
         myNickname = nickname
     )
 

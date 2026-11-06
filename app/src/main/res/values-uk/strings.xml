@@ -894,4 +894,13 @@
   <string name="image_zoom_hint">Розпіньте або двічі торкніться, щоб збільшити</string>
   <string name="settings_share_app">Поділитися Vuzol з друзями</string>
   <string name="share_app_message">Vuzol — приватний месенджер, який працює навіть без інтернету. Bluetooth mesh, чати з наскрізним шифруванням, фото, відео та файли.\n\nЗавантажити для Android: https://dneese.github.io/vuzol-android/</string>
+  <string name="wifi_direct_title">WiFi Direct</string>
+  <string name="wifi_direct_intro">Офлайн-кімната без роутера та інтернету. Один телефон стає хостом і передає повідомлення далі, тож усі в радіусі чують усіх. На всіх телефонах вкажіть однаковий код кімнати та пароль.</string>
+  <string name="wifi_direct_room_code">Код кімнати</string>
+  <string name="wifi_direct_room_password">Пароль (необов\'язково)</string>
+  <string name="wifi_direct_connect">Під\'єднатися</string>
+  <string name="wifi_direct_permission_needed">Vuzol потребує дозволу на Nearby devices для WiFi Direct</string>
+  <string name="wifi_direct_message_hint">Повідомлення</string>
+  <string name="wifi_direct_send">Надіслати</string>
+  <string name="wifi_direct_open">Кімната WiFi Direct</string>
 </resources>
