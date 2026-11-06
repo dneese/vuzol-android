@@ -8,6 +8,7 @@
 - Saved messages became a real chat with bubbles, timestamps and photo previews.
 - The landing page now speaks Ukrainian or English automatically, depending on the browser language.
 - Experimental WiFi Direct room: offline chat without router and internet, the host phone relays the messages so every phone in range hears everybody (needs Android 15 or newer).
+- Fixed the crash in the customization section: changing the app icon and name now works and the old icon is retired safely.
 
 ## v1.7.2
 
