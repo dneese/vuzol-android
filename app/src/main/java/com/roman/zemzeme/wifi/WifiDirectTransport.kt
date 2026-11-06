@@ -13,6 +13,7 @@ import android.util.Log
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -392,7 +393,7 @@ class WifiDirectTransport(
     private suspend fun readLoop(socket: Socket) {
         try {
             val input = DataInputStream(socket.getInputStream())
-            while (isActive && !socket.isClosed) {
+            while (currentCoroutineContext().isActive && !socket.isClosed) {
                 val frameLength = input.readInt()
                 if (frameLength <= 0 || frameLength > MAX_FRAME) break
                 val frame = ByteArray(frameLength)
