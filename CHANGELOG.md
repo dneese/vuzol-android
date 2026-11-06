@@ -7,6 +7,7 @@
 - Private group passwords: a group can be protected with a password, the password travels inside the invite link and the group content is encrypted.
 - Saved messages became a real chat with bubbles, timestamps and photo previews.
 - The landing page now speaks Ukrainian or English automatically, depending on the browser language.
+- Experimental WiFi Direct room: offline chat without router and internet, the host phone relays the messages so every phone in range hears everybody (needs Android 15 or newer).
 
 ## v1.7.2
 
