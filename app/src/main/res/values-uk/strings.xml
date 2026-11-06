@@ -639,6 +639,7 @@
     <string name="icon_switch_confirm">Змінити іконку та назву додатку на цю?</string>
     <string name="icon_switch_apply">Застосувати</string>
     <string name="icon_switch_toast">Іконку та назву додатку змінено!</string>
+    <string name="icon_switch_failed">Не вдалося змінити іконку, спробуйте іншу</string>
 
     <!-- Dialog titles and actions -->
     <string name="dialog_delete_chat">Видалити чат</string>

@@ -11,6 +11,7 @@ import androidx.core.content.ContextCompat
 internal class IconSwitchTaskDescription : Application.ActivityLifecycleCallbacks {
 
     override fun onActivityResumed(activity: Activity) {
+        IconSwitcher.retirePendingAlias(activity, activity.componentName?.className)
         val prefs = IconSwitchPreferences(activity)
         val index = prefs.currentAliasIndex
         val name = IconSwitcher.NAMES.getOrNull(index - 1) ?: return

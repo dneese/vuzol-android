@@ -633,6 +633,7 @@
     <string name="icon_switch_confirm">Change the app icon and name to this?</string>
     <string name="icon_switch_apply">Apply</string>
     <string name="icon_switch_toast">App icon and name changed!</string>
+  <string name="icon_switch_failed">Could not change the icon, try another one</string>
 
     <!-- Dynamic app names (100 variants) -->
     <string name="app_name_1">Vuzol</string>

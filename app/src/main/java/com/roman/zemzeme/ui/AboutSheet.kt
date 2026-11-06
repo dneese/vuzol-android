@@ -1150,11 +1150,16 @@ fun AboutSheet(
                                 },
                                 confirmButton = {
                                     TextButton(onClick = {
-                                        com.roman.zemzeme.iconswitch.IconSwitcher.applySwitch(context, result.index)
+                                        val applied = com.roman.zemzeme.iconswitch.IconSwitcher.applySwitch(context, result.index)
                                         pendingSwitch = null
+                                        val message = if (applied) {
+                                            context.getString(R.string.icon_switch_toast)
+                                        } else {
+                                            context.getString(R.string.icon_switch_failed)
+                                        }
                                         android.widget.Toast.makeText(
                                             context,
-                                            context.getString(R.string.icon_switch_toast),
+                                            message,
                                             android.widget.Toast.LENGTH_SHORT
                                         ).show()
                                     }) {
