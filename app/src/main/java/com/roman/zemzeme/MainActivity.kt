@@ -880,7 +880,8 @@ class MainActivity : OrientationAwareActivity() {
             ).show()
             return
         }
-        val joined = chatViewModel.joinGroupByCode(code)
+        val password = com.roman.zemzeme.ui.GroupInvite.passwordFrom(uri.toString())
+        val joined = chatViewModel.joinGroupByCode(code, password)
         if (joined) {
             // Open the group right away (also when the user is already a member)
             chatViewModel.navigateToGeohashGroup(code)

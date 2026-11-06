@@ -1153,21 +1153,89 @@ class ChatViewModel(
 
     /** Forward a message into another geohash channel. */
     fun forwardMessage(message: ZemzemeMessage, channel: com.roman.zemzeme.geohash.GeohashChannel) {
-        val text = when (message.type) {
-            com.roman.zemzeme.model.ZemzemeMessageType.Message -> message.content
-            com.roman.zemzeme.model.ZemzemeMessageType.Image -> "[photo]"
-            com.roman.zemzeme.model.ZemzemeMessageType.Audio -> "[voice]"
-            com.roman.zemzeme.model.ZemzemeMessageType.File -> "[file]"
-            com.roman.zemzeme.model.ZemzemeMessageType.Media -> "[media]"
-            com.roman.zemzeme.model.ZemzemeMessageType.Video -> "[video]"
+        viewModelScope.launch {
+            if (forwardMedia(message, targetPeer = null, targetChannel = channel)) return@launch
+            val text = messagePreviewForForward(message)
+            val sender = message.sender
+            geohashViewModel.sendGeohashMessage(
+                "↪ $sender: $text",
+                channel,
+                meshService.myPeerID,
+                state.getNicknameValue()
+            )
         }
-        val sender = message.sender
-        geohashViewModel.sendGeohashMessage(
-            "↪ $sender: $text",
-            channel,
-            meshService.myPeerID,
-            state.getNicknameValue()
-        )
+    }
+
+    /** Forward a message into a private chat. */
+    fun forwardMessageToPeer(message: ZemzemeMessage, peerID: String) {
+        viewModelScope.launch {
+            if (forwardMedia(message, targetPeer = peerID, targetChannel = null)) return@launch
+            val text = messagePreviewForForward(message)
+            val sender = message.sender
+            val messageId = java.util.UUID.randomUUID().toString().uppercase()
+            val nickname = meshService.getPeerNicknames()[peerID].orEmpty()
+            com.roman.zemzeme.services.MessageRouter.getInstance(getApplication(), meshService)
+                .sendPrivate("↪ $sender: $text", peerID, nickname, messageId)
+        }
+    }
+
+    private fun messagePreviewForForward(message: ZemzemeMessage): String = when (message.type) {
+        com.roman.zemzeme.model.ZemzemeMessageType.Message -> message.content
+        com.roman.zemzeme.model.ZemzemeMessageType.Image -> "[photo]"
+        com.roman.zemzeme.model.ZemzemeMessageType.Audio -> "[voice]"
+        com.roman.zemzeme.model.ZemzemeMessageType.File -> "[file]"
+        com.roman.zemzeme.model.ZemzemeMessageType.Media -> "[media]"
+        com.roman.zemzeme.model.ZemzemeMessageType.Video -> "[video]"
+    }
+
+    /**
+     * Forwards photos, videos and files with their real content instead of a
+     * text placeholder. Returns true when the media was forwarded.
+     */
+    private suspend fun forwardMedia(
+        message: ZemzemeMessage,
+        targetPeer: String?,
+        targetChannel: com.roman.zemzeme.geohash.GeohashChannel?
+    ): Boolean {
+        if (message.type == com.roman.zemzeme.model.ZemzemeMessageType.Message) return false
+
+        var file = java.io.File(message.content)
+        if (!file.exists()) {
+            Log.w(TAG, "Cannot forward missing file: ${message.content}")
+            return false
+        }
+
+        // Videos are transcoded so the transfer stays fast and reliable
+        if (message.type == com.roman.zemzeme.model.ZemzemeMessageType.Video) {
+            val compressed = com.roman.zemzeme.features.media.VideoCompressor
+                .compressIfNeeded(getApplication(), file)
+            if (compressed != null) file = compressed
+        }
+
+        val mimeType = try {
+            com.roman.zemzeme.features.file.FileUtils.getMimeTypeFromExtension(file.name)
+        } catch (_: Exception) {
+            "application/octet-stream"
+        }
+
+        if (targetPeer != null) {
+            sendFileNote(targetPeer, null, file.absolutePath)
+            return true
+        }
+
+        if (targetChannel != null) {
+            geohashViewModel.sendGeohashMedia(
+                file.absolutePath,
+                mimeType,
+                message.type,
+                targetChannel,
+                meshService.myPeerID,
+                state.getNicknameValue()
+            )
+            return true
+        }
+
+        return false
     }
 
     /** Toggle an emoji reaction on a message in the current geohash channel. */
@@ -1620,9 +1688,12 @@ class ChatViewModel(
 
     private val geohashBase32 = "0123456789bcdefghjkmnpqrstuvwxyz"
 
-    fun createGroup(nickname: String): String {
+    fun createGroup(nickname: String, password: String? = null): String {
         val geohash = buildString {
             repeat(6) { append(geohashBase32[Random.nextInt(geohashBase32.length)]) }
+        }
+        if (!password.isNullOrBlank()) {
+            com.roman.zemzeme.groups.GroupSpaceStore.setPassword(getApplication(), geohash, password)
         }
         dataManager.saveGroupNickname(geohash, nickname)
         val groups = state.getCustomGroupsValue().toMutableSet()
@@ -1721,20 +1792,26 @@ class ChatViewModel(
      * Joins a group from an invite code. Returns true when the group was
      * actually added (false when it was already joined).
      */
-    fun joinGroupByCode(code: String): Boolean {
+    fun joinGroupByCode(code: String, password: String? = null): Boolean {
         val normalized = code.trim().lowercase()
         if (!GroupInvite.isValidCode(normalized)) return false
+        if (!password.isNullOrBlank()) {
+            com.roman.zemzeme.groups.GroupSpaceStore.setPassword(getApplication(), normalized, password)
+        }
         val groups = state.getCustomGroupsValue().toMutableSet()
         if (normalized in groups) {
             // Already a member: keep the topic subscribed and let the caller open the group
             subscribeP2PTopics(normalized)
             return true
         }
-        joinGroup(normalized, normalized)
+        joinGroup(normalized, normalized, password)
         return true
     }
 
-    fun joinGroup(geohash: String, nickname: String) {
+    fun joinGroup(geohash: String, nickname: String, password: String? = null) {
+        if (!password.isNullOrBlank()) {
+            com.roman.zemzeme.groups.GroupSpaceStore.setPassword(getApplication(), geohash, password)
+        }
         dataManager.saveGroupNickname(geohash, nickname)
         val groups = state.getCustomGroupsValue().toMutableSet()
         groups.add(geohash)
@@ -1750,6 +1827,7 @@ class ChatViewModel(
     }
 
     fun removeGroup(geohash: String) {
+        com.roman.zemzeme.groups.GroupSpaceStore.removePassword(getApplication(), geohash)
         dataManager.removeCustomGroup(geohash)
         state.setCustomGroups(dataManager.loadCustomGroups())
         state.setGroupNicknames(dataManager.loadAllGroupNicknames())

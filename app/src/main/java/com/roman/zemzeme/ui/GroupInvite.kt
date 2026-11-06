@@ -18,14 +18,38 @@ object GroupInvite {
     const val WEB_BASE = "https://dneese.github.io/vuzol-android/"
 
     /** Deep link that opens the app and joins the group. */
-    fun linkFor(code: String): String = "$SCHEME://$HOST/group?code=$code"
+    fun linkFor(code: String, password: String? = null): String =
+        if (password.isNullOrBlank()) "$SCHEME://$HOST/group?code=$code"
+        else "$SCHEME://$HOST/group?code=$code&p=${encodePassword(password)}"
 
     /** Web link that works in any browser and offers to open the app. */
-    fun webLinkFor(code: String): String = "$WEB_BASE?code=$code"
+    fun webLinkFor(code: String, password: String? = null): String =
+        if (password.isNullOrBlank()) "$WEB_BASE?code=$code"
+        else "$WEB_BASE?code=$code&p=${encodePassword(password)}"
 
     /** Text that is shared with the invitee. */
-    fun shareText(groupName: String, code: String): String =
-        "Join the Vuzol group \"$groupName\"\nInvite code: $code\n${webLinkFor(code)}"
+    fun shareText(groupName: String, code: String, password: String? = null): String {
+        val base = "Join the Vuzol group \"$groupName\"\nInvite code: $code"
+        val withPassword = if (password.isNullOrBlank()) "" else "\nPassword: $password"
+        return "$base$withPassword\n${webLinkFor(code, password)}"
+    }
+
+    private fun encodePassword(password: String): String =
+        java.net.URLEncoder.encode(password, Charsets.UTF_8.name())
+
+    /**
+     * Extracts the group password from an invite link.
+     */
+    fun passwordFrom(text: String?): String? {
+        val raw = text?.trim() ?: return null
+        if (raw.isEmpty()) return null
+        val match = Regex("[?&]p=([^&\\s]+)").find(raw) ?: return null
+        return try {
+            java.net.URLDecoder.decode(match.groupValues[1], Charsets.UTF_8.name())
+        } catch (_: Exception) {
+            match.groupValues[1]
+        }
+    }
 
     /**
      * Extracts a group code from a link, a QR payload or plain text.

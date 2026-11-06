@@ -105,71 +105,208 @@
   footer a { color: #6f7c89; }
   .features { display: grid; gap: 8px; margin-top: 10px; }
   .features div { color: var(--muted); font-size: 14px; }
+
+  /* header + language switch */
+  .topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 14px;
+  }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 18px; }
+  .brand .dot {
+    width: 26px; height: 26px; border-radius: 9px;
+    background: linear-gradient(135deg, var(--accent), #7c5cff);
+    box-shadow: 0 0 18px rgba(76,154,255,.35);
+  }
+  .langs { display: flex; gap: 6px; }
+  .langs button {
+    background: transparent;
+    border: 1px solid var(--line);
+    color: var(--muted);
+    border-radius: 9px;
+    padding: 6px 11px;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    font-family: inherit;
+  }
+  .langs button.active { border-color: var(--accent); color: var(--accent); }
+
+  /* transport layers */
+  .layers { display: grid; gap: 10px; margin-top: 12px; }
+  .layer {
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 14px;
+    background: #12161c;
+  }
+  .layer .top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .layer .num { font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--accent); }
+  .layer h3 { margin: 4px 0 2px; font-size: 15px; }
+  .layer p { font-size: 13px; margin: 4px 0 0; }
+  .badge {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 3px 9px;
+    color: var(--muted);
+    white-space: nowrap;
+  }
+  .badge.live { color: #3fb950; border-color: #26402c; }
+  .tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 9px; }
+  .tags span {
+    font-size: 11px;
+    color: var(--muted);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 3px 8px;
+  }
 </style>
 </head>
 <body>
   <div class="wrap">
 
+    <div class="topbar">
+      <div class="brand"><span class="dot"></span><span>Vuzol</span></div>
+      <div class="langs">
+        <button type="button" data-lang="en">EN</button>
+        <button type="button" data-lang="uk">UK</button>
+      </div>
+    </div>
+
     <div class="card" id="inviteCard" style="display:none">
-      <h1>You are invited</h1>
-      <p>Join the private group chat in Vuzol — a messenger that works even without the internet.</p>
+      <h1 data-i18n="inviteTitle">You are invited</h1>
+      <p data-i18n="inviteText">Join the private group chat in Vuzol — a messenger that works even without the internet.</p>
       <div class="code" id="codeValue">—</div>
-      <div class="label" style="text-align:center">group invite code</div>
-      <a class="button" id="openLink" href="#">Open in Vuzol</a>
-      <button class="button secondary" id="copyLinkBtn">Copy invite link</button>
-      <button class="button secondary" id="copyCodeBtn">Copy invite code</button>
+      <div class="label" style="text-align:center" data-i18n="inviteCodeLabel">group invite code</div>
+      <a class="button" id="openLink" href="#" data-i18n="openInVuzol">Open in Vuzol</a>
+      <button class="button secondary" id="copyLinkBtn" data-i18n="copyInviteLink">Copy invite link</button>
+      <button class="button secondary" id="copyCodeBtn" data-i18n="copyInviteCode">Copy invite code</button>
       <p class="status" id="inviteStatus"></p>
     </div>
 
     <div class="card">
       <h1>Vuzol</h1>
-      <p>Private peer-to-peer messenger for Android. No accounts, no phone number, no central server.</p>
+      <p data-i18n="tagline">Private peer-to-peer messenger for Android. No accounts, no phone number, no central server.</p>
       <div class="features">
-        <div>• Offline Bluetooth mesh — talk nearby with no internet</div>
-        <div>• End-to-end encrypted (Noise protocol) private chats and groups</div>
-        <div>• Photos, videos and files up to 50 MB</div>
-        <div>• Location channels and Nostr for online conversations</div>
+        <div data-i18n="featureMesh">• Offline Bluetooth mesh — talk nearby with no internet</div>
+        <div data-i18n="featureCrypto">• End-to-end encrypted (Noise protocol) private chats and groups</div>
+        <div data-i18n="featureMedia">• Photos, videos and files up to 50 MB</div>
+        <div data-i18n="featureChannels">• Location channels and Nostr for online conversations</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2 data-i18n="transportTitle">Transport</h2>
+      <p data-i18n="transportSubtitle">Four connection layers. Every layer works without a central server.</p>
+      <div class="layers">
+        <div class="layer">
+          <div class="top">
+            <div>
+              <div class="num">Layer 01</div>
+              <h3 data-i18n="layerBtTitle">Bluetooth network</h3>
+            </div>
+            <span class="badge live" data-i18n="badgeLive">live</span>
+          </div>
+          <p data-i18n="layerBtText">A decentralized, self-healing mesh over Bluetooth LE. Every device is both a sender and a relay, so coverage grows with every peer. Works completely offline — no towers, no Wi-Fi, no internet.</p>
+          <div class="tags">
+            <span data-i18n="tagBtRange">30 m per hop · multi-hop</span>
+            <span data-i18n="tagBtMesh">mesh</span>
+            <span data-i18n="tagBtOffline">no internet</span>
+            <span data-i18n="tagBtNoise">Noise encryption</span>
+          </div>
+        </div>
+
+        <div class="layer">
+          <div class="top">
+            <div>
+              <div class="num">Layer 02</div>
+              <h3 data-i18n="layerWifiTitle">WiFi Direct</h3>
+            </div>
+            <span class="badge" data-i18n="badgeSoon">coming soon</span>
+          </div>
+          <p data-i18n="layerWifiText">Direct device-to-device WiFi without a router or internet. Far more bandwidth and range than Bluetooth, which makes it the right layer for big files and larger groups in the field.</p>
+          <div class="tags">
+            <span data-i18n="tagWifiRange">up to 200 m</span>
+            <span data-i18n="tagWifiBandwidth">high bandwidth</span>
+            <span data-i18n="tagWifiOffline">no router, no internet</span>
+          </div>
+        </div>
+
+        <div class="layer">
+          <div class="top">
+            <div>
+              <div class="num">Layer 03</div>
+              <h3 data-i18n="layerP2pTitle">P2P network</h3>
+            </div>
+            <span class="badge live" data-i18n="badgeLive">live</span>
+          </div>
+          <p data-i18n="layerP2pText">Direct libp2p connections between phones over the internet. Peer discovery over DHT, topics for group chats, no server in the middle.</p>
+          <div class="tags">
+            <span data-i18n="tagP2pDirect">direct peer-to-peer</span>
+            <span data-i18n="tagP2pTopics">group topics</span>
+          </div>
+        </div>
+
+        <div class="layer">
+          <div class="top">
+            <div>
+              <div class="num">Layer 04</div>
+              <h3 data-i18n="layerNostrTitle">Nostr relays</h3>
+            </div>
+            <span class="badge live" data-i18n="badgeLive">live</span>
+          </div>
+          <p data-i18n="layerNostrText">Public relays carry location channels and long-distance conversations. Relays never learn who talks to whom: every channel uses its own key.</p>
+          <div class="tags">
+            <span data-i18n="tagNostrLong">long distance</span>
+            <span data-i18n="tagNostrGroups">channels</span>
+          </div>
+        </div>
       </div>
     </div>
 
     <div class="card" id="joinCard" style="display:none">
-      <h2>Have an invite code?</h2>
-      <p>Paste the code or the whole invite link and we will open Vuzol for you.</p>
+      <h2 data-i18n="joinTitle">Have an invite code?</h2>
+      <p data-i18n="joinText">Paste the code or the whole invite link and we will open Vuzol for you.</p>
       <input id="codeInput" type="text" inputmode="text" autocomplete="off" placeholder="e.g. 9g9dk3 or https://…/?code=9g9dk3">
-      <button class="button" id="joinBtn">Open in Vuzol</button>
+      <button class="button" id="joinBtn" data-i18n="openInVuzol">Open in Vuzol</button>
       <p class="status" id="joinStatus"></p>
     </div>
 
     <div class="card">
-      <h2>Download the app</h2>
-      <p>Android 9 or newer. Pick the build for your device.</p>
+      <h2 data-i18n="downloadTitle">Download the app</h2>
+      <p data-i18n="downloadText">Android 9 or newer. Pick the build for your device.</p>
       <div class="grid">
         <a class="dl" href="https://github.com/dneese/vuzol-android/releases/latest/download/vuzol-android-arm64.apk">
           <div>
-            <div class="name">Vuzol for ARM64</div>
-            <div class="hint">Most modern phones (arm64-v8a) · smaller download</div>
+            <div class="name" data-i18n="dlArm64">Vuzol for ARM64</div>
+            <div class="hint" data-i18n="dlArm64Hint">Most modern phones (arm64-v8a) · smaller download</div>
           </div>
           <div class="cta">APK</div>
         </a>
         <a class="dl" href="https://github.com/dneese/vuzol-android/releases/latest/download/vuzol-android-universal.apk">
           <div>
-            <div class="name">Universal build</div>
-            <div class="hint">Works on any phone, including older 32-bit devices</div>
+            <div class="name" data-i18n="dlUniversal">Universal build</div>
+            <div class="hint" data-i18n="dlUniversalHint">Works on any phone, including older 32-bit devices</div>
           </div>
           <div class="cta">APK</div>
         </a>
         <a class="dl" href="https://github.com/dneese/vuzol-android/releases/latest/download/vuzol-android-x86_64.apk">
           <div>
-            <div class="name">Vuzol for x86_64</div>
-            <div class="hint">Emulators and Chromebooks</div>
+            <div class="name" data-i18n="dlX86">Vuzol for x86_64</div>
+            <div class="hint" data-i18n="dlX86Hint">Emulators and Chromebooks</div>
           </div>
           <div class="cta">APK</div>
         </a>
       </div>
-      <p style="font-size:13px"><a href="https://github.com/dneese/vuzol-android/releases/latest" style="color:var(--accent)">All releases and release notes</a></p>
+      <p style="font-size:13px"><a href="https://github.com/dneese/vuzol-android/releases/latest" style="color:var(--accent)" data-i18n="allReleases">All releases and release notes</a></p>
     </div>
 
-    <footer>Open source · <a href="https://github.com/dneese/vuzol-android">github.com/dneese/vuzol-android</a></footer>
+    <footer><span data-i18n="footer">Open source</span> · <a href="https://github.com/dneese/vuzol-android">github.com/dneese/vuzol-android</a></footer>
   </div>
 
 <script>
@@ -179,6 +316,157 @@
       universal: 'https://github.com/dneese/vuzol-android/releases/latest/download/vuzol-android-universal.apk',
       x86_64: 'https://github.com/dneese/vuzol-android/releases/latest/download/vuzol-android-x86_64.apk'
     };
+
+    var I18N = {
+      en: {
+        inviteTitle: 'You are invited',
+        inviteText: 'Join the private group chat in Vuzol — a messenger that works even without the internet.',
+        inviteCodeLabel: 'group invite code',
+        openInVuzol: 'Open in Vuzol',
+        copyInviteLink: 'Copy invite link',
+        copyInviteCode: 'Copy invite code',
+        linkCopied: 'Invite link copied',
+        codeCopied: 'Invite code copied',
+        opening: 'Opening Vuzol…',
+        noCode: 'This link does not contain a group code.',
+        tagline: 'Private peer-to-peer messenger for Android. No accounts, no phone number, no central server.',
+        featureMesh: '• Offline Bluetooth mesh — talk nearby with no internet',
+        featureCrypto: '• End-to-end encrypted (Noise protocol) private chats and groups',
+        featureMedia: '• Photos, videos and files up to 50 MB',
+        featureChannels: '• Location channels and Nostr for online conversations',
+        transportTitle: 'Transport',
+        transportSubtitle: 'Four connection layers. Every layer works without a central server.',
+        layerBtTitle: 'Bluetooth network',
+        layerBtText: 'A decentralized, self-healing mesh over Bluetooth LE. Every device is both a sender and a relay, so coverage grows with every peer. Works completely offline — no towers, no Wi-Fi, no internet.',
+        tagBtRange: '30 m per hop · multi-hop',
+        tagBtMesh: 'mesh',
+        tagBtOffline: 'no internet',
+        tagBtNoise: 'Noise encryption',
+        layerWifiTitle: 'WiFi Direct',
+        layerWifiText: 'Direct device-to-device WiFi without a router or internet. Far more bandwidth and range than Bluetooth, which makes it the right layer for big files and larger groups in the field.',
+        tagWifiRange: 'up to 200 m',
+        tagWifiBandwidth: 'high bandwidth',
+        tagWifiOffline: 'no router, no internet',
+        layerP2pTitle: 'P2P network',
+        layerP2pText: 'Direct libp2p connections between phones over the internet. Peer discovery over DHT, topics for group chats, no server in the middle.',
+        tagP2pDirect: 'direct peer-to-peer',
+        tagP2pTopics: 'group topics',
+        layerNostrTitle: 'Nostr relays',
+        layerNostrText: 'Public relays carry location channels and long-distance conversations. Relays never learn who talks to whom: every channel uses its own key.',
+        tagNostrLong: 'long distance',
+        tagNostrGroups: 'channels',
+        badgeLive: 'live',
+        badgeSoon: 'coming soon',
+        joinTitle: 'Have an invite code?',
+        joinText: 'Paste the code or the whole invite link and we will open Vuzol for you.',
+        downloadTitle: 'Download the app',
+        downloadText: 'Android 9 or newer. Pick the build for your device.',
+        dlArm64: 'Vuzol for ARM64',
+        dlArm64Hint: 'Most modern phones (arm64-v8a) · smaller download',
+        dlUniversal: 'Universal build',
+        dlUniversalHint: 'Works on any phone, including older 32-bit devices',
+        dlX86: 'Vuzol for x86_64',
+        dlX86Hint: 'Emulators and Chromebooks',
+        allReleases: 'All releases and release notes',
+        footer: 'Open source'
+      },
+      uk: {
+        inviteTitle: 'Вас запрошено',
+        inviteText: 'Приєднайтеся до приватного групового чату в Vuzol — месенджері, який працює навіть без інтернету.',
+        inviteCodeLabel: 'код запрошення групи',
+        openInVuzol: 'Відкрити в Vuzol',
+        copyInviteLink: 'Скопіювати посилання',
+        copyInviteCode: 'Скопіювати код',
+        linkCopied: 'Посилання скопійовано',
+        codeCopied: 'Код скопійовано',
+        opening: 'Відкриваємо Vuzol…',
+        noCode: 'У цьому посиланні немає коду групи.',
+        tagline: 'Приватний P2P-месенджер для Android. Без акаунтів, без номера телефону, без центрального сервера.',
+        featureMesh: '• Офлайн Bluetooth mesh — спілкуйтеся поруч без інтернету',
+        featureCrypto: '• Наскрізне шифрування (Noise) приватних чатів і груп',
+        featureMedia: '• Фото, відео та файли до 50 МБ',
+        featureChannels: '• Географічні канали та Nostr для розмов онлайн',
+        transportTitle: 'Транспорт',
+        transportSubtitle: 'Чотири рівні з’єднання. Кожен працює без центрального сервера.',
+        layerBtTitle: 'Мережа Bluetooth',
+        layerBtText: 'Децентралізована самозростовувана mesh-мережа поверх Bluetooth LE. Кожен пристрій і надсилає, і ретранслює, тому покриття росте з кожним учасником. Працює повністю офлайн — без веж, без Wi-Fi, без інтернету.',
+        tagBtRange: '30 м на хоп · multi-hop',
+        tagBtMesh: 'mesh',
+        tagBtOffline: 'без інтернету',
+        tagBtNoise: 'шифрування Noise',
+        layerWifiTitle: 'WiFi Direct',
+        layerWifiText: 'Пряме з’єднання WiFi між пристроями без роутера та інтернету. Значно більша пропускна здатність і дальність, ніж у Bluetooth — це найкращий шар для великих файлів і великих груп на місці.',
+        tagWifiRange: 'до 200 м',
+        tagWifiBandwidth: 'висока швидкість',
+        tagWifiOffline: 'без роутера, без інтернету',
+        layerP2pTitle: 'P2P мережа',
+        layerP2pText: 'Прямі з’єднання libp2p між телефонами через інтернет. Пошук peer’ів через DHT, топіки для груп, без сервера посередині.',
+        tagP2pDirect: 'пряме peer-to-peer',
+        tagP2pTopics: 'групові топіки',
+        layerNostrTitle: 'Nostr-релеї',
+        layerNostrText: 'Публічні релеї переносять географічні канали та далекі розмови. Релей не знає, хто з ким спілкується: кожен канал має власний ключ.',
+        tagNostrLong: 'далекі відстані',
+        tagNostrGroups: 'канали',
+        badgeLive: 'працює',
+        badgeSoon: 'в розробці',
+        joinTitle: 'Є код запрошення?',
+        joinText: 'Вставте код або повне посилання — і ми відкриємо Vuzol.',
+        downloadTitle: 'Завантажити застосунок',
+        downloadText: 'Android 9 або новіше. Оберіть збірку для свого пристрою.',
+        dlArm64: 'Vuzol для ARM64',
+        dlArm64Hint: 'Більшість сучасних телефонів (arm64-v8a) · менша завантаження',
+        dlUniversal: 'Універсальна збірка',
+        dlUniversalHint: 'Працює на будь-якому телефоні, зокрема 32-бітних',
+        dlX86: 'Vuzol для x86_64',
+        dlX86Hint: 'Емулятори та Chromebook',
+        allReleases: 'Усі релізи та список змін',
+        footer: 'Відкритий код'
+      }
+    };
+
+    function detectLanguage() {
+      var params = new URLSearchParams(window.location.search);
+      var forced = (params.get('lang') || '').toLowerCase();
+      if (forced === 'uk' || forced === 'ua' || forced === 'uk-ua') return 'uk';
+      if (forced === 'en') return 'en';
+
+      var saved = null;
+      try { saved = window.localStorage.getItem('vuzol_lang'); } catch (e) { saved = null; }
+      if (saved === 'uk' || saved === 'en') return saved;
+
+      var langs = [];
+      try {
+        langs = navigator.languages && navigator.languages.length
+          ? navigator.languages
+          : [navigator.language || 'en'];
+      } catch (e) { langs = ['en']; }
+
+      for (var i = 0; i < langs.length; i++) {
+        var tag = String(langs[i] || '').toLowerCase();
+        if (tag.indexOf('uk') === 0 || tag.indexOf('ua') === 0) return 'uk';
+        if (tag.indexOf('ru') === 0) return 'uk';
+        if (tag.indexOf('en') === 0) return 'en';
+      }
+      return 'en';
+    }
+
+    var currentLang = detectLanguage();
+
+    function applyLanguage(lang) {
+      currentLang = I18N[lang] ? lang : 'en';
+      var dict = I18N[currentLang];
+      document.documentElement.lang = currentLang;
+      var nodes = document.querySelectorAll('[data-i18n]');
+      for (var i = 0; i < nodes.length; i++) {
+        var key = nodes[i].getAttribute('data-i18n');
+        if (dict[key]) nodes[i].textContent = dict[key];
+      }
+      var buttons = document.querySelectorAll('.langs button');
+      for (var j = 0; j < buttons.length; j++) {
+        buttons[j].classList.toggle('active', buttons[j].getAttribute('data-lang') === currentLang);
+      }
+      try { window.localStorage.setItem('vuzol_lang', currentLang); } catch (e) {}
+    }
 
     function normalize(value) {
       if (!value) return '';
@@ -192,16 +480,20 @@
       return /^[a-z0-9]{4,12}$/.test(code);
     }
 
-    function deepLink(code) {
-      return 'vuzol://join/group?code=' + code;
+    function deepLink(code, password) {
+      var link = 'vuzol://join/group?code=' + code;
+      if (password) link += '&p=' + encodeURIComponent(password);
+      return link;
     }
 
-    function webLink(code) {
-      return 'https://dneese.github.io/vuzol-android/?code=' + code;
+    function webLink(code, password) {
+      var link = 'https://dneese.github.io/vuzol-android/?code=' + code;
+      if (password) link += '&p=' + encodeURIComponent(password);
+      return link;
     }
 
-    function openApp(code) {
-      var deep = deepLink(code);
+    function openApp(code, password) {
+      var deep = deepLink(code, password);
       var hidden = document.createElement('iframe');
       hidden.style.display = 'none';
       hidden.src = deep;
@@ -230,24 +522,27 @@
     var params = new URLSearchParams(window.location.search);
     var hash = window.location.hash || '';
     var code = normalize(params.get('code') || hash.replace(/^#/, ''));
+    var password = params.get('p') || '';
 
     var inviteCard = document.getElementById('inviteCard');
     var inviteStatus = document.getElementById('inviteStatus');
     var joinCard = document.getElementById('joinCard');
     var joinStatus = document.getElementById('joinStatus');
 
+    function statusText(key) { return I18N[currentLang][key] || key; }
+
     if (isValid(code)) {
       inviteCard.style.display = 'block';
       document.getElementById('codeValue').textContent = code;
-      document.getElementById('openLink').href = deepLink(code);
+      document.getElementById('openLink').href = deepLink(code, password);
       document.getElementById('copyLinkBtn').addEventListener('click', function () {
-        copy(webLink(code), inviteStatus, 'Invite link copied');
+        copy(webLink(code, password), inviteStatus, statusText('linkCopied'));
       });
       document.getElementById('copyCodeBtn').addEventListener('click', function () {
-        copy(code, inviteStatus, 'Invite code copied');
+        copy(code, inviteStatus, statusText('codeCopied'));
       });
-      inviteStatus.textContent = 'Opening Vuzol…';
-      setTimeout(function () { openApp(code); }, 500);
+      inviteStatus.textContent = statusText('opening');
+      setTimeout(function () { openApp(code, password); }, 500);
     } else {
       joinCard.style.display = 'block';
     }
@@ -255,12 +550,23 @@
     document.getElementById('joinBtn').addEventListener('click', function () {
       var value = normalize(document.getElementById('codeInput').value);
       if (!isValid(value)) {
-        joinStatus.textContent = 'This link does not contain a group code.';
+        joinStatus.textContent = statusText('noCode');
         return;
       }
-      joinStatus.textContent = 'Opening Vuzol…';
+      joinStatus.textContent = statusText('opening');
       openApp(value);
     });
+
+    var langButtons = document.querySelectorAll('.langs button');
+    for (var k = 0; k < langButtons.length; k++) {
+      langButtons[k].addEventListener('click', function (event) {
+        applyLanguage(event.currentTarget.getAttribute('data-lang'));
+        var input = document.getElementById('codeInput');
+        if (input) input.setAttribute('placeholder', '9g9dk3');
+      });
+    }
+
+    applyLanguage(currentLang);
   })();
 </script>
 </body>

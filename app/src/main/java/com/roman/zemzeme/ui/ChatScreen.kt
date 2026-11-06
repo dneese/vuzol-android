@@ -1612,6 +1612,8 @@ private fun ChatDialogs(
     onMeshPeerListDismiss: () -> Unit,
     onBackToHome: () -> Unit = {},
 ) {
+    val forwardContacts by viewModel.contacts.collectAsStateWithLifecycle()
+    val forwardPeerNicknames by viewModel.peerNicknames.collectAsStateWithLifecycle()
     val privateChatSheetPeer by viewModel.privateChatSheetPeer.collectAsStateWithLifecycle()
 
     // Password dialog
@@ -1659,12 +1661,17 @@ private fun ChatDialogs(
         onDismiss = onProfileDismiss
     )
 
-    // Forward message to another channel
+    // Forward message to another channel or chat
     ForwardSheet(
         isPresented = messageToForward != null,
         onDismiss = onMessageForwardDismiss,
         onPick = { channel ->
             messageToForward?.let { onMessageForward(it, channel) }
+        },
+        contacts = forwardContacts.toList(),
+        peerNicknames = forwardPeerNicknames,
+        onPickPeer = { peerID ->
+            messageToForward?.let { viewModel.forwardMessageToPeer(it, peerID) }
         }
     )
 

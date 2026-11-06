@@ -20,8 +20,8 @@ android {
         applicationId = "app.vuzol.messenger"
         minSdk = libs.versions.minSdk.get().toInt()
         targetSdk = libs.versions.targetSdk.get().toInt()
-        versionCode = 18
-        versionName = "1.7.2"
+        versionCode = 19
+        versionName = "1.8.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -187,6 +187,11 @@ dependencies {
     
     // EXIF orientation handling for images
     implementation("androidx.exifinterface:exifinterface:1.3.7")
+    
+    // Media3 - video transcoding so forwarded videos stay small and fast
+    implementation(libs.androidx.media3.common)
+    implementation(libs.androidx.media3.effect)
+    implementation(libs.androidx.media3.transformer)
     
     // P2P networking via Go libp2p (golib.aar built with gomobile)
     implementation(files("libs/golib.aar"))

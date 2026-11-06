@@ -29,6 +29,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.outlined.DeleteForever
 import androidx.compose.material.icons.outlined.DeleteOutline
@@ -69,6 +71,8 @@ import androidx.compose.ui.text.font.FontFamily
 import com.roman.zemzeme.ui.theme.NunitoFontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -916,13 +920,19 @@ fun HomeScreen(
     if (showCreateDialog) {
         CreateGroupDialog(
             onDismiss = { showCreateDialog = false },
-            onConfirm = { chatViewModel.createGroup(it); showCreateDialog = false }
+            onConfirm = { name, password ->
+                chatViewModel.createGroup(name, password)
+                showCreateDialog = false
+            }
         )
     }
     if (showJoinDialog) {
         JoinGroupDialog(
             onDismiss = { showJoinDialog = false },
-            onConfirm = { g, n -> chatViewModel.joinGroup(g, n); showJoinDialog = false }
+            onConfirm = { g, n, password ->
+                chatViewModel.joinGroup(g, n, password)
+                showJoinDialog = false
+            }
         )
     }
 
@@ -1005,7 +1015,8 @@ fun HomeScreen(
     // Saved messages sheet
     SavedMessagesSheet(
         isPresented = showSavedMessages,
-        onDismiss = { showSavedMessages = false }
+        onDismiss = { showSavedMessages = false },
+        myNickname = nickname
     )
 
     // About / Settings sheet
@@ -1453,20 +1464,44 @@ private fun ConfirmationDialog(
 // ── Create / Join dialogs ──
 
 @Composable
-private fun CreateGroupDialog(onDismiss: () -> Unit, onConfirm: (String) -> Unit) {
+private fun CreateGroupDialog(onDismiss: () -> Unit, onConfirm: (String, String?) -> Unit) {
     var nickname by remember { mutableStateOf("") }
+    var password by remember { mutableStateOf("") }
+    var passwordVisible by remember { mutableStateOf(false) }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.dialog_title_create_group), style = MaterialTheme.typography.titleMedium.copy(fontFamily = NunitoFontFamily)) },
         text = {
-            OutlinedTextField(
-                value = nickname, onValueChange = { if (it.length <= 15) nickname = it },
-                label = { Text(stringResource(R.string.label_group_name)) }, singleLine = true,
-                modifier = Modifier.fillMaxWidth()
-            )
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                OutlinedTextField(
+                    value = nickname, onValueChange = { if (it.length <= 15) nickname = it },
+                    label = { Text(stringResource(R.string.label_group_name)) }, singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value = password,
+                    onValueChange = { if (it.length <= 64) password = it },
+                    label = { Text(stringResource(R.string.label_group_password)) },
+                    placeholder = { Text(stringResource(R.string.label_group_password_hint)) },
+                    singleLine = true,
+                    visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                    trailingIcon = {
+                        IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                            Icon(
+                                imageVector = if (passwordVisible) Icons.Filled.VisibilityOff else Icons.Filled.Visibility,
+                                contentDescription = null
+                            )
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
         },
         confirmButton = {
-            TextButton(onClick = { if (nickname.isNotBlank()) onConfirm(nickname.trim()) }, enabled = nickname.isNotBlank()) {
+            TextButton(
+                onClick = { if (nickname.isNotBlank()) onConfirm(nickname.trim(), password.trim().ifBlank { null }) },
+                enabled = nickname.isNotBlank()
+            ) {
                 Text(stringResource(R.string.action_create))
             }
         },
@@ -1475,9 +1510,11 @@ private fun CreateGroupDialog(onDismiss: () -> Unit, onConfirm: (String) -> Unit
 }
 
 @Composable
-private fun JoinGroupDialog(onDismiss: () -> Unit, onConfirm: (String, String) -> Unit) {
+private fun JoinGroupDialog(onDismiss: () -> Unit, onConfirm: (String, String, String?) -> Unit) {
     var geohash by remember { mutableStateOf("") }
     var nickname by remember { mutableStateOf("") }
+    var password by remember { mutableStateOf("") }
+    var passwordVisible by remember { mutableStateOf(false) }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.dialog_title_join_group), style = MaterialTheme.typography.titleMedium.copy(fontFamily = NunitoFontFamily)) },
@@ -1490,6 +1527,8 @@ private fun JoinGroupDialog(onDismiss: () -> Unit, onConfirm: (String, String) -
                         val parsed = GroupInvite.codeFrom(input)
                         if (parsed != null && input.contains("://")) {
                             geohash = parsed
+                            // Invite links can carry the group password
+                            GroupInvite.passwordFrom(input)?.let { password = it }
                         } else {
                             val filtered = input.lowercase().filter { it in "0123456789bcdefghjkmnpqrstuvwxyz" }
                             geohash = filtered.take(6)
@@ -1503,11 +1542,35 @@ private fun JoinGroupDialog(onDismiss: () -> Unit, onConfirm: (String, String) -
                     label = { Text(stringResource(R.string.label_nickname_optional)) }, singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
+                OutlinedTextField(
+                    value = password,
+                    onValueChange = { if (it.length <= 64) password = it },
+                    label = { Text(stringResource(R.string.label_group_password_join)) },
+                    singleLine = true,
+                    visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                    trailingIcon = {
+                        IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                            Icon(
+                                imageVector = if (passwordVisible) Icons.Filled.VisibilityOff else Icons.Filled.Visibility,
+                                contentDescription = null
+                            )
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                )
             }
         },
         confirmButton = {
             TextButton(
-                onClick = { if (geohash.isNotBlank()) onConfirm(geohash.trim(), nickname.trim().ifEmpty { geohash.trim() }) },
+                onClick = {
+                    if (geohash.isNotBlank()) {
+                        onConfirm(
+                            geohash.trim(),
+                            nickname.trim().ifEmpty { geohash.trim() },
+                            password.trim().ifBlank { null }
+                        )
+                    }
+                },
                 enabled = geohash.isNotBlank()
             ) { Text(stringResource(R.string.join)) }
         },

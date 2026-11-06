@@ -220,6 +220,7 @@ object NostrKind {
     const val GEOHASH_TYPING = 20003   // "is typing" hint for geohash channels
     const val GEOHASH_EDIT = 20004     // Edited text of an existing geohash message
     const val GEOHASH_READ = 20005     // "message was read" receipt
+    const val GEOHASH_HISTORY = 30090 // Replaceable snapshot of the last day of a channel
 }
 
 /**

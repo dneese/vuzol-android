@@ -248,6 +248,10 @@
   <string name="action_reply_title">reply</string>
   <string name="action_reply_subtitle">reply to this message</string>
   <string name="action_delete_title">delete message</string>
+  <string name="saved_photo_label">Photo</string>
+  <string name="saved_video_label">Video</string>
+  <string name="saved_voice_label">Voice message</string>
+  <string name="saved_media_label">Media</string>
   <string name="action_delete_subtitle">remove only on this device</string>
   <string name="replying_to">replying to %1$s</string>
   <string name="chat_today">today</string>
@@ -269,6 +273,11 @@
   <string name="action_forward_subtitle">send this message to another channel</string>
   <string name="forward_to_channel">forward to channel</string>
   <string name="forward_no_channels">no channels available yet</string>
+  <string name="forward_section_chats">Chats</string>
+  <string name="forward_section_groups">Groups</string>
+  <string name="label_group_password">Password (optional)</string>
+  <string name="label_group_password_join">Group password</string>
+  <string name="label_group_password_hint">members need it to read the group</string>
   <string name="chat_appearance_title">Chat appearance</string>
   <string name="chat_accent_color">Chat color</string>
   <string name="chat_wallpaper">Wallpaper</string>

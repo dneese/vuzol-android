@@ -154,7 +154,8 @@ object NostrProtocol {
         geohash: String,
         senderIdentity: NostrIdentity,
         nickname: String? = null,
-        teleported: Boolean = false
+        teleported: Boolean = false,
+        applyPow: Boolean = true
     ): NostrEvent = withContext(Dispatchers.Default) {
         val tags = mutableListOf<List<String>>()
         tags.add(listOf("g", geohash))
@@ -178,7 +179,7 @@ object NostrProtocol {
         
         // Check if Proof of Work is enabled
         val powSettings = PoWPreferenceManager.getCurrentSettings()
-        if (powSettings.enabled && powSettings.difficulty > 0) {
+        if (applyPow && powSettings.enabled && powSettings.difficulty > 0) {
             Log.d(TAG, "PoW enabled for geohash event: difficulty=${powSettings.difficulty}")
             
             try {
@@ -303,6 +304,33 @@ object NostrProtocol {
             kind = NostrKind.GEOHASH_TYPING,
             tags = tags,
             content = ""
+        )
+
+        return@withContext senderIdentity.signEvent(event)
+    }
+
+    /**
+     * Replaceable snapshot of the recent messages of a geohash channel.
+     * New participants merge it so they do not start with an empty chat.
+     */
+    suspend fun createGeohashHistoryEvent(
+        content: String,
+        geohash: String,
+        senderIdentity: NostrIdentity,
+        nickname: String? = null
+    ): NostrEvent = withContext(Dispatchers.Default) {
+        val tags = mutableListOf<List<String>>()
+        tags.add(listOf("g", geohash))
+        if (!nickname.isNullOrEmpty()) {
+            tags.add(listOf("n", nickname))
+        }
+
+        val event = NostrEvent(
+            pubkey = senderIdentity.publicKeyHex,
+            createdAt = (System.currentTimeMillis() / 1000).toInt(),
+            kind = NostrKind.GEOHASH_HISTORY,
+            tags = tags,
+            content = content
         )
 
         return@withContext senderIdentity.signEvent(event)

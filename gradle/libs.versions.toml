@@ -53,6 +53,9 @@ zxing-core = "3.5.4"
 camerax = "1.5.2"
 mlkit-barcode = "17.3.0"
 
+# Media3 (video transcoding for fast media forwarding)
+media3 = "1.4.1"
+
 # Testing
 junit = "4.13.2"
 androidx-test-ext = "1.2.1"
@@ -124,6 +127,11 @@ androidx-camera-camera2 = { module = "androidx.camera:camera-camera2", version.r
 androidx-camera-lifecycle = { module = "androidx.camera:camera-lifecycle", version.ref = "camerax" }
 androidx-camera-compose = { module = "androidx.camera:camera-compose", version.ref = "camerax" }
 mlkit-barcode-scanning = { module = "com.google.mlkit:barcode-scanning", version.ref = "mlkit-barcode" }
+
+# Media3 (video transcoding)
+androidx-media3-common = { module = "androidx.media3:media3-common", version.ref = "media3" }
+androidx-media3-effect = { module = "androidx.media3:media3-effect", version.ref = "media3" }
+androidx-media3-transformer = { module = "androidx.media3:media3-transformer", version.ref = "media3" }
 
 # Testing
 junit = { module = "junit:junit", version.ref = "junit" }

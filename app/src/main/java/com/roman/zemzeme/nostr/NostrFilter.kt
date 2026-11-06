@@ -42,7 +42,8 @@ data class NostrFilter(
                     NostrKind.GEOHASH_REACTION,
                     NostrKind.GEOHASH_TYPING,
                     NostrKind.GEOHASH_EDIT,
-                    NostrKind.GEOHASH_READ
+                    NostrKind.GEOHASH_READ,
+                    NostrKind.GEOHASH_HISTORY
                 ),
                 since = since?.let { (it / 1000).toInt() },
                 tagFilters = mapOf("g" to listOf(geohash)),

@@ -24,7 +24,9 @@ class GeohashMessageHandler(
     private val repo: GeohashRepository,
     private val scope: CoroutineScope,
     private val dataManager: com.roman.zemzeme.ui.DataManager,
-    private val notificationManager: com.roman.zemzeme.ui.NotificationManager? = null
+    private val notificationManager: com.roman.zemzeme.ui.NotificationManager? = null,
+    private val mediaTransfer: com.roman.zemzeme.features.media.GeohashMediaTransfer? = null,
+    private val history: GeohashHistory? = null
 ) {
     companion object {
         private const val TAG = "GeohashMessageHandler"
@@ -95,11 +97,56 @@ class GeohashMessageHandler(
                     event.kind != NostrKind.GEOHASH_REACTION &&
                     event.kind != NostrKind.GEOHASH_TYPING &&
                     event.kind != NostrKind.GEOHASH_EDIT &&
-                    event.kind != NostrKind.GEOHASH_READ
+                    event.kind != NostrKind.GEOHASH_READ &&
+                    event.kind != NostrKind.GEOHASH_HISTORY
                 ) return@launch
                 val tagGeo = event.tags.firstOrNull { it.size >= 2 && it[0] == "g" }?.getOrNull(1)
                 if (tagGeo == null || !tagGeo.equals(subscribedGeohash, true)) return@launch
                 if (dedupe(event.id)) return@launch
+
+                // Groups with a password carry encrypted payloads
+                var content = event.content
+                if (com.roman.zemzeme.groups.GroupSpaceCrypto.isEncryptedPayload(content)) {
+                    val decrypted = com.roman.zemzeme.groups.GroupSpaceCrypto
+                        .decryptIfNeeded(application, subscribedGeohash, content)
+                    if (decrypted == null) {
+                        // The group is locked for us, show a hint instead of the payload
+                        if (!event.content.startsWith("enc1:")) return@launch
+                        val lockedMsg = ZemzemeMessage(
+                            id = event.id,
+                            sender = repo.displayNameForNostrPubkeyUI(event.pubkey),
+                            content = "🔒",
+                            timestamp = Date(event.createdAt * 1000L),
+                            isRelay = false,
+                            originalSender = repo.displayNameForNostrPubkey(event.pubkey),
+                            senderPeerID = "nostr:${event.pubkey.take(8)}",
+                            senderPubkey = event.pubkey,
+                            channel = "#$subscribedGeohash"
+                        )
+                        withContext(Dispatchers.Main) {
+                            messageManager.addChannelMessage("geo:$subscribedGeohash", lockedMsg)
+                        }
+                        return@launch
+                    }
+                    content = decrypted
+                }
+
+                // Chunked media and acknowledgements are handled before the
+                // proof of work check, they are machine payloads and mining
+                // every chunk would make transfers unusably slow.
+                if (content.startsWith(com.roman.zemzeme.features.media.MediaChunkProtocol.CHUNK_PREFIX) ||
+                    content.startsWith(com.roman.zemzeme.features.media.MediaChunkProtocol.ACK_PREFIX)
+                ) {
+                    val senderName = repo.displayNameForNostrPubkeyUI(event.pubkey)
+                    mediaTransfer?.acceptIncoming(
+                        content = content,
+                        geohash = subscribedGeohash,
+                        senderName = senderName,
+                        senderId = event.pubkey,
+                        nickname = event.tags.firstOrNull { it.size >= 2 && it[0] == "n" }?.getOrNull(1)
+                    )
+                    return@launch
+                }
 
                 // PoW validation (if enabled) - apply to chat messages primarily
                 if (event.kind == NostrKind.EPHEMERAL_EVENT) {
@@ -141,6 +188,35 @@ class GeohashMessageHandler(
 
                 // Stop here for presence events - they don't produce chat messages
                 if (event.kind == NostrKind.GEOHASH_PRESENCE) return@launch
+
+                // Channel history snapshot: lets newcomers see the last day
+                if (event.kind == NostrKind.GEOHASH_HISTORY) {
+                    val entries = history?.parse(content) ?: return@launch
+                    if (entries.isEmpty()) return@launch
+                    history.merge(subscribedGeohash, entries)
+                    entries.forEach { entry ->
+                        if (dedupe(entry.id)) return@forEach
+                        val restored = ZemzemeMessage(
+                            id = entry.id,
+                            sender = entry.sender,
+                            content = entry.content,
+                            timestamp = Date(entry.timestamp),
+                            isRelay = false,
+                            originalSender = entry.sender,
+                            senderPeerID = "nostr:${event.pubkey.take(8)}",
+                            senderPubkey = event.pubkey,
+                            channel = "#$subscribedGeohash"
+                        )
+                        withContext(Dispatchers.Main) {
+                            messageManager.addChannelMessage("geo:$subscribedGeohash", restored)
+                        }
+                        com.roman.zemzeme.services.ChatHistoryStore.save(
+                            com.roman.zemzeme.services.ChatHistoryStore.conversationForChannel("geo:$subscribedGeohash"),
+                            restored
+                        )
+                    }
+                    return@launch
+                }
 
                 val isTeleportPresence = event.tags.any { it.size >= 2 && it[0] == "t" && it[1] == "teleport" } &&
                                          event.content.trim().isEmpty()
@@ -197,8 +273,8 @@ class GeohashMessageHandler(
                 val senderName = repo.displayNameForNostrPubkeyUI(event.pubkey)
 
                 // Media transfer embedded as bitchat1:<base64url> in event content
-                if (event.content.startsWith("bitchat1:")) {
-                    val b64 = event.content.removePrefix("bitchat1:")
+                if (content.startsWith("bitchat1:")) {
+                    val b64 = content.removePrefix("bitchat1:")
                     val fileBytes = decodeBase64Url(b64)
                     if (fileBytes != null) {
                         val filePacket = com.roman.zemzeme.model.ZemzemeFilePacket.decode(fileBytes)
@@ -221,6 +297,7 @@ class GeohashMessageHandler(
                                 messageManager.addChannelMessage("geo:$subscribedGeohash", mediaMsg)
                                 notifyGeohashMessage(subscribedGeohash, senderName, mediaMsg.content, event.id)
                             }
+                            history?.record(subscribedGeohash, mediaMsg)
                             return@launch
                         }
                     }
@@ -232,7 +309,7 @@ class GeohashMessageHandler(
                 val msg = ZemzemeMessage(
                     id = event.id,
                     sender = senderName,
-                    content = event.content,
+                    content = content,
                     timestamp = Date(event.createdAt * 1000L),
                     isRelay = false,
                     originalSender = repo.displayNameForNostrPubkey(event.pubkey),
@@ -248,6 +325,7 @@ class GeohashMessageHandler(
                     messageManager.addChannelMessage("geo:$subscribedGeohash", msg)
                     notifyGeohashMessage(subscribedGeohash, senderName, msg.content, event.id)
                 }
+                history?.record(subscribedGeohash, msg)
             } catch (e: Exception) {
                 Log.e(TAG, "onEvent error: ${e.message}")
             }

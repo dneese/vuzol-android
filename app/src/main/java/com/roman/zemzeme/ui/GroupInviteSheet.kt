@@ -25,6 +25,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -57,9 +58,13 @@ fun GroupInviteSheet(
     val context = LocalContext.current
     val clipboard = LocalClipboardManager.current
     val colorScheme = MaterialTheme.colorScheme
-    val deepLink = GroupInvite.linkFor(groupCode)
-    val webLink = GroupInvite.webLinkFor(groupCode)
-    val shareText = GroupInvite.shareText(groupName, groupCode)
+    // Groups with a password share it inside the invite so members can join
+    val groupPassword = remember(groupCode) {
+        com.roman.zemzeme.groups.GroupSpaceStore.password(context, groupCode)
+    }
+    val deepLink = GroupInvite.linkFor(groupCode, groupPassword)
+    val webLink = GroupInvite.webLinkFor(groupCode, groupPassword)
+    val shareText = GroupInvite.shareText(groupName, groupCode, groupPassword)
 
     ZemzemeBottomSheet(onDismissRequest = onDismiss) {
         Column(

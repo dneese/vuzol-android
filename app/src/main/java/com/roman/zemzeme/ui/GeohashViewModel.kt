@@ -6,6 +6,7 @@ import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.roman.zemzeme.nostr.GeohashMessageHandler
+import com.roman.zemzeme.nostr.GeohashHistory
 import com.roman.zemzeme.nostr.GeohashRepository
 import com.roman.zemzeme.nostr.NostrDirectMessageHandler
 import com.roman.zemzeme.nostr.NostrIdentityBridge
@@ -45,10 +46,42 @@ class GeohashViewModel(
     companion object {
         private const val TAG = "GeohashViewModel"
         private const val P2P_META_PREFIX = "meta:"
+        private const val HISTORY_PUBLISH_INTERVAL_MS = 60_000L
     }
 
     private val repo = GeohashRepository(application, state, dataManager)
     private val subscriptionManager = NostrSubscriptionManager(application, viewModelScope)
+
+    // Rolling per channel history so newcomers do not start with an empty chat
+    private val geohashHistory = GeohashHistory()
+
+    // Chunked media transfer with acknowledgements and retries
+    private val geohashMediaTransfer = com.roman.zemzeme.features.media.GeohashMediaTransfer(
+        context = application,
+        scope = viewModelScope,
+        publish = { geohash, content, nickname -> publishChannelPayload(geohash, content, nickname) },
+        onAssembled = { geohash, assembled, senderName, senderId ->
+            viewModelScope.launch {
+                val msgType = com.roman.zemzeme.features.file.FileUtils.messageTypeForMime(assembled.mimeType)
+                val mediaMsg = com.roman.zemzeme.model.ZemzemeMessage(
+                    id = assembled.transferId,
+                    sender = senderName,
+                    content = assembled.path,
+                    type = msgType,
+                    timestamp = Date(),
+                    isRelay = false,
+                    originalSender = senderName,
+                    senderPeerID = senderId?.let { "nostr:${it.take(8)}" },
+                    channel = "#$geohash"
+                )
+                withContext(Dispatchers.Main) {
+                    messageManager.addChannelMessage("geo:$geohash", mediaMsg)
+                }
+                geohashHistory.record(geohash, mediaMsg)
+            }
+        }
+    )
+
     private val geohashMessageHandler = GeohashMessageHandler(
         application = application,
         state = state,
@@ -56,7 +89,9 @@ class GeohashViewModel(
         repo = repo,
         scope = viewModelScope,
         dataManager = dataManager,
-        notificationManager = notificationManager
+        notificationManager = notificationManager,
+        mediaTransfer = geohashMediaTransfer,
+        history = geohashHistory
     )
     private val dmHandler = NostrDirectMessageHandler(
         application = application,
@@ -76,6 +111,7 @@ class GeohashViewModel(
 
     private var currentGeohashSubId: String? = null
     private var currentDmSubId: String? = null
+    private val lastHistoryPublishAt = ConcurrentHashMap<String, Long>()
     private var geoTimer: Job? = null
     private var globalPresenceJob: Job? = null
     private var locationChannelManager: com.roman.zemzeme.geohash.LocationChannelManager? = null
@@ -367,19 +403,24 @@ class GeohashViewModel(
                     powDifficulty = if (pow.enabled) pow.difficulty else null
                 )
                 messageManager.addChannelMessage("geo:${channel.geohash}", localMsg)
+                geohashHistory.record(channel.geohash, localMsg)
                 val startedMining = pow.enabled && pow.difficulty > 0
                 if (startedMining) {
                     com.roman.zemzeme.ui.PoWMiningTracker.startMiningMessage(tempId)
                 }
                 
                 var sentViaP2P = false
+
+                // Groups with a password are encrypted end to end
+                val outboundContent = com.roman.zemzeme.groups.GroupSpaceCrypto
+                    .encryptIfNeeded(getApplication(), channel.geohash, content)
                 
                 // Try P2P first if enabled and running
                 if (p2pConfig.p2pEnabled && 
                     p2pTransport.p2pRepository.nodeStatus.value == P2PNodeStatus.RUNNING) {
                     try {
                         val topicName = p2pMainTopicName(channel.geohash)
-                        p2pTopicsRepository.publishToTopic(topicName, content, nickname)
+                        p2pTopicsRepository.publishToTopic(topicName, outboundContent, nickname)
                         Log.d(TAG, "Published geohash message via P2P topic: $topicName")
                         sentViaP2P = true
                     } catch (e: Exception) {
@@ -392,7 +433,7 @@ class GeohashViewModel(
                     try {
                         val identity = NostrIdentityBridge.deriveIdentity(forGeohash = channel.geohash, context = getApplication())
                         val teleported = state.isTeleported.value
-                        val event = NostrProtocol.createEphemeralGeohashEvent(content, channel.geohash, identity, nickname, teleported)
+                        val event = NostrProtocol.createEphemeralGeohashEvent(outboundContent, channel.geohash, identity, nickname, teleported)
                         val relayManager = NostrRelayManager.getInstance(getApplication())
                         relayManager.sendEventToGeohash(event, channel.geohash, includeDefaults = true, nRelays = 5)
                         messageManager.updateMessageDeliveryStatus(
@@ -421,6 +462,8 @@ class GeohashViewModel(
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to send geohash message: ${e.message}")
             }
+            // Share the channel history so late joiners get the context
+            publishHistorySnapshot(channel.geohash)
         }
     }
 
@@ -553,17 +596,35 @@ class GeohashViewModel(
     ) {
         viewModelScope.launch {
             try {
-                val file = java.io.File(filePath)
-                if (!file.exists()) {
+                val original = java.io.File(filePath)
+                if (!original.exists()) {
                     Log.e(TAG, "sendGeohashMedia: file not found: $filePath")
                     return@launch
                 }
-                val messageID = java.util.UUID.randomUUID().toString().uppercase()
 
-                // Shrink photos so they actually make it through the relays
-                val sendFile = com.roman.zemzeme.features.media.ImageCompressor
-                    .compressIfImage(getApplication(), filePath, mimeType)
-                val effectiveMime = if (sendFile.absolutePath != filePath) "image/jpeg" else mimeType
+                // Videos are transcoded, photos are resized. Both keep the
+                // payload small enough for relays to accept it.
+                var sendFile = original
+                var effectiveMime = mimeType
+                if (mimeType.lowercase().startsWith("video/")) {
+                    val compressed = com.roman.zemzeme.features.media.VideoCompressor
+                        .compressIfNeeded(getApplication(), original)
+                    if (compressed != null) {
+                        sendFile = compressed
+                        effectiveMime = "video/mp4"
+                    }
+                } else {
+                    val compressedImage = com.roman.zemzeme.features.media.ImageCompressor
+                        .compressIfImage(getApplication(), filePath, mimeType)
+                    if (compressedImage.absolutePath != filePath) {
+                        sendFile = compressedImage
+                        effectiveMime = "image/jpeg"
+                    }
+                }
+
+                // The transfer id doubles as the message id so both sides show
+                // the same message.
+                val messageID = java.util.UUID.randomUUID().toString().uppercase()
 
                 // Show locally immediately
                 val localMsg = com.roman.zemzeme.model.ZemzemeMessage(
@@ -574,62 +635,109 @@ class GeohashViewModel(
                     timestamp = java.util.Date(),
                     isRelay = false,
                     senderPeerID = myPeerID,
-                    channel = "#${channel.geohash}"
+                    channel = "#${channel.geohash}",
+                    deliveryStatus = com.roman.zemzeme.model.DeliveryStatus.Sending
                 )
                 withContext(Dispatchers.Main) {
                     messageManager.addChannelMessage("geo:${channel.geohash}", localMsg)
                 }
+                geohashHistory.record(channel.geohash, localMsg)
 
-                // Encode as ZemzemeFilePacket TLV
-                val filePacket = com.roman.zemzeme.model.ZemzemeFilePacket(
-                    fileName = sendFile.name,
-                    fileSize = sendFile.length(),
+                geohashMediaTransfer.send(
+                    file = sendFile,
                     mimeType = effectiveMime,
-                    content = sendFile.readBytes()
+                    geohash = channel.geohash,
+                    nickname = nickname,
+                    transferId = messageID
                 )
-                val fileBytes = filePacket.encode() ?: run {
-                    Log.e(TAG, "sendGeohashMedia: failed to encode file packet")
-                    return@launch
-                }
 
-                // Embed as bitchat1: base64url in Nostr ephemeral event content
-                val b64 = android.util.Base64.encodeToString(
-                    fileBytes, android.util.Base64.URL_SAFE or android.util.Base64.NO_WRAP
+                messageManager.updateMessageDeliveryStatus(
+                    messageID, com.roman.zemzeme.model.DeliveryStatus.Sent
                 )
-                val eventContent = "bitchat1:$b64"
-
-                // Try P2P topic first (primary transport for geohash channels)
-                var sentViaP2P = false
-                if (p2pConfig.p2pEnabled &&
-                    p2pTransport.p2pRepository.nodeStatus.value == P2PNodeStatus.RUNNING) {
-                    try {
-                        val topicName = p2pMainTopicName(channel.geohash)
-                        p2pTopicsRepository.publishToTopic(topicName, eventContent, nickname)
-                        Log.d(TAG, "📤 Published geohash media via P2P topic: ${sendFile.name} (${fileBytes.size} bytes)")
-                        sentViaP2P = true
-                    } catch (e: Exception) {
-                        Log.w(TAG, "P2P topic media publish failed, trying Nostr: ${e.message}")
-                    }
-                }
-
-                // Send via Nostr (as primary or fallback)
-                if (p2pConfig.nostrEnabled) {
-                    val identity = NostrIdentityBridge.deriveIdentity(
-                        forGeohash = channel.geohash,
-                        context = getApplication()
-                    )
-                    val teleported = state.isTeleported.value
-                    val event = NostrProtocol.createEphemeralGeohashEvent(
-                        eventContent, channel.geohash, identity, nickname, teleported
-                    )
-                    val relayManager = NostrRelayManager.getInstance(getApplication())
-                    relayManager.sendEventToGeohash(event, channel.geohash, includeDefaults = true, nRelays = 5)
-                    if (!sentViaP2P) Log.d(TAG, "📤 Sent geohash media via Nostr only: ${sendFile.name}")
-                } else if (!sentViaP2P) {
-                    Log.w(TAG, "sendGeohashMedia: no transport available")
-                }
+                publishHistorySnapshot(channel.geohash)
             } catch (e: Exception) {
                 Log.e(TAG, "sendGeohashMedia failed: ${e.message}")
+            }
+        }
+    }
+
+    /**
+     * Publishes a channel payload over every enabled transport. Media chunks
+     * and acknowledgements skip proof of work, mining every chunk would make
+     * transfers far too slow.
+     */
+    private suspend fun publishChannelPayload(
+        geohash: String,
+        content: String,
+        nickname: String?
+    ) {
+        val outboundContent = com.roman.zemzeme.groups.GroupSpaceCrypto
+            .encryptIfNeeded(getApplication(), geohash, content)
+        if (p2pConfig.p2pEnabled &&
+            p2pTransport.p2pRepository.nodeStatus.value == P2PNodeStatus.RUNNING
+        ) {
+            try {
+                p2pTopicsRepository.publishToTopic(p2pMainTopicName(geohash), outboundContent, nickname)
+            } catch (e: Exception) {
+                Log.w(TAG, "P2P topic publish failed: ${e.message}")
+            }
+        }
+
+        if (p2pConfig.nostrEnabled) {
+            try {
+                val identity = NostrIdentityBridge.deriveIdentity(
+                    forGeohash = geohash, context = getApplication()
+                )
+                val teleported = state.isTeleported.value
+                val isMachinePayload =
+                    content.startsWith(com.roman.zemzeme.features.media.MediaChunkProtocol.CHUNK_PREFIX) ||
+                        content.startsWith(com.roman.zemzeme.features.media.MediaChunkProtocol.ACK_PREFIX)
+                val event = NostrProtocol.createEphemeralGeohashEvent(
+                    content = outboundContent,
+                    geohash = geohash,
+                    senderIdentity = identity,
+                    nickname = nickname,
+                    teleported = teleported,
+                    applyPow = !isMachinePayload
+                )
+                NostrRelayManager.getInstance(getApplication())
+                    .sendEventToGeohash(event, geohash, includeDefaults = true, nRelays = 3)
+            } catch (e: Exception) {
+                Log.w(TAG, "Nostr publish failed: ${e.message}")
+            }
+        }
+    }
+
+    /**
+     * Publishes the recent history of a channel so newcomers can catch up.
+     */
+    fun publishHistorySnapshot(geohash: String, force: Boolean = false) {
+        val now = System.currentTimeMillis()
+        val last = lastHistoryPublishAt[geohash] ?: 0L
+        if (!force && now - last < HISTORY_PUBLISH_INTERVAL_MS) return
+        lastHistoryPublishAt[geohash] = now
+
+        viewModelScope.launch {
+            try {
+                val snapshot = geohashHistory.snapshot(geohash)
+                if (snapshot.isBlank()) return@launch
+                val encryptedSnapshot = com.roman.zemzeme.groups.GroupSpaceCrypto
+                    .encryptIfNeeded(getApplication(), geohash, snapshot)
+                if (!p2pConfig.nostrEnabled) return@launch
+                val identity = NostrIdentityBridge.deriveIdentity(
+                    forGeohash = geohash, context = getApplication()
+                )
+                val event = NostrProtocol.createGeohashHistoryEvent(
+                    content = encryptedSnapshot,
+                    geohash = geohash,
+                    senderIdentity = identity,
+                    nickname = state.getNicknameValue()
+                )
+                NostrRelayManager.getInstance(getApplication())
+                    .sendEventToGeohash(event, geohash, includeDefaults = true, nRelays = 3)
+                Log.d(TAG, "Published history snapshot for $geohash (${snapshot.length} bytes)")
+            } catch (e: Exception) {
+                Log.w(TAG, "Failed to publish history snapshot: ${e.message}")
             }
         }
     }
@@ -874,7 +982,7 @@ class GeohashViewModel(
                     if (p2pConfig.nostrEnabled) {
                         subscriptionManager.subscribeGeohash(
                             geohash = geohash,
-                            sinceMs = System.currentTimeMillis() - 3600000L,
+                            sinceMs = System.currentTimeMillis() - 86400000L,
                             limit = 200,
                             id = subId,
                             handler = { event -> geohashMessageHandler.onEvent(event, geohash) }
@@ -915,6 +1023,9 @@ class GeohashViewModel(
                             Log.w(TAG, "Failed to subscribe/discover P2P topic: ${e.message}")
                         }
                     }
+
+                    // Share our own history so late joiners get the context
+                    publishHistorySnapshot(geohash, force = true)
                 }
             }
             null -> {
@@ -1047,7 +1158,10 @@ class GeohashViewModel(
                 repo.cacheNickname(participantId, senderFromPayload)
             }
 
-            val messageContent = if (content.isNotBlank()) content else rawContent
+            val rawMessageContent = if (content.isNotBlank()) content else rawContent
+            val messageContent = com.roman.zemzeme.groups.GroupSpaceCrypto
+                .decryptIfNeeded(getApplication(), geohash, rawMessageContent)
+                ?: "🔒"
             val teleported = json.optBoolean("teleported", false)
             val messageId = buildP2PMessageId(peerID, timestamp, messageContent)
 
@@ -1068,6 +1182,7 @@ class GeohashViewModel(
                 messageManager.addChannelMessage("geo:$geohash", zemzemeMessage)
                 notifyGeohashMessage(geohash, displayName, messageContent, messageId)
             }
+            geohashHistory.record(geohash, zemzemeMessage)
 
             repo.updateParticipant(geohash, participantId, Date(timestamp))
             if (teleported) {
@@ -1083,11 +1198,31 @@ class GeohashViewModel(
         val timestamp = normalizeP2PTimestamp(msg.timestamp)
         val participantId = "p2p:$rawPeerID"
         val displayName = resolveP2PDisplayName(rawPeerID, participantId)
-        val messageId = buildP2PMessageId(rawPeerID, timestamp, rawContent)
+        val decryptedContent = com.roman.zemzeme.groups.GroupSpaceCrypto
+            .decryptIfNeeded(getApplication(), geohash, rawContent)
+        if (decryptedContent == null) {
+            Log.w(TAG, "Skipping encrypted P2P payload for locked group $geohash")
+            return
+        }
+        val messageId = buildP2PMessageId(rawPeerID, timestamp, decryptedContent)
+
+        // Chunked media transfer, the same protocol the Nostr path uses
+        if (decryptedContent.startsWith(com.roman.zemzeme.features.media.MediaChunkProtocol.CHUNK_PREFIX) ||
+            decryptedContent.startsWith(com.roman.zemzeme.features.media.MediaChunkProtocol.ACK_PREFIX)
+        ) {
+            geohashMediaTransfer.acceptIncoming(
+                content = decryptedContent,
+                geohash = geohash,
+                senderName = displayName,
+                senderId = rawPeerID,
+                nickname = state.getNicknameValue()
+            )
+            return
+        }
 
         // Handle media transfer embedded as bitchat1:<base64url>
-        if (rawContent.startsWith("bitchat1:")) {
-            val b64 = rawContent.removePrefix("bitchat1:")
+        if (decryptedContent.startsWith("bitchat1:")) {
+            val b64 = decryptedContent.removePrefix("bitchat1:")
             val fileBytes = try {
                 val padded = b64.replace("-", "+").replace("_", "/")
                     .let { it + "=".repeat((4 - it.length % 4) % 4) }
@@ -1124,7 +1259,7 @@ class GeohashViewModel(
         val zemzemeMessage = com.roman.zemzeme.model.ZemzemeMessage(
             id = messageId,
             sender = displayName,
-            content = rawContent,
+            content = decryptedContent,
             timestamp = Date(timestamp),
             isRelay = false,
             senderPeerID = "p2p:$rawPeerID",
@@ -1134,7 +1269,7 @@ class GeohashViewModel(
 
         withContext(Dispatchers.Main) {
             messageManager.addChannelMessage("geo:$geohash", zemzemeMessage)
-            notifyGeohashMessage(geohash, displayName, rawContent, messageId)
+            notifyGeohashMessage(geohash, displayName, decryptedContent, messageId)
         }
         repo.updateParticipant(geohash, participantId, Date(timestamp))
     }
