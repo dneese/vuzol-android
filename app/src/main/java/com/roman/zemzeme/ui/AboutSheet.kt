@@ -1046,6 +1046,9 @@ fun AboutSheet(
                         }
                     }
 
+                    // The app icon and name switcher is disabled for now:
+                    // some launchers refused the alias change and the app fell over.
+                    /*
                     // Refresh Icon & Name
                     item(key = "icon_switch") {
                         Column(modifier = Modifier.padding(horizontal = 20.dp)) {
@@ -1174,6 +1177,7 @@ fun AboutSheet(
                             )
                         }
                     }
+                    */
 
                     // NETWORK section — Tor, P2P, Nostr
                     item(key = "network_settings") {

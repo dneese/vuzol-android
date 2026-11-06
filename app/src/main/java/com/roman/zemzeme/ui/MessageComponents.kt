@@ -11,6 +11,7 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 
@@ -156,16 +157,18 @@ fun MessagesList(
         modifier = modifier.fillMaxSize(),
         reverseLayout = true
     ) {
-        items(
+        itemsIndexed(
             items = chatRows,
-            key = { row ->
+            key = { index, row ->
+                // The index keeps the key unique even when the same message id
+                // arrives twice over different transports
                 when {
-                    row.isUnreadDivider -> "unread-divider"
-                    row.message != null -> row.message.id
-                    else -> "day-${row.dayStart}"
+                    row.isUnreadDivider -> "unread-divider-$index"
+                    row.message != null -> "${row.message.id}-$index"
+                    else -> "day-${row.dayStart}-$index"
                 }
             }
-        ) { row ->
+        ) { _, row ->
             val rowMessage = row.message
             if (row.isUnreadDivider) {
                 UnreadDivider()

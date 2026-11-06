@@ -57,6 +57,7 @@ class GeohashMediaTransfer(
     private val assembler = MediaChunkAssembler(context)
     private val pending = ConcurrentHashMap<String, PendingTransfer>()
     private val lastAckAt = ConcurrentHashMap<String, Long>()
+    private val selfTransferIds = ConcurrentHashMap.newKeySet<String>()
     private var retryJob: Job? = null
 
     /**
@@ -84,6 +85,9 @@ class GeohashMediaTransfer(
             createdAt = System.currentTimeMillis()
         )
         pending[transferId] = transfer
+        // Our own chunks come back through the relay, they must not be
+        // assembled a second time on our side
+        selfTransferIds.add(transferId)
         ensureRetryLoop()
 
         sendChunks(transfer, indices = null)
@@ -107,6 +111,8 @@ class GeohashMediaTransfer(
         if (!content.startsWith(MediaChunkProtocol.CHUNK_PREFIX)) return
 
         val transferId = MediaChunkProtocol.peekTransferId(content) ?: return
+        // Ignore the echo of our own transfer
+        if (selfTransferIds.contains(transferId)) return
         val assembled = assembler.accept(content)
         if (assembled != null) {
             Log.d(TAG, "Transfer ${transferId.take(8)} complete: ${assembled.fileName}")

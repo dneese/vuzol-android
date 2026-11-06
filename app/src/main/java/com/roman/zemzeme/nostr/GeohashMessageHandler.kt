@@ -131,6 +131,19 @@ class GeohashMessageHandler(
                     content = decrypted
                 }
 
+                // Ignore our own geohash events entirely so local identity never appears in people lists.
+                // This has to happen before media is handled: our own chunks
+                // would otherwise be assembled a second time and show up as a
+                // duplicate attachment.
+                val isOwnEvent = try {
+                    NostrIdentityBridge.deriveIdentity(subscribedGeohash, application)
+                        .publicKeyHex
+                        .equals(event.pubkey, ignoreCase = true)
+                } catch (_: Exception) {
+                    false
+                }
+                if (isOwnEvent) return@launch
+
                 // Chunked media and acknowledgements are handled before the
                 // proof of work check, they are machine payloads and mining
                 // every chunk would make transfers unusably slow.
@@ -159,16 +172,6 @@ class GeohashMessageHandler(
                 // Blocked users check (use injected DataManager which has loaded state)
                 if (dataManager.isGeohashUserBlocked(event.pubkey)) return@launch
 
-                // Ignore our own geohash events entirely so local identity never appears in people lists.
-                val isOwnEvent = try {
-                    NostrIdentityBridge.deriveIdentity(subscribedGeohash, application)
-                        .publicKeyHex
-                        .equals(event.pubkey, ignoreCase = true)
-                } catch (_: Exception) {
-                    false
-                }
-                if (isOwnEvent) return@launch
-                
                 // Update repository (participants, nickname, teleport)
                 // Update repository on a background-safe path; repository will post updates to LiveData
                 

@@ -623,8 +623,9 @@ class GeohashViewModel(
                 }
 
                 // The transfer id doubles as the message id so both sides show
-                // the same message.
-                val messageID = java.util.UUID.randomUUID().toString().uppercase()
+                // the same message. It has to be a plain hex string, the chunk
+                // protocol encodes it as 16 raw bytes.
+                val messageID = com.roman.zemzeme.features.media.MediaChunkProtocol.newTransferId()
 
                 // Show locally immediately
                 val localMsg = com.roman.zemzeme.model.ZemzemeMessage(

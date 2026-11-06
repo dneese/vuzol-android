@@ -166,7 +166,7 @@ fun WifiDirectSheet(
                         )
                         if (!supported) {
                             Text(
-                                text = stringResource(R.string.wifi_direct_needs_android15),
+                                text = stringResource(R.string.wifi_direct_needs_android9),
                                 fontSize = 13.sp,
                                 color = MaterialTheme.colorScheme.error
                             )

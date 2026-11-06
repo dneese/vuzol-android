@@ -900,6 +900,7 @@
   <string name="wifi_direct_host">Створити</string>
   <string name="wifi_direct_join">Приєднатися</string>
   <string name="wifi_direct_needs_android15">Кімнати WiFi Direct потребують Android 15 або новішої версії</string>
+  <string name="wifi_direct_needs_android9">Кімнати WiFi Direct потребують Android 9 або новішої версії</string>
   <string name="wifi_direct_room_code">Код кімнати</string>
   <string name="wifi_direct_room_password">Пароль (необов\'язково)</string>
   <string name="wifi_direct_connect">Під\'єднатися</string>

@@ -62,11 +62,18 @@ class MessageManager(private val state: ChatState) {
         }
         
         val channelMessageList = currentChannelMessages[channel]?.toMutableList() ?: mutableListOf()
-        channelMessageList.add(message)
-        currentChannelMessages[channel] = channelMessageList
-        state.setChannelMessages(currentChannelMessages)
-        // Reflect into process-wide store
-        try { com.roman.zemzeme.services.AppStateStore.addChannelMessage(channel, message) } catch (_: Exception) { }
+        // The same event can arrive over several transports (P2P, Nostr, mesh)
+        // and can also come back as our own echo. Showing it twice breaks the
+        // message list, so every id is only kept once per channel.
+        if (channelMessageList.none { it.id == message.id }) {
+            channelMessageList.add(message)
+            currentChannelMessages[channel] = channelMessageList
+            state.setChannelMessages(currentChannelMessages)
+            // Reflect into process-wide store
+            try { com.roman.zemzeme.services.AppStateStore.addChannelMessage(channel, message) } catch (_: Exception) { }
+        } else {
+            return
+        }
         
         // Update unread count if not currently viewing this channel on the chat screen
         // Consider both classic channels (state.currentChannel) and geohash location channel selection

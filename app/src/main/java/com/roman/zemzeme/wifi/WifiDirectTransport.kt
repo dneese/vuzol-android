@@ -1,14 +1,6 @@
 package com.roman.zemzeme.wifi
 
-import android.annotation.SuppressLint
 import android.content.Context
-import android.net.MacAddress
-import android.net.wifi.p2p.WifiP2pConfig
-import android.net.wifi.p2p.WifiP2pDevice
-import android.net.wifi.p2p.WifiP2pDeviceList
-import android.net.wifi.p2p.WifiP2pGroup
-import android.net.wifi.p2p.WifiP2pInfo
-import android.net.wifi.p2p.WifiP2pManager
 import android.util.Log
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -41,9 +33,6 @@ import javax.crypto.spec.SecretKeySpec
  * Frames are encrypted with a key derived from the room code and an optional
  * password, so the host can relay traffic without reading it. Frames of a
  * different room are dropped because the room id does not match.
- *
- * Android 15 (API 35) removed the old WiFi P2P API, so the room requires
- * Android 15 or newer.
  */
 class WifiDirectTransport(
     private val context: Context,
@@ -57,8 +46,8 @@ class WifiDirectTransport(
         private const val MAX_FRAME = 64 * 1024
         private const val NETWORK_NAME_PREFIX = "Vuzol-"
 
-        /** WiFi Direct rooms need the rewritten API that arrived in Android 15. */
-        val isSupported: Boolean = android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.VANILLA_ICE_CREAM
+        /** WiFi Direct rooms work from Android 9 upwards. */
+        val isSupported: Boolean = android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P
     }
 
     data class RoomMessage(
@@ -71,19 +60,14 @@ class WifiDirectTransport(
 
     enum class Role { IDLE, HOST, CLIENT }
 
-    private val manager: WifiP2pManager? =
-        context.getSystemService(Context.WIFI_P2P_SERVICE) as? WifiP2pManager
-
     private val clientSockets = CopyOnWriteArrayList<Socket>()
     private var serverSocket: ServerSocket? = null
     private var serverJob: Job? = null
-    private var discoveryJob: Job? = null
     private var currentRoom: String? = null
     private var roomKey: ByteArray? = null
     private var roomId: ByteArray? = null
     private var passphrase: String? = null
-    private var hostMode = false
-    private var connecting = false
+    private var link: WifiP2pLink? = null
 
     @Volatile
     var role: Role = Role.IDLE
@@ -109,86 +93,12 @@ class WifiDirectTransport(
         }
     }
 
-    private val channelListener = object : WifiP2pManager.ChannelListener {
-        override fun onChannelDisconnected() {
-            setStatus("channel lost, reconnecting")
-            openChannel()
-        }
-    }
-
-    private val p2pListener = object : WifiP2pManager.WifiP2pListener {
-        override fun onP2pStateChanged(state: Int) {
-            if (state == WifiP2pManager.WIFI_P2P_STATE_ENABLED) {
-                setStatus("WiFi Direct ready")
-                if (hostMode) createGroup()
-            } else {
-                setStatus("WiFi Direct is switched off")
-            }
-        }
-
-        override fun onPeerListChanged(peers: WifiP2pDeviceList) {
-            val devices = peers.deviceList.toList()
-            peerCount = devices.size
-            notifyPeers()
-            if (!hostMode && !connecting && devices.isNotEmpty()) {
-                connectTo(devices.first())
-            }
-        }
-
-        override fun onGroupCreated(groupInfo: WifiP2pInfo, group: WifiP2pGroup) {
-            peerCount = group.clientList.size
-            notifyPeers()
-            if (group.isGroupOwner) {
-                role = Role.HOST
-                connecting = false
-                startServer()
-                setStatus("hosting the room · $peerCount peers")
-            } else {
-                role = Role.CLIENT
-                connecting = false
-                val host = groupInfo.groupOwnerAddress?.hostAddress
-                connectSocket(host)
-                setStatus("connected · $peerCount peers")
-            }
-        }
-
-        override fun onPeerClientJoined(groupInfo: WifiP2pInfo, group: WifiP2pGroup) {
-            peerCount = group.clientList.size
-            notifyPeers()
-            setStatus("hosting the room · $peerCount peers")
-        }
-
-        override fun onPeerClientDisconnected(groupInfo: WifiP2pInfo, group: WifiP2pGroup) {
-            peerCount = group.clientList.size
-            notifyPeers()
-        }
-
-        override fun onGroupRemoved() {
-            setStatus("room closed")
-            peerCount = 0
-            notifyPeers()
-        }
-    }
-
-    private var channel: WifiP2pManager.Channel? = null
-
     init {
-        if (isSupported) {
-            openChannel()
-            try {
-                manager?.registerWifiP2pListener(context.mainExecutor, p2pListener)
-            } catch (e: Exception) {
-                Log.w(TAG, "registerWifiP2pListener failed: ${e.message}")
-            }
-        }
-    }
-
-    private fun openChannel() {
-        val mgr = manager ?: return
-        try {
-            channel = mgr.initialize(context, context.mainLooper, channelListener)
-        } catch (e: Exception) {
-            Log.w(TAG, "initialize failed: ${e.message}")
+        link = WifiP2pLink.create(context, scope)?.also { p2p ->
+            p2p.onStatus = { value -> setStatus(value) }
+            p2p.onPeerCount = { value -> setPeers(value) }
+            p2p.onRole = { value -> onLinkRole(value) }
+            p2p.onHostAddress = { address -> connectSocket(address) }
         }
     }
 
@@ -199,20 +109,16 @@ class WifiDirectTransport(
         val code = roomCode.trim().lowercase()
         if (code.isEmpty() || !isSupported) return
         currentRoom = code
-        hostMode = asHost
         roomKey = deriveRoomKey(code, password.orEmpty())
         roomId = MessageDigest.getInstance("SHA-256")
             .digest((code + "|room-id").toByteArray())
             .copyOf(16)
         passphrase = passphraseFor(code, password.orEmpty())
         setStatus(if (asHost) "starting the room" else "searching for room \"$code\"")
-        startDiscoveryLoop()
-        if (asHost) createGroup()
+        link?.start(NETWORK_NAME_PREFIX + code, passphrase ?: return, asHost)
     }
 
     fun stop() {
-        discoveryJob?.cancel()
-        discoveryJob = null
         serverJob?.cancel()
         serverJob = null
         runCatching { serverSocket?.close() }
@@ -220,17 +126,12 @@ class WifiDirectTransport(
         clientSockets.forEach { runCatching { it.close() } }
         clientSockets.clear()
         peerCount = 0
-        connecting = false
-        hostMode = false
         role = Role.IDLE
         currentRoom = null
         roomKey = null
         roomId = null
         passphrase = null
-        try {
-            manager?.removeGroup(channel, null)
-        } catch (_: Exception) {
-        }
+        link?.stop()
         setStatus("stopped")
     }
 
@@ -265,93 +166,16 @@ class WifiDirectTransport(
         return delivered || role == Role.HOST
     }
 
-    private fun startDiscoveryLoop() {
-        if (discoveryJob?.isActive == true) return
-        discoveryJob = scope.launch(Dispatchers.IO) {
-            while (isActive) {
-                try {
-                    val ch = channel
-                    if (ch != null) {
-                        manager?.discoverPeers(
-                            ch,
-                            object : WifiP2pManager.ActionListener {
-                                override fun onSuccess() = Unit
-                                override fun onFailure(reason: Int) {
-                                    Log.w(TAG, "discoverPeers failed: $reason")
-                                }
-                            }
-                        )
-                    }
-                } catch (e: Exception) {
-                    Log.w(TAG, "Discovery failed: ${e.message}")
-                }
-                delay(8_000)
+    private fun onLinkRole(linkRole: WifiP2pLinkRole) {
+        when (linkRole) {
+            WifiP2pLinkRole.HOST -> {
+                role = Role.HOST
+                startServer()
             }
+            WifiP2pLinkRole.CLIENT -> role = Role.CLIENT
+            WifiP2pLinkRole.IDLE -> role = Role.IDLE
         }
     }
-
-    private fun createGroup() {
-        val ch = channel ?: return
-        val config = WifiP2pConfig.Builder()
-            .setNetworkName(networkName())
-            .setPassphrase(passphrase ?: return)
-            .build()
-        try {
-            manager?.createGroup(
-                ch,
-                config,
-                object : WifiP2pManager.ActionListener {
-                    override fun onSuccess() {
-                        setStatus("waiting for clients")
-                    }
-
-                    override fun onFailure(reason: Int) {
-                        setStatus("could not start the room: $reason")
-                    }
-                }
-            )
-        } catch (e: Exception) {
-            Log.w(TAG, "createGroup failed: ${e.message}")
-        }
-    }
-
-    @SuppressLint("MissingPermission")
-    private fun connectTo(device: WifiP2pDevice) {
-        val ch = channel ?: return
-        val address = device.deviceAddress ?: return
-        connecting = true
-        val mac = try {
-            MacAddress.fromString(address)
-        } catch (e: Exception) {
-            null
-        } ?: return
-        val config = WifiP2pConfig.Builder()
-            .setDeviceAddress(mac)
-            .setNetworkName(networkName())
-            .setPassphrase(passphrase ?: return)
-            .build()
-        try {
-            manager?.connect(
-                ch,
-                config,
-                object : WifiP2pManager.ActionListener {
-                    override fun onSuccess() {
-                        setStatus("joining the room")
-                    }
-
-                    override fun onFailure(reason: Int) {
-                        connecting = false
-                        setStatus("could not join the room: $reason")
-                    }
-                }
-            )
-        } catch (e: Exception) {
-            connecting = false
-            Log.w(TAG, "connect failed: ${e.message}")
-        }
-    }
-
-    private fun networkName(): String = NETWORK_NAME_PREFIX + (currentRoom ?: "room")
 
     private fun startServer() {
         if (serverJob?.isActive == true) return
@@ -362,8 +186,7 @@ class WifiDirectTransport(
                 while (isActive) {
                     val socket = server.accept()
                     clientSockets.add(socket)
-                    peerCount = clientSockets.size
-                    notifyPeers()
+                    setPeers(clientSockets.size)
                     scope.launch(Dispatchers.IO) { readLoop(socket) }
                 }
             } catch (e: Exception) {
@@ -379,9 +202,8 @@ class WifiDirectTransport(
                 val socket = Socket()
                 socket.connect(InetSocketAddress(host, PORT), 8_000)
                 clientSockets.add(socket)
-                peerCount = clientSockets.size
-                notifyPeers()
-                setStatus("connected · $peerCount peers")
+                setPeers(clientSockets.size)
+                setStatus("connected · ${clientSockets.size} peers")
                 readLoop(socket)
             } catch (e: Exception) {
                 Log.w(TAG, "Socket connect failed: ${e.message}")
@@ -437,8 +259,7 @@ class WifiDirectTransport(
             Log.w(TAG, "Read loop ended: ${e.message}")
         } finally {
             clientSockets.remove(socket)
-            peerCount = clientSockets.size
-            notifyPeers()
+            setPeers(clientSockets.size)
             runCatching { socket.close() }
         }
     }
@@ -484,7 +305,7 @@ class WifiDirectTransport(
     }
 
     private fun passphraseFor(roomCode: String, password: String): String {
-        val material = (password + "|" + roomCode).ifBlank { roomCode }
+        val material = if (password.isBlank()) roomCode else "$password|$roomCode"
         val digest = MessageDigest.getInstance("SHA-256").digest(material.toByteArray())
         return digest.joinToString("") { "%02x".format(it) }.take(32)
     }
@@ -515,9 +336,9 @@ class WifiDirectTransport(
         return result
     }
 
-    private fun notifyPeers() {
-        val count = peerCount
-        scope.launch(Dispatchers.Main) { onPeersChanged?.invoke(count) }
+    private fun setPeers(value: Int) {
+        peerCount = value
+        scope.launch(Dispatchers.Main) { onPeersChanged?.invoke(value) }
     }
 
     private fun setStatus(value: String) {

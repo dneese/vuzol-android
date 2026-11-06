@@ -1006,6 +1006,7 @@
   <string name="wifi_direct_host">Create room</string>
   <string name="wifi_direct_join">Join room</string>
   <string name="wifi_direct_needs_android15">WiFi Direct rooms need Android 15 or newer</string>
+  <string name="wifi_direct_needs_android9">WiFi Direct rooms need Android 9 or newer</string>
   <string name="wifi_direct_room_code">Room code</string>
   <string name="wifi_direct_room_password">Password (optional)</string>
   <string name="wifi_direct_connect">Join the room</string>
