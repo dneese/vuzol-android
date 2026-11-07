@@ -4,6 +4,7 @@
 
 - Offline room inside the local WiFi network: the phones of the room find each other by themselves, without router setup and without internet. Text messages and files are encrypted with the room password.
 - Files can be sent inside the offline room, the received file is opened with any app of the phone.
+- Voice calls inside the offline room: the sound goes over UDP, encrypted with the room key.
 - WiFi Direct rooms work on Android 12 and older again, the old platform API is called through reflection.
 - Fixed the crash with duplicate attachments and the duplicate key in the message list.
 

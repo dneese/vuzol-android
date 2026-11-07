@@ -916,4 +916,10 @@
   <string name="wifi_direct_lan_peers_found">Телефонів у кімнаті</string>
   <string name="wifi_direct_lan_attach">Прикріпити файл</string>
   <string name="wifi_direct_lan_open_file">Відкрити файл</string>
+  <string name="wifi_direct_lan_call">Дзвінок</string>
+  <string name="wifi_direct_lan_incoming_call">Вхідний дзвінок</string>
+  <string name="wifi_direct_lan_call_accept">Відповісти</string>
+  <string name="wifi_direct_lan_call_decline">Відхилити</string>
+  <string name="wifi_direct_lan_call_end">Завершити</string>
+  <string name="wifi_direct_lan_peers_title">Кого дзвонити</string>
 </resources>

@@ -1022,4 +1022,10 @@
   <string name="wifi_direct_lan_peers_found">Phones in the room</string>
   <string name="wifi_direct_lan_attach">Attach a file</string>
   <string name="wifi_direct_lan_open_file">Open the file</string>
+  <string name="wifi_direct_lan_call">Call</string>
+  <string name="wifi_direct_lan_incoming_call">Incoming call</string>
+  <string name="wifi_direct_lan_call_accept">Answer</string>
+  <string name="wifi_direct_lan_call_decline">Decline</string>
+  <string name="wifi_direct_lan_call_end">Hang up</string>
+  <string name="wifi_direct_lan_peers_title">Who to call</string>
 </resources>

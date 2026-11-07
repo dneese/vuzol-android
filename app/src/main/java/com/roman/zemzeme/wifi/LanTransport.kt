@@ -58,9 +58,13 @@ internal class LanTransport(
         var received: Long = 0L
     )
 
+    /** A phone of the room that can be called. */
+    data class PeerInfo(val id: String, val nickname: String, val address: String)
+
     var onMessage: ((RoomMessage) -> Unit)? = null
     var onStatusChanged: ((String) -> Unit)? = null
     var onPeersChanged: ((Int) -> Unit)? = null
+    var onCallSignal: ((RoomProtocol.CallSignal) -> Unit)? = null
 
     private var key: ByteArray? = null
     private var roomId: ByteArray? = null
@@ -68,6 +72,9 @@ internal class LanTransport(
     private var discovery: LanDiscovery? = null
     private var serverSocket: ServerSocket? = null
     private var serverJob: Job? = null
+    private var callEngine: RoomCallEngine? = null
+    private var activeCallId: String? = null
+    private var callPeer: PeerInfo? = null
     private val connections = CopyOnWriteArrayList<PeerConnection>()
     private val incomingFiles = ConcurrentHashMap<String, IncomingFile>()
 
@@ -122,11 +129,110 @@ internal class LanTransport(
         incomingFiles.clear()
         discovery?.stop()
         discovery = null
+        stopCall()
         key = null
         roomId = null
         peerCount = 0
         setStatus("stopped")
     }
+
+    /** The phones of the room that can be called. */
+    fun peers(): List<PeerInfo> = connections.map { connection ->
+        PeerInfo(
+            id = connection.id,
+            nickname = connection.nickname,
+            address = remoteAddress(connection.socket)
+        )
+    }
+
+    /** Calls one phone of the room, the sound goes over UDP. */
+    fun startCall(peer: PeerInfo): Boolean {
+        if (callEngine != null) return false
+        val roomKey = key ?: return false
+        val room = roomId ?: return false
+        val engine = RoomCallEngine(roomKey, room)
+        val port = engine.start()
+        if (port <= 0) {
+            engine.stop()
+            return false
+        }
+        engine.setDestination(peer.address, 0)
+        callEngine = engine
+        callPeer = peer
+        val callId = UUID.randomUUID().toString().replace("-", "")
+        activeCallId = callId
+        sendCallSignal(RoomProtocol.CallSignal("ring", callId, localPeerId, localNickname, port))
+        return true
+    }
+
+    /** Answers a call of another phone. */
+    fun acceptCall(signal: RoomProtocol.CallSignal): Boolean {
+        if (callEngine != null) return false
+        val roomKey = key ?: return false
+        val room = roomId ?: return false
+        val peer = peers().firstOrNull { it.id == signal.from } ?: return false
+        val engine = RoomCallEngine(roomKey, room)
+        val port = engine.start()
+        if (port <= 0) {
+            engine.stop()
+            return false
+        }
+        engine.setDestination(peer.address, signal.audioPort)
+        callEngine = engine
+        callPeer = peer
+        activeCallId = signal.callId
+        sendCallSignal(RoomProtocol.CallSignal("accept", signal.callId, localPeerId, localNickname, port))
+        return true
+    }
+
+    /** Rejects an incoming call. */
+    fun declineCall(callId: String) {
+        sendCallSignal(RoomProtocol.CallSignal("decline", callId, localPeerId, localNickname, 0))
+        stopCall()
+    }
+
+    /** Ends the running call. */
+    fun endCall() {
+        val callId = activeCallId ?: return
+        sendCallSignal(RoomProtocol.CallSignal("end", callId, localPeerId, localNickname, 0))
+        stopCall()
+    }
+
+    private fun stopCall() {
+        callEngine?.stop()
+        callEngine = null
+        activeCallId = null
+        callPeer = null
+    }
+
+    private fun sendCallSignal(signal: RoomProtocol.CallSignal) {
+        val roomKey = key ?: return
+        val room = roomId ?: return
+        val cipher = RoomCrypto.encrypt(roomKey, room, RoomProtocol.encodeCallSignal(signal)) ?: return
+        sendFrame(RoomProtocol.FRAME_CALL, room, cipher)
+    }
+
+    private fun handleCallSignal(signal: RoomProtocol.CallSignal) {
+        when (signal.action) {
+            "ring" -> withContextSafe { onCallSignal?.invoke(signal) }
+            "accept" -> {
+                val engine = callEngine
+                val peer = callPeer
+                if (engine != null && peer != null) {
+                    engine.setDestination(peer.address, signal.audioPort)
+                }
+                withContextSafe { onCallSignal?.invoke(signal) }
+            }
+            "decline", "end" -> {
+                stopCall()
+                withContextSafe { onCallSignal?.invoke(signal) }
+            }
+            else -> Unit
+        }
+    }
+
+    private fun remoteAddress(socket: Socket): String =
+        (socket.remoteSocketAddress as? InetSocketAddress)?.address?.hostAddress ?: ""
 
     /** Sends a text message to every phone of the room. */
     fun sendText(text: String, nickname: String): Boolean {
@@ -307,6 +413,10 @@ internal class LanTransport(
                     RoomProtocol.FRAME_FILE_CHUNK -> {
                         val chunk = RoomProtocol.decodeFileChunk(payload) ?: continue
                         writeIncomingChunk(chunk)
+                    }
+                    RoomProtocol.FRAME_CALL -> {
+                        val signal = RoomProtocol.decodeCallSignal(payload) ?: continue
+                        handleCallSignal(signal)
                     }
                     else -> Unit
                 }

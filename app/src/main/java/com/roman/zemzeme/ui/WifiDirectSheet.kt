@@ -23,9 +23,12 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AttachFile
+import androidx.compose.material.icons.filled.Call
+import androidx.compose.material.icons.filled.CallEnd
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material.icons.filled.Wifi
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
@@ -36,6 +39,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -61,7 +65,9 @@ import com.google.accompanist.permissions.rememberPermissionState
 import com.roman.zemzeme.R
 import com.roman.zemzeme.wifi.LanTransport
 import com.roman.zemzeme.wifi.RoomMessage
+import com.roman.zemzeme.wifi.RoomProtocol
 import com.roman.zemzeme.wifi.WifiDirectTransport
+import kotlinx.coroutines.delay
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -97,8 +103,15 @@ fun WifiDirectSheet(
     var input by remember { mutableStateOf("") }
     var status by remember { mutableStateOf(transport.status) }
     var peers by remember { mutableStateOf(0) }
+    var incomingCall by remember { mutableStateOf<RoomProtocol.CallSignal?>(null) }
+    var activeCall by remember { mutableStateOf<RoomProtocol.CallSignal?>(null) }
+    var callSeconds by remember { mutableStateOf(0) }
+    var callTargets by remember { mutableStateOf<List<LanTransport.PeerInfo>>(emptyList()) }
     val timeFormatter = remember { SimpleDateFormat("HH:mm", Locale.getDefault()) }
     val supported = WifiDirectTransport.isSupported
+
+    val micPermission = rememberPermissionState(Manifest.permission.RECORD_AUDIO)
+    val micGranted = micPermission.status.isGranted
 
     val nearbyPermission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
         Manifest.permission.NEARBY_WIFI_DEVICES
@@ -127,6 +140,18 @@ fun WifiDirectSheet(
         }
         lanTransport.onStatusChanged = { value -> status = value }
         lanTransport.onPeersChanged = { value -> peers = value }
+        lanTransport.onCallSignal = { signal ->
+            when (signal.action) {
+                "ring" -> incomingCall = signal
+                "accept" -> activeCall = signal
+                "decline", "end" -> {
+                    incomingCall = null
+                    activeCall = null
+                    callSeconds = 0
+                }
+                else -> Unit
+            }
+        }
         onDispose {
             transport.onMessage = null
             transport.onStatusChanged = null
@@ -134,6 +159,7 @@ fun WifiDirectSheet(
             lanTransport.onMessage = null
             lanTransport.onStatusChanged = null
             lanTransport.onPeersChanged = null
+            lanTransport.onCallSignal = null
             transport.stop()
             lanTransport.stop()
         }
@@ -141,6 +167,17 @@ fun WifiDirectSheet(
 
     LaunchedEffect(permissionGranted, lanMode) {
         if (!lanMode && !permissionGranted) permissionState.launchPermissionRequest()
+    }
+
+    LaunchedEffect(activeCall) {
+        if (activeCall == null) {
+            callSeconds = 0
+            return@LaunchedEffect
+        }
+        while (activeCall != null) {
+            delay(1000)
+            callSeconds++
+        }
     }
 
     Dialog(
@@ -360,6 +397,41 @@ fun WifiDirectSheet(
                         }
                     }
 
+                    activeCall?.let { call ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(MaterialTheme.colorScheme.primaryContainer)
+                                .padding(horizontal = 12.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = call.nickname,
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                                Text(
+                                    text = String.format(Locale.getDefault(), "%02d:%02d", callSeconds / 60, callSeconds % 60),
+                                    fontSize = 12.sp,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                            }
+                            IconButton(onClick = {
+                                activeCall = null
+                                callSeconds = 0
+                                lanTransport.endCall()
+                            }) {
+                                Icon(
+                                    Icons.Filled.CallEnd,
+                                    contentDescription = stringResource(R.string.wifi_direct_lan_call_end),
+                                    tint = MaterialTheme.colorScheme.error
+                                )
+                            }
+                        }
+                    }
+
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -383,6 +455,28 @@ fun WifiDirectSheet(
                                 Icon(
                                     Icons.Filled.AttachFile,
                                     contentDescription = stringResource(R.string.wifi_direct_lan_attach),
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                            IconButton(
+                                onClick = {
+                                    if (!micGranted) {
+                                        micPermission.launchPermissionRequest()
+                                        return@IconButton
+                                    }
+                                    val targets = lanTransport.peers()
+                                    if (targets.isEmpty()) return@IconButton
+                                    if (targets.size == 1) {
+                                        lanTransport.startCall(targets.first())
+                                    } else {
+                                        callTargets = targets
+                                    }
+                                },
+                                enabled = peers > 0 && activeCall == null
+                            ) {
+                                Icon(
+                                    Icons.Filled.Call,
+                                    contentDescription = stringResource(R.string.wifi_direct_lan_call),
                                     tint = MaterialTheme.colorScheme.primary
                                 )
                             }
@@ -418,6 +512,62 @@ fun WifiDirectSheet(
                 }
             }
         }
+    }
+
+    incomingCall?.let { call ->
+        AlertDialog(
+            onDismissRequest = {
+                incomingCall = null
+                lanTransport.declineCall(call.callId)
+            },
+            title = { Text(call.nickname) },
+            text = { Text(stringResource(R.string.wifi_direct_lan_incoming_call)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    incomingCall = null
+                    if (!micGranted) {
+                        micPermission.launchPermissionRequest()
+                    } else {
+                        lanTransport.acceptCall(call)
+                        activeCall = call
+                    }
+                }) {
+                    Text(stringResource(R.string.wifi_direct_lan_call_accept))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    incomingCall = null
+                    lanTransport.declineCall(call.callId)
+                }) {
+                    Text(stringResource(R.string.wifi_direct_lan_call_decline))
+                }
+            }
+        )
+    }
+
+    if (callTargets.isNotEmpty()) {
+        AlertDialog(
+            onDismissRequest = { callTargets = emptyList() },
+            title = { Text(stringResource(R.string.wifi_direct_lan_peers_title)) },
+            text = {
+                Column {
+                    callTargets.forEach { peer ->
+                        TextButton(onClick = {
+                            callTargets = emptyList()
+                            lanTransport.startCall(peer)
+                        }) {
+                            Text(peer.nickname, modifier = Modifier.fillMaxWidth())
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { callTargets = emptyList() }) {
+                    Text(stringResource(android.R.string.cancel))
+                }
+            }
+        )
     }
 }
 

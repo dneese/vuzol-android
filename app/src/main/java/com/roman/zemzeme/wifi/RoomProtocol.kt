@@ -55,6 +55,15 @@ internal object RoomProtocol {
 
     data class FileChunk(val transferId: String, val index: Int, val data: ByteArray)
 
+    /** The signalling of a call inside a room. */
+    data class CallSignal(
+        val action: String,
+        val callId: String,
+        val from: String,
+        val nickname: String,
+        val audioPort: Int
+    )
+
     fun writeFrame(socket: Socket, type: Int, roomId: ByteArray, ciphertext: ByteArray): Boolean = try {
         // One frame at a time per socket, otherwise two threads can mix the bytes
         synchronized(socket) {
@@ -198,6 +207,29 @@ internal object RoomProtocol {
             stream.readFully(data)
             FileChunk(String(id, Charsets.UTF_8), index, data)
         }
+    } catch (_: Exception) {
+        null
+    }
+
+    fun encodeCallSignal(signal: CallSignal): ByteArray =
+        JSONObject()
+            .put("action", signal.action)
+            .put("call", signal.callId)
+            .put("from", signal.from)
+            .put("nick", signal.nickname)
+            .put("port", signal.audioPort)
+            .toString()
+            .toByteArray(Charsets.UTF_8)
+
+    fun decodeCallSignal(payload: ByteArray): CallSignal? = try {
+        val json = JSONObject(String(payload, Charsets.UTF_8))
+        CallSignal(
+            action = json.optString("action"),
+            callId = json.optString("call"),
+            from = json.optString("from"),
+            nickname = json.optString("nick", "anon"),
+            audioPort = json.optInt("port")
+        )
     } catch (_: Exception) {
         null
     }
