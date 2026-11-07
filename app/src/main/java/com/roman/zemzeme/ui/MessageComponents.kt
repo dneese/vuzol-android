@@ -106,6 +106,7 @@ fun MessagesList(
     onPin: ((ZemzemeMessage) -> Unit)? = null,
     onBlock: ((ZemzemeMessage) -> Unit)? = null,
     onVuzolLink: ((String) -> Unit)? = null,
+    onGeohashLink: ((String) -> Unit)? = null,
     lastReadAt: Long = 0L
 ) {
     val listState = rememberLazyListState()
@@ -206,7 +207,8 @@ fun MessagesList(
                     onDetails = onDetails,
                     onPin = onPin,
                     onBlock = onBlock,
-                    onVuzolLink = onVuzolLink
+                    onVuzolLink = onVuzolLink,
+                    onGeohashLink = onGeohashLink
                 )
             }
         }
@@ -244,7 +246,8 @@ fun MessageItem(
     onDetails: ((ZemzemeMessage) -> Unit)? = null,
     onPin: ((ZemzemeMessage) -> Unit)? = null,
     onBlock: ((ZemzemeMessage) -> Unit)? = null,
-    onVuzolLink: ((String) -> Unit)? = null
+    onVuzolLink: ((String) -> Unit)? = null,
+    onGeohashLink: ((String) -> Unit)? = null
 ) {
     val colorScheme = MaterialTheme.colorScheme
     val use24h by ChatDisplaySettings.use24hFlow.collectAsState()
@@ -377,7 +380,9 @@ fun MessageItem(
                 author = truncateNickname(baseName) + suffix,
                 authorColor = baseColor,
                 onNicknameClick = onNicknameClick,
-                onProfileClick = onProfileClick
+                onProfileClick = onProfileClick,
+                onMessageLongPress = onMessageLongPress,
+                onGeohashLink = onGeohashLink
             )
         } else {
         // Message content column with sender name and bubble
@@ -449,7 +454,8 @@ fun MessageItem(
                     onMessageLongPress = onMessageLongPress,
                     onCancelTransfer = onCancelTransfer,
                     onImageClick = onImageClick,
-                    onVuzolLink = onVuzolLink
+                    onVuzolLink = onVuzolLink,
+                    onGeohashLink = onGeohashLink
                 )
 
                 val allReactions by ReactionsStore.reactions.collectAsState()
@@ -625,7 +631,9 @@ private fun CompactMessageContent(
     author: String,
     authorColor: Color,
     onNicknameClick: ((String) -> Unit)?,
-    onProfileClick: ((ZemzemeMessage) -> Unit)?
+    onProfileClick: ((ZemzemeMessage) -> Unit)?,
+    onMessageLongPress: ((ZemzemeMessage) -> Unit)? = null,
+    onGeohashLink: ((String) -> Unit)? = null
 ) {
     val chatTextSize by ChatDisplaySettings.textSizeFlow.collectAsState()
     Row(
@@ -667,9 +675,10 @@ private fun CompactMessageContent(
                 timeFormatter = timeFormatter,
                 isSelf = isSelf,
                 onNicknameClick = onNicknameClick,
-                onMessageLongPress = null,
+                onMessageLongPress = onMessageLongPress,
                 onCancelTransfer = null,
                 onImageClick = null,
+                onGeohashLink = onGeohashLink,
                 maxTextWidth = Dp.Unspecified
             )
         }
@@ -691,7 +700,8 @@ private fun MessageBubble(
     onMessageLongPress: ((ZemzemeMessage) -> Unit)?,
     onCancelTransfer: ((ZemzemeMessage) -> Unit)?,
     onImageClick: ((String, List<String>, Int) -> Unit)?,
-    onVuzolLink: ((String) -> Unit)? = null
+    onVuzolLink: ((String) -> Unit)? = null,
+    onGeohashLink: ((String) -> Unit)? = null
 ) {
     val extendedColors = MaterialTheme.extendedColors
     val chatAccent = LocalChatAccent.current
@@ -829,6 +839,7 @@ private fun MessageBubbleContent(
     onCancelTransfer: ((ZemzemeMessage) -> Unit)?,
     onImageClick: ((String, List<String>, Int) -> Unit)?,
     onVuzolLink: ((String) -> Unit)? = null,
+    onGeohashLink: ((String) -> Unit)? = null,
     maxTextWidth: Dp = 280.dp
 ) {
     val chatTextSize by ChatDisplaySettings.textSizeFlow.collectAsState()
@@ -946,8 +957,12 @@ private fun MessageBubbleContent(
             text = annotatedText,
             modifier = Modifier
                 .wrapContentWidth()
-                .pointerInput(contentMessage) {
+                .pointerInput(contentMessage, onMessageLongPress) {
                     detectTapGestures(
+                        onLongPress = {
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            onMessageLongPress?.invoke(message)
+                        },
                         onTap = { position ->
                             val layout = textLayoutResult ?: return@detectTapGestures
                             val offset = layout.getOffsetForPosition(position)
@@ -960,6 +975,12 @@ private fun MessageBubbleContent(
                             )
                             if (geohashAnnotations.isNotEmpty()) {
                                 val geohash = geohashAnnotations.first().item
+                                if (onGeohashLink != null) {
+                                    // A named channel: it opens with its own name
+                                    onGeohashLink(geohash)
+                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                    return@detectTapGestures
+                                }
                                 try {
                                     val locationManager =
                                         com.roman.zemzeme.geohash.LocationChannelManager.getInstance(

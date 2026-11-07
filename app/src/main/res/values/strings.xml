@@ -807,7 +807,16 @@
     <string name="search_chats">Search chats and people</string>
     <string name="nav_chats">Chats</string>
     <string name="nav_people">People</string>
+    <string name="nav_calls">Calls</string>
     <string name="nav_settings">Settings</string>
+    <string name="chat_filter_all">All</string>
+    <string name="chat_filter_unread">Unread</string>
+    <string name="chat_filter_groups">Groups</string>
+    <string name="chat_filter_people">People</string>
+    <string name="calls_empty">No calls yet. Open an offline room to call another phone.</string>
+    <string name="calls_outgoing">Outgoing</string>
+    <string name="calls_incoming">Incoming</string>
+    <string name="calls_missed">Missed</string>
     <string name="action_pin">Pin to top</string>
     <string name="action_unpin">Unpin</string>
     <string name="action_about_app">About the app</string>
@@ -1028,4 +1037,19 @@
   <string name="wifi_direct_lan_call_decline">Decline</string>
   <string name="wifi_direct_lan_call_end">Hang up</string>
   <string name="wifi_direct_lan_peers_title">Who to call</string>
+  <string name="menu_reply">Reply</string>
+  <string name="menu_edit">Edit</string>
+  <string name="menu_copy">Copy</string>
+  <string name="menu_share">Share</string>
+  <string name="menu_forward">Forward</string>
+  <string name="menu_save">Save</string>
+  <string name="menu_pin">Pin</string>
+  <string name="menu_select">Select</string>
+  <string name="menu_details">Details</string>
+  <string name="menu_mute">Mute</string>
+  <string name="menu_auto">Auto</string>
+  <string name="menu_delete">Delete</string>
+  <string name="menu_block">Block</string>
+  <string name="wifi_direct_leave_room">Leave the room</string>
+  <string name="cd_open_menu">Open the menu</string>
 </resources>

@@ -8,6 +8,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import java.io.DataInputStream
@@ -75,6 +76,8 @@ internal class LanTransport(
     private var callEngine: RoomCallEngine? = null
     private var activeCallId: String? = null
     private var callPeer: PeerInfo? = null
+    private var callSeconds: Int = 0
+    private var callTimerJob: Job? = null
     private val connections = CopyOnWriteArrayList<PeerConnection>()
     private val incomingFiles = ConcurrentHashMap<String, IncomingFile>()
 
@@ -162,6 +165,8 @@ internal class LanTransport(
         val callId = UUID.randomUUID().toString().replace("-", "")
         activeCallId = callId
         sendCallSignal(RoomProtocol.CallSignal("ring", callId, localPeerId, localNickname, port))
+        CallHistoryStore.start(callId, peer.nickname, outgoing = true)
+        startCallTimer()
         return true
     }
 
@@ -182,12 +187,15 @@ internal class LanTransport(
         callPeer = peer
         activeCallId = signal.callId
         sendCallSignal(RoomProtocol.CallSignal("accept", signal.callId, localPeerId, localNickname, port))
+        CallHistoryStore.start(signal.callId, peer.nickname, outgoing = false)
+        startCallTimer()
         return true
     }
 
     /** Rejects an incoming call. */
     fun declineCall(callId: String) {
         sendCallSignal(RoomProtocol.CallSignal("decline", callId, localPeerId, localNickname, 0))
+        CallHistoryStore.missed(callId, callPeer?.nickname ?: "unknown", outgoing = false)
         stopCall()
     }
 
@@ -195,10 +203,28 @@ internal class LanTransport(
     fun endCall() {
         val callId = activeCallId ?: return
         sendCallSignal(RoomProtocol.CallSignal("end", callId, localPeerId, localNickname, 0))
+        CallHistoryStore.finish(callId, callSeconds)
         stopCall()
     }
 
+    private fun startCallTimer() {
+        callTimerJob?.cancel()
+        callSeconds = 0
+        callTimerJob = scope.launch(Dispatchers.Default) {
+            while (isActive) {
+                delay(1000)
+                callSeconds++
+            }
+        }
+    }
+
     private fun stopCall() {
+        callTimerJob?.cancel()
+        callTimerJob = null
+        val callId = activeCallId
+        if (callId != null && callEngine != null) {
+            CallHistoryStore.finish(callId, callSeconds)
+        }
         callEngine?.stop()
         callEngine = null
         activeCallId = null

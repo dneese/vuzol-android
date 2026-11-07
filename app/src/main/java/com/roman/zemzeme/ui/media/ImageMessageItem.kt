@@ -3,6 +3,8 @@ package com.roman.zemzeme.ui.media
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -61,6 +63,7 @@ private fun decodePreview(path: String, maxDim: Int = 480): android.graphics.Bit
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun ImageMessageItem(
     message: ZemzemeMessage,
@@ -91,7 +94,12 @@ fun ImageMessageItem(
             fontFamily = NunitoFontFamily,
             color = colorScheme.onSurface,
             modifier = Modifier.pointerInput(message.id) {
-                detectTapGestures(onTap = { pos ->
+                detectTapGestures(
+                    onLongPress = {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        onMessageLongPress?.invoke(message)
+                    },
+                    onTap = { pos ->
                     val layout = headerLayout ?: return@detectTapGestures
                     val offset = layout.getOffsetForPosition(pos)
                     val ann = headerText.getStringAnnotations("nickname_click", offset, offset)
@@ -141,10 +149,16 @@ fun ImageMessageItem(
                                 .widthIn(max = 300.dp)
                                 .aspectRatio(aspect)
                                 .clip(androidx.compose.foundation.shape.RoundedCornerShape(10.dp))
-                                .clickable {
-                                    val currentIndex = imagePaths.indexOf(path)
-                                    onImageClick?.invoke(path, imagePaths, currentIndex)
-                                }
+                                .combinedClickable(
+                                    onClick = {
+                                        val currentIndex = imagePaths.indexOf(path)
+                                        onImageClick?.invoke(path, imagePaths, currentIndex)
+                                    },
+                                    onLongClick = {
+                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                        onMessageLongPress?.invoke(message)
+                                    }
+                                )
                         )
                     } else {
                         // Fully revealed image
@@ -155,14 +169,20 @@ fun ImageMessageItem(
                                 .widthIn(max = 300.dp)
                                 .aspectRatio(aspect)
                                 .clip(androidx.compose.foundation.shape.RoundedCornerShape(10.dp))
-                                .clickable {
-                                    if (hidden) {
-                                        revealed = true
-                                    } else {
-                                        val currentIndex = imagePaths.indexOf(path)
-                                        onImageClick?.invoke(path, imagePaths, currentIndex)
+                                .combinedClickable(
+                                    onClick = {
+                                        if (hidden) {
+                                            revealed = true
+                                        } else {
+                                            val currentIndex = imagePaths.indexOf(path)
+                                            onImageClick?.invoke(path, imagePaths, currentIndex)
+                                        }
+                                    },
+                                    onLongClick = {
+                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                        onMessageLongPress?.invoke(message)
                                     }
-                                },
+                                ),
                             contentScale = ContentScale.Fit
                         )
                     }

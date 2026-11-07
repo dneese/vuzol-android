@@ -43,11 +43,16 @@ import androidx.compose.material.icons.outlined.LayersClear
 import androidx.compose.material.icons.outlined.LocationCity
 import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material.icons.outlined.Map
+import androidx.compose.material.icons.outlined.Menu
 import androidx.compose.material.icons.outlined.QrCodeScanner
 import androidx.compose.material.icons.outlined.Block
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material.icons.outlined.Call
+import androidx.compose.material.icons.outlined.CallMade
+import androidx.compose.material.icons.outlined.CallMissed
+import androidx.compose.material.icons.outlined.CallReceived
 import androidx.compose.material.icons.outlined.Chat
 import androidx.compose.material.icons.outlined.People
 import androidx.compose.material.icons.outlined.PersonAdd
@@ -90,9 +95,11 @@ import com.roman.zemzeme.R
 import com.roman.zemzeme.nostr.NostrRelayManager
 import com.roman.zemzeme.p2p.P2PConfig
 import com.roman.zemzeme.p2p.TopicConnectionState
+import com.roman.zemzeme.wifi.CallHistoryStore
 import com.roman.zemzeme.ui.connectioninfo.ConnectionDisplayData
 import com.roman.zemzeme.ui.connectioninfo.ConnectionIndicatorFactory
 import com.roman.zemzeme.ui.theme.extendedColors
+import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Locale
 
@@ -108,7 +115,10 @@ private enum class PendingAction { DELETE, CLEAR, RENAME }
 
 // ── Bottom navigation tabs ──
 
-private enum class HomeTab { Chats, People, Settings }
+private enum class HomeTab { Chats, People, Calls, Settings }
+
+/** The tabs of the chat list, like the folders of Telegram. */
+private enum class ChatFilter { ALL, UNREAD, GROUPS, PEOPLE }
 
 private data class PinnedChat(
     val key: String,
@@ -137,6 +147,12 @@ fun HomeScreen(
     // Observed state
     val messages by chatViewModel.messages.collectAsStateWithLifecycle()
     val customGroups by chatViewModel.customGroups.collectAsStateWithLifecycle()
+    // The offline room is remembered, so it stays in the chat list
+    val wifiRoom by com.roman.zemzeme.wifi.WifiRoomManager.savedRoom.collectAsStateWithLifecycle()
+    val wifiRoomMessages by com.roman.zemzeme.wifi.WifiRoomManager.messages.collectAsStateWithLifecycle()
+    val wifiRoomActive by com.roman.zemzeme.wifi.WifiRoomManager.activeMode.collectAsStateWithLifecycle()
+    val wifiRoomPeers by com.roman.zemzeme.wifi.WifiRoomManager.peers.collectAsStateWithLifecycle()
+    val activeChannels by chatViewModel.activeChannels.collectAsStateWithLifecycle()
     val geographicGroups by chatViewModel.geographicGroups.collectAsStateWithLifecycle()
     val groupNicknames by chatViewModel.groupNicknames.collectAsStateWithLifecycle()
     val channelMessages by chatViewModel.channelMessages.collectAsStateWithLifecycle()
@@ -182,6 +198,7 @@ fun HomeScreen(
     // Bottom navigation + search + pinned conversations
     var selectedTab by remember { mutableStateOf(HomeTab.Chats) }
     var searchQuery by remember { mutableStateOf("") }
+    var chatFilter by remember { mutableStateOf(ChatFilter.ALL) }
     val pinnedKeys by ConversationPinStore.pinned.collectAsState()
 
     // FAB
@@ -239,17 +256,21 @@ fun HomeScreen(
         }.sortedByDescending { it.third }
     }
 
-    // "My Groups" = custom groups only, sorted by last-message time
-    val myGroupItems = remember(customGroups, channelMessages) {
-        customGroups.map { geohash ->
+    // "My Groups" = joined groups and the channels where the user wrote,
+    // sorted by last-message time
+    val myGroupItems = remember(customGroups, activeChannels, geographicGroups, channelMessages) {
+        val keys = (customGroups + activeChannels) - geographicGroups
+        keys.map { geohash ->
             val lastTs = channelMessages["geo:$geohash"]?.lastOrNull()?.timestamp?.time ?: 0L
             Triple("group", geohash, lastTs)
         }.sortedByDescending { it.third }
     }
 
-    // "Contacts" = persisted peers, sorted by last-message time (contacts without messages shown last)
+    // "People" = saved contacts and every private chat, so no conversation
+    // disappears from the list; sorted by last-message time
     val contactItems = remember(contacts, privateChats) {
-        contacts.map { peerID ->
+        val keys = contacts + privateChats.keys
+        keys.map { peerID ->
             val msgs = privateChats[peerID]
             val lastMsg = msgs?.lastOrNull()
             Triple(peerID, lastMsg, lastMsg?.timestamp?.time ?: 0L)
@@ -276,6 +297,24 @@ fun HomeScreen(
             ) ?: "User"
             display.lowercase().contains(searchTerm)
         }
+    }
+
+    // The folders of Telegram: all, unread, groups and people
+    val unreadOnly = chatFilter == ChatFilter.UNREAD
+    val showGroups = chatFilter != ChatFilter.PEOPLE
+    val showContacts = chatFilter != ChatFilter.GROUPS
+    val showSpecial = chatFilter == ChatFilter.ALL
+    val visibleGeoGroupItems = remember(filteredGeoGroupItems, unreadChannelMessages, unreadOnly) {
+        if (!unreadOnly) filteredGeoGroupItems
+        else filteredGeoGroupItems.filter { (unreadChannelMessages["geo:${it.second}"] ?: 0) > 0 }
+    }
+    val visibleMyGroupItems = remember(filteredMyGroupItems, unreadChannelMessages, unreadOnly) {
+        if (!unreadOnly) filteredMyGroupItems
+        else filteredMyGroupItems.filter { (unreadChannelMessages["geo:${it.second}"] ?: 0) > 0 }
+    }
+    val visibleContactItems = remember(filteredContactItems, unreadPrivateMessages, unreadOnly) {
+        if (!unreadOnly) filteredContactItems
+        else filteredContactItems.filter { (peerID, _, _) -> peerID in unreadPrivateMessages }
     }
 
     // Pinned conversations (shown in a compact row above the list)
@@ -358,454 +397,586 @@ fun HomeScreen(
 
     // ── Scaffold ──
 
-    Scaffold(
-        topBar = {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(colorScheme.background)
-                    .windowInsetsPadding(WindowInsets.statusBars)
+    val drawerState = rememberDrawerState(DrawerValue.Closed)
+    val scope = rememberCoroutineScope()
+
+    ModalNavigationDrawer(
+        drawerState = drawerState,
+        gesturesEnabled = true,
+        drawerContent = {
+            ModalDrawerSheet(
+                drawerContainerColor = colorScheme.surface,
+                drawerContentColor = colorScheme.onSurface
             ) {
-                Box(
+                MainDrawerContent(
+                    nickname = nickname,
+                    myPeerID = myPeerID,
+                    onProfile = {
+                        scope.launch { drawerState.close() }
+                        showProfileEditor = true
+                    },
+                    onChats = {
+                        scope.launch { drawerState.close() }
+                        selectedTab = HomeTab.Chats
+                    },
+                    onPeople = {
+                        scope.launch { drawerState.close() }
+                        selectedTab = HomeTab.People
+                    },
+                    onCalls = {
+                        scope.launch { drawerState.close() }
+                        selectedTab = HomeTab.Calls
+                    },
+                    onNewGroup = {
+                        scope.launch { drawerState.close() }
+                        showCreateDialog = true
+                    },
+                    onSavedMessages = {
+                        scope.launch { drawerState.close() }
+                        showSavedMessages = true
+                    },
+                    onWifiRoom = {
+                        scope.launch { drawerState.close() }
+                        showWifiDirect = true
+                    },
+                    onSettings = {
+                        scope.launch { drawerState.close() }
+                        onSettingsClick()
+                    }
+                )
+            }
+        }
+    ) {
+        Scaffold(
+            topBar = {
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(64.dp)
-                        .padding(horizontal = 4.dp),
-                    contentAlignment = Alignment.CenterStart
+                        .background(colorScheme.background)
+                        .windowInsetsPadding(WindowInsets.statusBars)
                 ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(64.dp)
+                            .padding(horizontal = 4.dp),
+                        contentAlignment = Alignment.CenterStart
                     ) {
-                        // Left: avatar + title + nickname subtitle
                         Row(
-                            modifier = Modifier
-                                .padding(start = 16.dp, end = 8.dp, top = 2.dp, bottom = 2.dp)
-                                .clip(RoundedCornerShape(24.dp))
-                                .clickable { showProfileEditor = true },
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            OwnProfileAvatar(nickname = nickname, size = 38.dp)
-                            Column {
-                                Text(
-                                    "Vuzol",
-                                    fontSize = 22.sp,
-                                    fontFamily = NunitoFontFamily,
-                                    fontWeight = FontWeight.Bold,
-                                    color = colorScheme.onSurface
-                                )
-                                Text(
-                                    "@${nickname.ifEmpty { myPeerID.take(8) }}",
-                                    fontSize = 12.sp,
-                                    color = colorScheme.onSurface.copy(alpha = 0.5f),
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
-                                )
-                            }
-                        }
-
-                        // Right: refresh + settings
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(4.dp),
-                            modifier = Modifier.padding(end = 8.dp)
-                        ) {
+                            // Left: the menu of Telegram + avatar + title
                             IconButton(
-                                onClick = { showRefreshDialog = true },
+                                onClick = { scope.launch { drawerState.open() } },
                                 modifier = Modifier.size(44.dp)
                             ) {
                                 Icon(
-                                    Icons.Outlined.DeleteForever,
-                                    contentDescription = stringResource(R.string.cd_refresh_account),
-                                    tint = colorScheme.onSurface.copy(alpha = 0.7f),
+                                    Icons.Outlined.Menu,
+                                    contentDescription = stringResource(R.string.cd_open_menu),
+                                    tint = colorScheme.onSurface.copy(alpha = 0.8f),
                                     modifier = Modifier.size(24.dp)
                                 )
                             }
-                            IconButton(
-                                onClick = onSettingsClick,
-                                modifier = Modifier.size(44.dp)
+                            Row(
+                                modifier = Modifier
+                                    .padding(start = 16.dp, end = 8.dp, top = 2.dp, bottom = 2.dp)
+                                    .clip(RoundedCornerShape(24.dp))
+                                    .clickable { showProfileEditor = true },
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(10.dp)
                             ) {
-                                Icon(
-                                    Icons.Outlined.Settings,
-                                    contentDescription = stringResource(R.string.cd_settings),
-                                    tint = colorScheme.onSurface.copy(alpha = 0.7f),
-                                    modifier = Modifier.size(28.dp)
-                                )
-                            }
-                        }
-                    }
-                }
-                HorizontalDivider(
-                    color = colorScheme.outline.copy(alpha = 0.3f)
-                )
-                OutlinedTextField(
-                    value = searchQuery,
-                    onValueChange = { searchQuery = it },
-                    placeholder = {
-                        Text(
-                            stringResource(R.string.search_chats),
-                            style = MaterialTheme.typography.bodyMedium.copy(fontFamily = NunitoFontFamily)
-                        )
-                    },
-                    leadingIcon = {
-                        Icon(Icons.Outlined.Search, contentDescription = null)
-                    },
-                    trailingIcon = {
-                        if (searchQuery.isNotEmpty()) {
-                            IconButton(onClick = { searchQuery = "" }) {
-                                Icon(Icons.Filled.Close, contentDescription = null)
-                            }
-                        }
-                    },
-                    singleLine = true,
-                    shape = RoundedCornerShape(24.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedContainerColor = colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                        unfocusedContainerColor = colorScheme.surfaceVariant.copy(alpha = 0.35f),
-                        focusedBorderColor = colorScheme.primary,
-                        unfocusedBorderColor = Color.Transparent
-                    ),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 12.dp, vertical = 6.dp)
-                )
-            }
-        },
-        bottomBar = {
-            NavigationBar(
-                containerColor = colorScheme.surface,
-                tonalElevation = 3.dp
-            ) {
-                NavigationBarItem(
-                    selected = selectedTab == HomeTab.Chats,
-                    onClick = { selectedTab = HomeTab.Chats },
-                    icon = {
-                        Box {
-                            Icon(Icons.Outlined.Chat, contentDescription = null)
-                            val totalUnread = unreadChannelMessages.values.sum() +
-                                unreadPrivateMessages.size + unreadMeshCount
-                            if (totalUnread > 0) {
-                                Box(
-                                    modifier = Modifier
-                                        .align(Alignment.TopEnd)
-                                        .size(18.dp)
-                                        .background(colorScheme.error, CircleShape),
-                                    contentAlignment = Alignment.Center
-                                ) {
+                                OwnProfileAvatar(nickname = nickname, size = 38.dp)
+                                Column {
                                     Text(
-                                        text = if (totalUnread > 99) "99+" else totalUnread.toString(),
-                                        fontSize = 9.sp,
-                                        color = Color.White
+                                        "Vuzol",
+                                        fontSize = 22.sp,
+                                        fontFamily = NunitoFontFamily,
+                                        fontWeight = FontWeight.Bold,
+                                        color = colorScheme.onSurface
+                                    )
+                                    Text(
+                                        "@${nickname.ifEmpty { myPeerID.take(8) }}",
+                                        fontSize = 12.sp,
+                                        color = colorScheme.onSurface.copy(alpha = 0.5f),
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
+                            }
+
+                            // Right: refresh + settings
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                modifier = Modifier.padding(end = 8.dp)
+                            ) {
+                                IconButton(
+                                    onClick = { showRefreshDialog = true },
+                                    modifier = Modifier.size(44.dp)
+                                ) {
+                                    Icon(
+                                        Icons.Outlined.DeleteForever,
+                                        contentDescription = stringResource(R.string.cd_refresh_account),
+                                        tint = colorScheme.onSurface.copy(alpha = 0.7f),
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                }
+                                IconButton(
+                                    onClick = onSettingsClick,
+                                    modifier = Modifier.size(44.dp)
+                                ) {
+                                    Icon(
+                                        Icons.Outlined.Settings,
+                                        contentDescription = stringResource(R.string.cd_settings),
+                                        tint = colorScheme.onSurface.copy(alpha = 0.7f),
+                                        modifier = Modifier.size(28.dp)
                                     )
                                 }
                             }
                         }
-                    },
-                    label = { Text(stringResource(R.string.nav_chats)) }
-                )
-                NavigationBarItem(
-                    selected = selectedTab == HomeTab.People,
-                    onClick = { selectedTab = HomeTab.People },
-                    icon = { Icon(Icons.Outlined.People, contentDescription = null) },
-                    label = { Text(stringResource(R.string.nav_people)) }
-                )
-                NavigationBarItem(
-                    selected = selectedTab == HomeTab.Settings,
-                    onClick = { selectedTab = HomeTab.Settings },
-                    icon = { Icon(Icons.Outlined.Settings, contentDescription = null) },
-                    label = { Text(stringResource(R.string.nav_settings)) }
-                )
-            }
-        },
-        floatingActionButton = {
-            Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                AnimatedVisibility(fabExpanded, enter = fadeIn() + scaleIn(), exit = fadeOut() + scaleOut()) {
-                    Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        FabMenuItem(stringResource(R.string.fab_scan_qr), Icons.Outlined.QrCodeScanner, colorScheme.tertiaryContainer) {
-                            fabExpanded = false; showQrScanner = true
-                        }
-                        val canAdd = customGroups.size + geographicGroups.size < ChatViewModel.MAX_P2P_GROUPS
-                        FabMenuItem(stringResource(R.string.fab_choose_city), Icons.Outlined.LocationCity,
-                            if (canAdd) colorScheme.tertiaryContainer else colorScheme.surfaceVariant
-                        ) {
-                            if (canAdd) {
-                                fabExpanded = false
-                                geohashPickerLauncher.launch(Intent(context, GeohashPickerActivity::class.java))
+                    }
+                    HorizontalDivider(
+                        color = colorScheme.outline.copy(alpha = 0.3f)
+                    )
+                    OutlinedTextField(
+                        value = searchQuery,
+                        onValueChange = { searchQuery = it },
+                        placeholder = {
+                            Text(
+                                stringResource(R.string.search_chats),
+                                style = MaterialTheme.typography.bodyMedium.copy(fontFamily = NunitoFontFamily)
+                            )
+                        },
+                        leadingIcon = {
+                            Icon(Icons.Outlined.Search, contentDescription = null)
+                        },
+                        trailingIcon = {
+                            if (searchQuery.isNotEmpty()) {
+                                IconButton(onClick = { searchQuery = "" }) {
+                                    Icon(Icons.Filled.Close, contentDescription = null)
+                                }
                             }
-                        }
-                        FabMenuItem(stringResource(R.string.fab_join_group), Icons.Outlined.GroupAdd,
-                            if (canAdd) colorScheme.secondaryContainer else colorScheme.surfaceVariant
-                        ) {
-                            if (canAdd) { fabExpanded = false; showJoinDialog = true }
-                        }
-                        FabMenuItem(stringResource(R.string.fab_create_group), Icons.Outlined.Group,
-                            if (canAdd) colorScheme.primaryContainer else colorScheme.surfaceVariant
-                        ) {
-                            if (canAdd) { fabExpanded = false; showCreateDialog = true }
-                        }
-                        FabMenuItem(stringResource(R.string.wifi_direct_open), Icons.Outlined.Wifi,
-                            colorScheme.tertiaryContainer
-                        ) {
-                            fabExpanded = false; showWifiDirect = true
-                        }
+                        },
+                        singleLine = true,
+                        shape = RoundedCornerShape(24.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedContainerColor = colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                            unfocusedContainerColor = colorScheme.surfaceVariant.copy(alpha = 0.35f),
+                            focusedBorderColor = colorScheme.primary,
+                            unfocusedBorderColor = Color.Transparent
+                        ),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 12.dp, vertical = 6.dp)
+                    )
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 12.dp, vertical = 2.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        FilterChip(
+                            selected = chatFilter == ChatFilter.ALL,
+                            onClick = { chatFilter = ChatFilter.ALL },
+                            label = { Text(stringResource(R.string.chat_filter_all)) }
+                        )
+                        FilterChip(
+                            selected = chatFilter == ChatFilter.UNREAD,
+                            onClick = { chatFilter = ChatFilter.UNREAD },
+                            label = { Text(stringResource(R.string.chat_filter_unread)) }
+                        )
+                        FilterChip(
+                            selected = chatFilter == ChatFilter.GROUPS,
+                            onClick = { chatFilter = ChatFilter.GROUPS },
+                            label = { Text(stringResource(R.string.chat_filter_groups)) }
+                        )
+                        FilterChip(
+                            selected = chatFilter == ChatFilter.PEOPLE,
+                            onClick = { chatFilter = ChatFilter.PEOPLE },
+                            label = { Text(stringResource(R.string.chat_filter_people)) }
+                        )
                     }
                 }
-                FloatingActionButton(onClick = { fabExpanded = !fabExpanded }) {
-                    Icon(
-                        if (fabExpanded) Icons.Filled.Close else Icons.Filled.Add,
-                        contentDescription = null
+            },
+        bottomBar = {
+                NavigationBar(
+                    containerColor = colorScheme.surface,
+                    tonalElevation = 3.dp
+                ) {
+                    NavigationBarItem(
+                        selected = selectedTab == HomeTab.Chats,
+                        onClick = { selectedTab = HomeTab.Chats },
+                        icon = {
+                            Box {
+                                Icon(Icons.Outlined.Chat, contentDescription = null)
+                                val totalUnread = unreadChannelMessages.values.sum() +
+                                    unreadPrivateMessages.size + unreadMeshCount
+                                if (totalUnread > 0) {
+                                    Box(
+                                        modifier = Modifier
+                                            .align(Alignment.TopEnd)
+                                            .size(18.dp)
+                                            .background(colorScheme.error, CircleShape),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            text = if (totalUnread > 99) "99+" else totalUnread.toString(),
+                                            fontSize = 9.sp,
+                                            color = Color.White
+                                        )
+                                    }
+                                }
+                            }
+                        },
+                        label = { Text(stringResource(R.string.nav_chats)) }
+                    )
+                    NavigationBarItem(
+                        selected = selectedTab == HomeTab.People,
+                        onClick = { selectedTab = HomeTab.People },
+                        icon = { Icon(Icons.Outlined.People, contentDescription = null) },
+                        label = { Text(stringResource(R.string.nav_people)) }
+                    )
+                    NavigationBarItem(
+                        selected = selectedTab == HomeTab.Calls,
+                        onClick = { selectedTab = HomeTab.Calls },
+                        icon = { Icon(Icons.Outlined.Call, contentDescription = null) },
+                        label = { Text(stringResource(R.string.nav_calls)) }
+                    )
+                    NavigationBarItem(
+                        selected = selectedTab == HomeTab.Settings,
+                        onClick = { selectedTab = HomeTab.Settings },
+                        icon = { Icon(Icons.Outlined.Settings, contentDescription = null) },
+                        label = { Text(stringResource(R.string.nav_settings)) }
                     )
                 }
-            }
-        }
-    ) { padding ->
-      when (selectedTab) {
-        HomeTab.Chats -> LazyColumn(
-            Modifier.fillMaxSize().padding(padding),
-            contentPadding = PaddingValues(vertical = 8.dp)
-        ) {
-            // ── PINNED ──
-            if (pinnedChats.isNotEmpty()) {
-                item(key = "pinned_row") {
-                    LazyRow(
-                        contentPadding = PaddingValues(horizontal = 12.dp),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                        modifier = Modifier.padding(bottom = 8.dp)
-                    ) {
-                        items(pinnedChats, key = { it.key }) { pinned ->
-                            Surface(
-                                onClick = pinned.onClick,
-                                shape = RoundedCornerShape(18.dp),
-                                color = colorScheme.surfaceVariant,
-                                modifier = Modifier.heightIn(min = 48.dp)
+            },
+            floatingActionButton = {
+                Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    AnimatedVisibility(fabExpanded, enter = fadeIn() + scaleIn(), exit = fadeOut() + scaleOut()) {
+                        Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                            FabMenuItem(stringResource(R.string.fab_scan_qr), Icons.Outlined.QrCodeScanner, colorScheme.tertiaryContainer) {
+                                fabExpanded = false; showQrScanner = true
+                            }
+                            val canAdd = customGroups.size + geographicGroups.size < ChatViewModel.MAX_P2P_GROUPS
+                            FabMenuItem(stringResource(R.string.fab_choose_city), Icons.Outlined.LocationCity,
+                                if (canAdd) colorScheme.tertiaryContainer else colorScheme.surfaceVariant
                             ) {
-                                Row(
-                                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                if (canAdd) {
+                                    fabExpanded = false
+                                    geohashPickerLauncher.launch(Intent(context, GeohashPickerActivity::class.java))
+                                }
+                            }
+                            FabMenuItem(stringResource(R.string.fab_join_group), Icons.Outlined.GroupAdd,
+                                if (canAdd) colorScheme.secondaryContainer else colorScheme.surfaceVariant
+                            ) {
+                                if (canAdd) { fabExpanded = false; showJoinDialog = true }
+                            }
+                            FabMenuItem(stringResource(R.string.fab_create_group), Icons.Outlined.Group,
+                                if (canAdd) colorScheme.primaryContainer else colorScheme.surfaceVariant
+                            ) {
+                                if (canAdd) { fabExpanded = false; showCreateDialog = true }
+                            }
+                            FabMenuItem(stringResource(R.string.wifi_direct_open), Icons.Outlined.Wifi,
+                                colorScheme.tertiaryContainer
+                            ) {
+                                fabExpanded = false; showWifiDirect = true
+                            }
+                        }
+                    }
+                    FloatingActionButton(onClick = { fabExpanded = !fabExpanded }) {
+                        Icon(
+                            if (fabExpanded) Icons.Filled.Close else Icons.Filled.Add,
+                            contentDescription = null
+                        )
+                    }
+                }
+            }
+        ) { padding ->
+          when (selectedTab) {
+            HomeTab.Chats -> LazyColumn(
+                Modifier.fillMaxSize().padding(padding),
+                contentPadding = PaddingValues(vertical = 8.dp)
+            ) {
+                // ── PINNED ──
+                if (pinnedChats.isNotEmpty() && showSpecial) {
+                    item(key = "pinned_row") {
+                        LazyRow(
+                            contentPadding = PaddingValues(horizontal = 12.dp),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            modifier = Modifier.padding(bottom = 8.dp)
+                        ) {
+                            items(pinnedChats, key = { it.key }) { pinned ->
+                                Surface(
+                                    onClick = pinned.onClick,
+                                    shape = RoundedCornerShape(18.dp),
+                                    color = colorScheme.surfaceVariant,
+                                    modifier = Modifier.heightIn(min = 48.dp)
                                 ) {
-                                    Icon(
-                                        pinned.icon,
-                                        contentDescription = null,
-                                        tint = pinned.color,
-                                        modifier = Modifier.size(18.dp)
-                                    )
-                                    Text(
-                                        text = pinned.name,
-                                        style = MaterialTheme.typography.bodyMedium.copy(
-                                            fontFamily = NunitoFontFamily,
-                                            fontWeight = FontWeight.Medium
-                                        ),
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
-                                    if (pinned.unread > 0) {
-                                        Box(
-                                            modifier = Modifier
-                                                .size(8.dp)
-                                                .background(Color(0xFFFF9500), CircleShape)
+                                    Row(
+                                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        Icon(
+                                            pinned.icon,
+                                            contentDescription = null,
+                                            tint = pinned.color,
+                                            modifier = Modifier.size(18.dp)
                                         )
+                                        Text(
+                                            text = pinned.name,
+                                            style = MaterialTheme.typography.bodyMedium.copy(
+                                                fontFamily = NunitoFontFamily,
+                                                fontWeight = FontWeight.Medium
+                                            ),
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                        if (pinned.unread > 0) {
+                                            Box(
+                                                modifier = Modifier
+                                                    .size(8.dp)
+                                                    .background(Color(0xFFFF9500), CircleShape)
+                                            )
+                                        }
                                     }
                                 }
                             }
                         }
                     }
                 }
-            }
 
-            // ── SAVED MESSAGES ──
-            item(key = "saved_messages") {
-                Surface(
-                    onClick = { showSavedMessages = true },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 12.dp, vertical = 4.dp),
-                    shape = RoundedCornerShape(14.dp),
-                    color = colorScheme.surfaceVariant.copy(alpha = 0.4f)
-                ) {
-                    Row(
-                        Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(14.dp)
+                // ── SAVED MESSAGES ──
+                if (showSpecial || showContacts) {
+                item(key = "saved_messages") {
+                    Surface(
+                        onClick = { showSavedMessages = true },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 12.dp, vertical = 4.dp),
+                        shape = RoundedCornerShape(14.dp),
+                        color = colorScheme.surfaceVariant.copy(alpha = 0.4f)
                     ) {
-                        Icon(
-                            Icons.Outlined.Bookmark,
-                            contentDescription = null,
-                            tint = colorScheme.primary,
-                            modifier = Modifier.size(22.dp)
-                        )
-                        Text(
-                            stringResource(R.string.saved_messages_title),
-                            style = MaterialTheme.typography.bodyLarge.copy(
-                                fontFamily = NunitoFontFamily,
-                                fontWeight = FontWeight.Medium
+                        Row(
+                            Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(14.dp)
+                        ) {
+                            Icon(
+                                Icons.Outlined.Bookmark,
+                                contentDescription = null,
+                                tint = colorScheme.primary,
+                                modifier = Modifier.size(22.dp)
                             )
+                            Text(
+                                stringResource(R.string.saved_messages_title),
+                                style = MaterialTheme.typography.bodyLarge.copy(
+                                    fontFamily = NunitoFontFamily,
+                                    fontWeight = FontWeight.Medium
+                                )
+                            )
+                        }
+                    }
+                }
+                }
+
+                // ── NEARBY ──
+                if (showSpecial) {
+                item(key = "nearby_header") { SectionHeader(stringResource(R.string.section_nearby)) }
+
+                item(key = "mesh") {
+                    val meshPeerCount = connectedPeers.size
+                    val meshConnectionData = ConnectionDisplayData.ChannelConnection(
+                        stage = when {
+                            meshPeerCount > 0 -> ConnectionDisplayData.ChannelStage.CONNECTED
+                            isConnected -> ConnectionDisplayData.ChannelStage.SEARCHING
+                            else -> ConnectionDisplayData.ChannelStage.SEARCHING
+                        },
+                        peerCount = meshPeerCount
+                    )
+                    GroupRow(
+                        name = "Bluetooth",
+                        lastMessage = messages.lastOrNull(),
+                        avatarColor = extended.electricCyan,
+                        icon = Icons.Outlined.Hub,
+                        myPeerID = myPeerID,
+                        myNickname = nickname,
+                        unreadCount = unreadMeshCount,
+                        connectionData = meshConnectionData,
+                        onClick = {
+                            if (!meshIntroPrefs.getBoolean("dismissed", false)) {
+                                showMeshIntroDialog = true
+                            } else {
+                                chatViewModel.navigateToMesh(); onGroupSelected()
+                            }
+                        },
+                        onLongPress = { actionTarget = ActionTarget("mesh", "mesh", "Bluetooth") }
+                    )
+                }
+
+                item(key = "geo") {
+                    val ready = geoChannel != null
+                    val pulse = rememberInfiniteTransition(label = "geo_pulse")
+                    val alpha by pulse.animateFloat(
+                        1f, 0.3f,
+                        infiniteRepeatable(tween(800), RepeatMode.Reverse),
+                        label = "geo_alpha"
+                    )
+                    val geoDisplayName = if (ready) (geoName ?: geoChannel!!.displayName) else "Locating..."
+                    val geoLastMsg = if (ready) channelMessages["geo:${geoChannel!!.geohash}"]?.lastOrNull() else null
+                    GroupRow(
+                        name = geoDisplayName,
+                        lastMessage = geoLastMsg,
+                        avatarColor = extended.electricCyan,
+                        icon = Icons.Outlined.LocationOn,
+                        myPeerID = myPeerID,
+                        myNickname = nickname,
+                        unreadCount = if (ready) (unreadChannelMessages["geo:${geoChannel!!.geohash}"] ?: 0) else 0,
+                        connectionData = if (ready) geohashConnectionData(geoChannel!!.geohash) else null,
+                        rowAlpha = if (ready) 1f else alpha,
+                        onClick = {
+                            if (ready) {
+                                chatViewModel.navigateToLocationChannel(ChannelID.Location(geoChannel!!))
+                                onGroupSelected()
+                            }
+                        },
+                        onLongPress = if (ready) {{ actionTarget = ActionTarget("location", geoChannel!!.geohash, geoDisplayName) }} else null
+                    )
+                }
+                }
+
+                // ── OFFLINE ROOM (WiFi Direct or local network) ──
+                val room = wifiRoom
+                if (room != null && showGroups) {
+                    item(key = "wifi_room") {
+                        val roomName = stringResource(R.string.wifi_direct_open) + " · " + room.code
+                        val roomLastMsg = wifiRoomMessages.lastOrNull()
+                        GroupRow(
+                            name = roomName,
+                            lastMessage = null,
+                            previewText = roomLastMsg?.let { msg ->
+                                if (msg.text.isNotBlank()) msg.text else msg.fileName ?: ""
+                            },
+                            previewTimeMs = roomLastMsg?.timestamp,
+                            avatarColor = extended.electricCyan,
+                            icon = Icons.Outlined.Wifi,
+                            myPeerID = myPeerID,
+                            myNickname = nickname,
+                            unreadCount = 0,
+                            connectionData = com.roman.zemzeme.ui.connectioninfo.ConnectionDisplayData.ChannelConnection(
+                                stage = if (wifiRoomActive != null) {
+                                    com.roman.zemzeme.ui.connectioninfo.ConnectionDisplayData.ChannelStage.CONNECTED
+                                } else {
+                                    com.roman.zemzeme.ui.connectioninfo.ConnectionDisplayData.ChannelStage.SEARCHING
+                                },
+                                peerCount = wifiRoomPeers
+                            ),
+                            onClick = { showWifiDirect = true },
+                            onLongPress = { actionTarget = ActionTarget("wifi", room.code, roomName) }
                         )
                     }
                 }
-            }
 
-            // ── NEARBY ──
-            item(key = "nearby_header") { SectionHeader(stringResource(R.string.section_nearby)) }
+                // ── GEOGRAPHIC GROUPS ──
+                if (showGroups && visibleGeoGroupItems.isNotEmpty()) {
+                    item(key = "geogroups_header") { SectionHeader(stringResource(R.string.section_geographic_groups)) }
 
-            item(key = "mesh") {
-                val meshPeerCount = connectedPeers.size
-                val meshConnectionData = ConnectionDisplayData.ChannelConnection(
-                    stage = when {
-                        meshPeerCount > 0 -> ConnectionDisplayData.ChannelStage.CONNECTED
-                        isConnected -> ConnectionDisplayData.ChannelStage.SEARCHING
-                        else -> ConnectionDisplayData.ChannelStage.SEARCHING
-                    },
-                    peerCount = meshPeerCount
-                )
-                GroupRow(
-                    name = "Bluetooth",
-                    lastMessage = messages.lastOrNull(),
-                    avatarColor = extended.electricCyan,
-                    icon = Icons.Outlined.Hub,
-                    myPeerID = myPeerID,
-                    myNickname = nickname,
-                    unreadCount = unreadMeshCount,
-                    connectionData = meshConnectionData,
-                    onClick = {
-                        if (!meshIntroPrefs.getBoolean("dismissed", false)) {
-                            showMeshIntroDialog = true
-                        } else {
-                            chatViewModel.navigateToMesh(); onGroupSelected()
-                        }
-                    },
-                    onLongPress = { actionTarget = ActionTarget("mesh", "mesh", "Bluetooth") }
-                )
-            }
-
-            item(key = "geo") {
-                val ready = geoChannel != null
-                val pulse = rememberInfiniteTransition(label = "geo_pulse")
-                val alpha by pulse.animateFloat(
-                    1f, 0.3f,
-                    infiniteRepeatable(tween(800), RepeatMode.Reverse),
-                    label = "geo_alpha"
-                )
-                val geoDisplayName = if (ready) (geoName ?: geoChannel!!.displayName) else "Locating..."
-                val geoLastMsg = if (ready) channelMessages["geo:${geoChannel!!.geohash}"]?.lastOrNull() else null
-                GroupRow(
-                    name = geoDisplayName,
-                    lastMessage = geoLastMsg,
-                    avatarColor = extended.electricCyan,
-                    icon = Icons.Outlined.LocationOn,
-                    myPeerID = myPeerID,
-                    myNickname = nickname,
-                    unreadCount = if (ready) (unreadChannelMessages["geo:${geoChannel!!.geohash}"] ?: 0) else 0,
-                    connectionData = if (ready) geohashConnectionData(geoChannel!!.geohash) else null,
-                    rowAlpha = if (ready) 1f else alpha,
-                    onClick = {
-                        if (ready) {
-                            chatViewModel.navigateToLocationChannel(ChannelID.Location(geoChannel!!))
-                            onGroupSelected()
-                        }
-                    },
-                    onLongPress = if (ready) {{ actionTarget = ActionTarget("location", geoChannel!!.geohash, geoDisplayName) }} else null
-                )
-            }
-
-            // ── GEOGRAPHIC GROUPS ──
-            if (filteredGeoGroupItems.isNotEmpty()) {
-                item(key = "geogroups_header") { SectionHeader(stringResource(R.string.section_geographic_groups)) }
-
-                items(filteredGeoGroupItems, key = { "geo_${it.second}" }) { (_, key, _) ->
-                    val nick = groupNicknames[key]
-                    val display = nick ?: key
-                    val groupLastMsg = channelMessages["geo:$key"]?.lastOrNull()
-                    GroupRow(
-                        name = display,
-                        lastMessage = groupLastMsg,
-                        avatarColor = extended.solarOrange,
-                        icon = Icons.Outlined.Map,
-                        myPeerID = myPeerID,
-                        myNickname = nickname,
-                        unreadCount = unreadChannelMessages["geo:$key"] ?: 0,
-                        connectionData = geohashConnectionData(key),
-                        onClick = { chatViewModel.navigateToGeohashGroup(key); onGroupSelected() },
-                        onLongPress = { actionTarget = ActionTarget("geographic", key, display) }
-                    )
+                    items(visibleGeoGroupItems, key = { "geo_${it.second}" }) { (_, key, _) ->
+                        val nick = groupNicknames[key]
+                        val display = nick ?: key
+                        val groupLastMsg = channelMessages["geo:$key"]?.lastOrNull()
+                        GroupRow(
+                            name = display,
+                            lastMessage = groupLastMsg,
+                            avatarColor = extended.solarOrange,
+                            icon = Icons.Outlined.Map,
+                            myPeerID = myPeerID,
+                            myNickname = nickname,
+                            unreadCount = unreadChannelMessages["geo:$key"] ?: 0,
+                            connectionData = geohashConnectionData(key),
+                            onClick = { chatViewModel.navigateToGeohashGroup(key); onGroupSelected() },
+                            onLongPress = { actionTarget = ActionTarget("geographic", key, display) }
+                        )
+                    }
                 }
-            }
 
-            // ── MY GROUPS ──
-            if (filteredMyGroupItems.isNotEmpty()) {
-                item(key = "mygroups_header") { SectionHeader(stringResource(R.string.section_my_groups)) }
+                // ── MY GROUPS ──
+                if (showGroups && visibleMyGroupItems.isNotEmpty()) {
+                    item(key = "mygroups_header") { SectionHeader(stringResource(R.string.section_my_groups)) }
 
-                items(filteredMyGroupItems, key = { "group_${it.second}" }) { (_, key, _) ->
-                    val nick = groupNicknames[key]
-                    val display = nick ?: key
-                    val groupLastMsg = channelMessages["geo:$key"]?.lastOrNull()
-                    GroupRow(
-                        name = display,
-                        lastMessage = groupLastMsg,
-                        avatarColor = extended.neonPurple,
-                        myPeerID = myPeerID,
-                        myNickname = nickname,
-                        unreadCount = unreadChannelMessages["geo:$key"] ?: 0,
-                        connectionData = geohashConnectionData(key),
-                        onClick = { chatViewModel.navigateToGeohashGroup(key); onGroupSelected() },
-                        onLongPress = { actionTarget = ActionTarget("group", key, display) }
-                    )
+                    items(visibleMyGroupItems, key = { "group_${it.second}" }) { (_, key, _) ->
+                        val nick = groupNicknames[key]
+                        val display = nick ?: key
+                        val groupLastMsg = channelMessages["geo:$key"]?.lastOrNull()
+                        GroupRow(
+                            name = display,
+                            lastMessage = groupLastMsg,
+                            avatarColor = extended.neonPurple,
+                            myPeerID = myPeerID,
+                            myNickname = nickname,
+                            unreadCount = unreadChannelMessages["geo:$key"] ?: 0,
+                            connectionData = geohashConnectionData(key),
+                            onClick = { chatViewModel.navigateToGeohashGroup(key); onGroupSelected() },
+                            onLongPress = { actionTarget = ActionTarget("group", key, display) }
+                        )
+                    }
                 }
-            }
 
-            // ── CONTACTS ──
-            if (filteredContactItems.isNotEmpty()) {
-                item(key = "contacts_header") { SectionHeader(stringResource(R.string.section_contacts)) }
+                // ── CONTACTS ──
+                if (showContacts && visibleContactItems.isNotEmpty()) {
+                    item(key = "contacts_header") { SectionHeader(stringResource(R.string.section_contacts)) }
 
-                items(filteredContactItems, key = { "dm_${it.first}" }) { (peerID, lastMsg, _) ->
-                    val displayName = PeerNameResolver.resolve(
-                        peerId = peerID,
-                        knownNickname = peerNicknames[peerID],
-                        lastMessageSender = lastMsg?.sender
-                    ) ?: "User"
-                    val unread = if (peerID in unreadPrivateMessages) 1 else 0
-                    GroupRow(
-                        name = displayName,
-                        lastMessage = lastMsg,
-                        avatarColor = extended.contactGreen,
-                        myPeerID = myPeerID,
-                        myNickname = nickname,
-                        unreadCount = unread,
-                        onClick = {
-                            chatViewModel.navigateToContact(peerID)
-                            onGroupSelected()
-                        },
-                        onLongPress = { actionTarget = ActionTarget("dm", peerID, displayName) }
-                    )
+                    items(visibleContactItems, key = { "dm_${it.first}" }) { (peerID, lastMsg, _) ->
+                        val displayName = PeerNameResolver.resolve(
+                            peerId = peerID,
+                            knownNickname = peerNicknames[peerID],
+                            lastMessageSender = lastMsg?.sender
+                        ) ?: "User"
+                        val unread = if (peerID in unreadPrivateMessages) 1 else 0
+                        GroupRow(
+                            name = displayName,
+                            lastMessage = lastMsg,
+                            avatarColor = extended.contactGreen,
+                            myPeerID = myPeerID,
+                            myNickname = nickname,
+                            unreadCount = unread,
+                            onClick = {
+                                chatViewModel.navigateToContact(peerID)
+                                onGroupSelected()
+                            },
+                            onLongPress = { actionTarget = ActionTarget("dm", peerID, displayName) }
+                        )
+                    }
                 }
-            }
 
-        }
-        HomeTab.People -> PeopleTabContent(
-            nearby = geohashPeople,
-            contacts = filteredContactItems,
-            peerNicknames = peerNicknames,
-            unreadPrivateMessages = unreadPrivateMessages,
-            myPeerID = myPeerID,
-            nickname = nickname,
-            onOpenChat = { peerID ->
-                chatViewModel.navigateToContact(peerID)
-                onGroupSelected()
-            },
-            onLongPress = { peerID, displayName ->
-                actionTarget = ActionTarget("dm", peerID, displayName)
             }
-        )
-        HomeTab.Settings -> SettingsTabContent(
-            onAboutClick = onSettingsClick,
-            onResetIdentity = { showRefreshDialog = true },
-            nickname = nickname,
-            onNicknameChange = { chatViewModel.setNickname(it) },
-            onOpenProfile = { showProfileEditor = true }
-        )
-      }
+            HomeTab.People -> PeopleTabContent(
+                nearby = geohashPeople,
+                contacts = filteredContactItems,
+                peerNicknames = peerNicknames,
+                unreadPrivateMessages = unreadPrivateMessages,
+                myPeerID = myPeerID,
+                nickname = nickname,
+                onOpenChat = { peerID ->
+                    chatViewModel.navigateToContact(peerID)
+                    onGroupSelected()
+                },
+                onLongPress = { peerID, displayName ->
+                    actionTarget = ActionTarget("dm", peerID, displayName)
+                }
+            )
+            HomeTab.Calls -> CallsTabContent()
+            HomeTab.Settings -> SettingsTabContent(
+                onAboutClick = onSettingsClick,
+                onResetIdentity = { showRefreshDialog = true },
+                nickname = nickname,
+                onNicknameChange = { chatViewModel.setNickname(it) },
+                onOpenProfile = { showProfileEditor = true }
+            )
+          }
+    }
     }
 
     inviteTarget?.let { target ->
@@ -840,7 +1011,11 @@ fun HomeScreen(
                 actionTarget = null
             },
             showDelete = target.type != "mesh" && target.type != "location",
-            deleteLabel = if (target.type == "dm") stringResource(R.string.dialog_delete_chat) else stringResource(R.string.dialog_delete_group),
+            deleteLabel = when (target.type) {
+                "dm" -> stringResource(R.string.dialog_delete_chat)
+                "wifi" -> stringResource(R.string.wifi_direct_leave_room)
+                else -> stringResource(R.string.dialog_delete_group)
+            },
             showRename = target.type == "group",
             onInvite = if (target.type == "group") {{
                 inviteTarget = target
@@ -870,7 +1045,11 @@ fun HomeScreen(
     if (pendingAction == PendingAction.DELETE && pendingActionTarget != null) {
         val target = pendingActionTarget!!
         ConfirmationDialog(
-            title = if (target.type == "dm") stringResource(R.string.dialog_delete_chat) else stringResource(R.string.dialog_delete_group),
+            title = when (target.type) {
+                "dm" -> stringResource(R.string.dialog_delete_chat)
+                "wifi" -> stringResource(R.string.wifi_direct_leave_room)
+                else -> stringResource(R.string.dialog_delete_group)
+            },
             body = stringResource(R.string.dialog_delete_confirm_body, target.displayName),
             confirmLabel = stringResource(R.string.action_delete),
             confirmColor = MaterialTheme.colorScheme.error,
@@ -879,6 +1058,7 @@ fun HomeScreen(
                     "group" -> chatViewModel.removeGroup(target.key)
                     "geographic" -> chatViewModel.removeGeographicGroup(target.key)
                     "dm" -> chatViewModel.removeContact(target.key)
+                    "wifi" -> com.roman.zemzeme.wifi.WifiRoomManager.leave(context)
                 }
                 pendingAction = null
                 pendingActionTarget = null
@@ -1103,6 +1283,8 @@ private fun FabMenuItem(
 private fun GroupRow(
     name: String,
     lastMessage: ZemzemeMessage?,
+    previewText: String? = null,
+    previewTimeMs: Long? = null,
     avatarColor: Color,
     icon: ImageVector? = null,
     myPeerID: String = "",
@@ -1127,73 +1309,70 @@ private fun GroupRow(
         color = Color.Transparent
     ) {
         Row(
-            Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+            Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(14.dp)
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // Avatar with unread badge on corner
-            Box(modifier = Modifier.size(48.dp)) {
-                Box(
-                    Modifier.size(48.dp).clip(CircleShape).background(avatarColor.copy(alpha = 0.2f)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    if (icon != null) {
-                        Icon(
-                            icon,
-                            contentDescription = null,
-                            tint = avatarColor,
-                            modifier = Modifier.size(24.dp)
+            // The round avatar of Telegram
+            Box(
+                modifier = Modifier
+                    .size(52.dp)
+                    .clip(CircleShape)
+                    .background(avatarColor),
+                contentAlignment = Alignment.Center
+            ) {
+                if (icon != null) {
+                    Icon(
+                        icon,
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.size(26.dp)
+                    )
+                } else {
+                    Text(
+                        name.firstOrNull()?.uppercase() ?: "#",
+                        style = MaterialTheme.typography.titleLarge.copy(
+                            fontFamily = NunitoFontFamily,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
                         )
-                    } else {
+                    )
+                }
+            }
+
+            // Name with the time on the right, then the last message
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        name,
+                        style = MaterialTheme.typography.bodyLarge.copy(
+                            fontFamily = NunitoFontFamily, fontWeight = FontWeight.Bold
+                        ),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f)
+                    )
+                    val rowTime = lastMessage?.timestamp ?: previewTimeMs
+                    if (rowTime != null) {
                         Text(
-                            name.firstOrNull()?.uppercase() ?: "#",
-                            style = MaterialTheme.typography.titleMedium.copy(
-                                fontFamily = NunitoFontFamily,
-                                fontWeight = FontWeight.Bold,
-                                color = avatarColor
+                            timeFormat.format(rowTime),
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                fontFamily = NunitoFontFamily, color = extended.textTertiary
                             )
                         )
                     }
                 }
-                if (unreadCount > 0) {
-                    val displayCount = if (unreadCount > 99) "99" else unreadCount.toString()
-                    val badgeSize = 20.dp
-                    Box(
-                        modifier = Modifier
-                            .align(Alignment.TopEnd)
-                            .offset(x = 4.dp, y = (-2).dp)
-                            .defaultMinSize(minWidth = badgeSize, minHeight = badgeSize)
-                            .background(MaterialTheme.colorScheme.primary, CircleShape)
-                            .padding(2.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = displayCount,
-                            style = MaterialTheme.typography.labelSmall.copy(
-                                fontSize = 9.sp,
-                                fontWeight = FontWeight.Bold,
-                                fontFamily = NunitoFontFamily,
-                                lineHeight = 10.sp
-                            ),
-                            color = Color.White
-                        )
-                    }
-                }
-            }
-
-            // Name + connection status + last message
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(
-                    name,
-                    style = MaterialTheme.typography.bodyLarge.copy(
-                        fontFamily = NunitoFontFamily, fontWeight = FontWeight.Bold
-                    ),
-                    maxLines = 1, overflow = TextOverflow.Ellipsis
-                )
                 if (connectionData != null) {
                     ConnectionIndicatorFactory.ChannelIndicator(data = connectionData)
                 }
-                if (lastMessage != null) {
+                if (lastMessage == null && previewText != null) {
+                    Text(
+                        previewText,
+                        style = MaterialTheme.typography.bodySmall.copy(color = extended.textSecondary),
+                        maxLines = 1, overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f)
+                    )
+                } else if (lastMessage != null) {
                     val isMe = (myPeerID.isNotEmpty() && lastMessage.senderPeerID == myPeerID) ||
                         (myNickname.isNotEmpty() && lastMessage.sender == myNickname)
                     val prefix = if (isMe) "You" else {
@@ -1205,20 +1384,62 @@ private fun GroupRow(
                         } else sender
                     }
                     Row(
-                        verticalAlignment = Alignment.CenterVertically
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
+                        if (isMe) {
+                            Icon(
+                                Icons.Filled.Check,
+                                contentDescription = null,
+                                tint = extended.textTertiary,
+                                modifier = Modifier.size(14.dp)
+                            )
+                        }
                         Text(
                             "$prefix: ${lastMessage.content}",
                             style = MaterialTheme.typography.bodySmall.copy(color = extended.textSecondary),
                             maxLines = 1, overflow = TextOverflow.Ellipsis,
                             modifier = Modifier.weight(1f)
                         )
-                        Spacer(modifier = Modifier.width(8.dp))
+                        if (unreadCount > 0) {
+                            val displayCount = if (unreadCount > 99) "99+" else unreadCount.toString()
+                            Box(
+                                modifier = Modifier
+                                    .defaultMinSize(minWidth = 20.dp, minHeight = 20.dp)
+                                    .background(MaterialTheme.colorScheme.primary, CircleShape)
+                                    .padding(horizontal = 5.dp, vertical = 1.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = displayCount,
+                                    style = MaterialTheme.typography.labelSmall.copy(
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        fontFamily = NunitoFontFamily,
+                                        lineHeight = 12.sp
+                                    ),
+                                    color = Color.White
+                                )
+                            }
+                        }
+                    }
+                } else if (unreadCount > 0) {
+                    Box(
+                        modifier = Modifier
+                            .defaultMinSize(minWidth = 20.dp, minHeight = 20.dp)
+                            .background(MaterialTheme.colorScheme.primary, CircleShape)
+                            .padding(horizontal = 5.dp, vertical = 1.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
                         Text(
-                            timeFormat.format(lastMessage.timestamp),
+                            text = if (unreadCount > 99) "99+" else unreadCount.toString(),
                             style = MaterialTheme.typography.labelSmall.copy(
-                                fontFamily = NunitoFontFamily, color = extended.textTertiary
-                            )
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                fontFamily = NunitoFontFamily,
+                                lineHeight = 12.sp
+                            ),
+                            color = Color.White
                         )
                     }
                 }
@@ -1612,6 +1833,205 @@ private fun RenameGroupDialog(currentName: String, onDismiss: () -> Unit, onConf
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } }
     )
+}
+
+// ══════════════════════════════════════════════
+// The menu of Telegram
+// ══════════════════════════════════════════════
+
+@Composable
+private fun MainDrawerContent(
+    nickname: String,
+    myPeerID: String,
+    onProfile: () -> Unit,
+    onChats: () -> Unit,
+    onPeople: () -> Unit,
+    onCalls: () -> Unit,
+    onNewGroup: () -> Unit,
+    onSavedMessages: () -> Unit,
+    onWifiRoom: () -> Unit,
+    onSettings: () -> Unit
+) {
+    val colorScheme = MaterialTheme.colorScheme
+    val extended = MaterialTheme.extendedColors
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp)
+            .windowInsetsPadding(WindowInsets.statusBars)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(16.dp))
+                .clickable(onClick = onProfile)
+                .padding(horizontal = 4.dp, vertical = 16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            OwnProfileAvatar(nickname = nickname, size = 48.dp)
+            Column {
+                Text(
+                    nickname.ifEmpty { "Vuzol" },
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = colorScheme.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    "@${nickname.ifEmpty { myPeerID.take(8) }}",
+                    fontSize = 13.sp,
+                    color = extended.textSecondary
+                )
+            }
+        }
+
+        HorizontalDivider(color = extended.borderSubtle)
+
+        DrawerItem(Icons.Outlined.Chat, stringResource(R.string.nav_chats), onChats)
+        DrawerItem(Icons.Outlined.People, stringResource(R.string.nav_people), onPeople)
+        DrawerItem(Icons.Outlined.Call, stringResource(R.string.nav_calls), onCalls)
+        DrawerItem(Icons.Outlined.GroupAdd, stringResource(R.string.fab_create_group), onNewGroup)
+        DrawerItem(Icons.Outlined.Bookmark, stringResource(R.string.saved_messages_title), onSavedMessages)
+        DrawerItem(Icons.Outlined.Wifi, stringResource(R.string.wifi_direct_open), onWifiRoom)
+
+        HorizontalDivider(color = extended.borderSubtle)
+
+        DrawerItem(Icons.Outlined.Settings, stringResource(R.string.nav_settings), onSettings)
+
+        Spacer(modifier = Modifier.weight(1f))
+
+        Text(
+            "Vuzol ${BuildConfig.VERSION_NAME}",
+            fontSize = 12.sp,
+            color = extended.textTertiary,
+            modifier = Modifier.padding(vertical = 16.dp)
+        )
+    }
+}
+
+@Composable
+private fun DrawerItem(icon: ImageVector, label: String, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 8.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        Icon(
+            icon,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.size(22.dp)
+        )
+        Text(
+            label,
+            fontSize = 15.sp,
+            color = MaterialTheme.colorScheme.onSurface
+        )
+    }
+}
+
+// ══════════════════════════════════════════════
+// Calls tab
+// ══════════════════════════════════════════════
+
+@Composable
+private fun CallsTabContent() {
+    val entries by CallHistoryStore.entries.collectAsStateWithLifecycle()
+    val extended = MaterialTheme.extendedColors
+    val colorScheme = MaterialTheme.colorScheme
+    val timeFormat = remember { SimpleDateFormat("HH:mm", Locale.getDefault()) }
+    val dateFormat = remember { SimpleDateFormat("dd.MM.yy", Locale.getDefault()) }
+
+    if (entries.isEmpty()) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(32.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Icon(
+                Icons.Outlined.Call,
+                contentDescription = null,
+                tint = extended.textTertiary,
+                modifier = Modifier.size(48.dp)
+            )
+            Text(
+                stringResource(R.string.calls_empty),
+                fontSize = 14.sp,
+                color = extended.textSecondary,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(top = 12.dp)
+            )
+        }
+        return
+    }
+
+    LazyColumn(Modifier.fillMaxSize()) {
+        items(entries, key = { it.id }) { entry ->
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 14.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(14.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clip(CircleShape)
+                        .background(
+                            if (entry.missed) colorScheme.error.copy(alpha = 0.15f)
+                            else colorScheme.primary.copy(alpha = 0.15f)
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = when {
+                            entry.missed -> Icons.Outlined.CallMissed
+                            entry.outgoing -> Icons.Outlined.CallMade
+                            else -> Icons.Outlined.CallReceived
+                        },
+                        contentDescription = null,
+                        tint = if (entry.missed) colorScheme.error else colorScheme.primary,
+                        modifier = Modifier.size(22.dp)
+                    )
+                }
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        entry.name,
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = if (entry.missed) colorScheme.error else colorScheme.onSurface,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    val kind = when {
+                        entry.missed -> stringResource(R.string.calls_missed)
+                        entry.outgoing -> stringResource(R.string.calls_outgoing)
+                        else -> stringResource(R.string.calls_incoming)
+                    }
+                    Text(
+                        text = if (entry.durationSeconds > 0) "$kind · ${entry.durationSeconds}s" else kind,
+                        fontSize = 12.sp,
+                        color = extended.textSecondary
+                    )
+                }
+                Text(
+                    text = "${dateFormat.format(entry.timestamp)} ${timeFormat.format(entry.timestamp)}",
+                    fontSize = 11.sp,
+                    color = extended.textTertiary
+                )
+            }
+        }
+    }
 }
 
 // ══════════════════════════════════════════════

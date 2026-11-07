@@ -286,6 +286,23 @@ class DataManager(private val context: Context) {
         prefs.edit().remove("group_nick_$geohash").apply()
     }
 
+    // MARK: - Active Channels Management
+
+    /** Channels where the user wrote something: they stay in the chat list. */
+    fun saveActiveChannels(channels: Set<String>) {
+        prefs.edit().putStringSet("active_channels", channels).apply()
+    }
+
+    fun loadActiveChannels(): Set<String> {
+        return prefs.getStringSet("active_channels", emptySet()) ?: emptySet()
+    }
+
+    fun removeActiveChannel(geohash: String) {
+        val channels = loadActiveChannels().toMutableSet()
+        channels.remove(geohash)
+        saveActiveChannels(channels)
+    }
+
     // MARK: - Geographic Groups Management
 
     fun saveGeographicGroups(groups: Set<String>) {

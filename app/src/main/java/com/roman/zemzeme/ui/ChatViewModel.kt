@@ -425,6 +425,7 @@ class ChatViewModel(
         // Load custom groups, geographic groups, nicknames, and contacts
         state.setCustomGroups(dataManager.loadCustomGroups())
         state.setGeographicGroups(dataManager.loadGeographicGroups())
+        state.setActiveChannels(dataManager.loadActiveChannels())
         state.setGroupNicknames(dataManager.loadAllGroupNicknames())
         state.setContacts(dataManager.loadContacts())
         // Restore saved contact nicknames into peerNicknames so they show on HomeScreen
@@ -885,6 +886,8 @@ class ChatViewModel(
                     content = content
                 )
                 geohashViewModel.sendGeohashMessage(content, selectedLocationChannel.channel, meshService.myPeerID, state.getNicknameValue())
+                // The channel stays in the chat list even after the user leaves it
+                rememberActiveChannel(selectedLocationChannel.channel.geohash)
             } else {
                 // Send public/channel message via mesh
                 val message = ZemzemeMessage(
@@ -1916,6 +1919,50 @@ class ChatViewModel(
         }
         val channel = com.roman.zemzeme.geohash.GeohashChannel(level, geohash)
         selectLocationChannel(com.roman.zemzeme.geohash.ChannelID.Location(channel))
+    }
+
+    /**
+     * Keeps a channel in the chat list: the user wrote there, so it must not
+     * disappear when the chat is closed.
+     */
+    fun rememberActiveChannel(geohash: String) {
+        val key = geohash.lowercase()
+        if (key.isEmpty()) return
+        val channels = state.getActiveChannelsValue().toMutableSet()
+        if (!channels.add(key)) return
+        dataManager.saveActiveChannels(channels)
+        state.setActiveChannels(channels)
+    }
+
+    fun forgetActiveChannel(geohash: String) {
+        val key = geohash.lowercase()
+        val channels = state.getActiveChannelsValue().toMutableSet()
+        if (!channels.remove(key)) return
+        dataManager.saveActiveChannels(channels)
+        state.setActiveChannels(channels)
+    }
+
+    /**
+     * Opens a channel from a link inside a message.
+     *
+     * A short token is the name of a channel ("#gcnk"), a long one is a
+     * precise location. Named channels keep their name in the header instead
+     * of the name of the place they are hashed into.
+     */
+    fun openChannelFromLink(token: String) {
+        val key = token.trim().lowercase()
+        if (key.isEmpty()) return
+        if (key.length >= 7) {
+            // A precise geohash: the header shows the name of the place
+            navigateToGeohashGroup(key)
+            return
+        }
+        // A named channel: remember the name so the header shows it
+        if (!state.getGroupNicknamesValue().containsKey(key)) {
+            renameGroup(key, key)
+        }
+        rememberActiveChannel(key)
+        navigateToGeohashGroup(key)
     }
 
     fun navigateToPrivateChat(peerID: String) {

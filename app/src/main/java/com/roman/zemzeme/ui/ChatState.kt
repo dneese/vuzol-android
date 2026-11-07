@@ -157,6 +157,10 @@ class ChatState(
     private val _geographicGroups = MutableStateFlow<Set<String>>(emptySet())
     val geographicGroups: StateFlow<Set<String>> = _geographicGroups.asStateFlow()
 
+    // Channels where the user wrote something: they stay in the chat list
+    private val _activeChannels = MutableStateFlow<Set<String>>(emptySet())
+    val activeChannels: StateFlow<Set<String>> = _activeChannels.asStateFlow()
+
     // Group nicknames (geohash → local nickname)
     private val _groupNicknames = MutableStateFlow<Map<String, String>>(emptyMap())
     val groupNicknames: StateFlow<Map<String, String>> = _groupNicknames.asStateFlow()
@@ -220,6 +224,7 @@ class ChatState(
     fun getGeohashParticipantCountsValue() = _geohashParticipantCounts.value
     fun getCustomGroupsValue() = _customGroups.value
     fun getGeographicGroupsValue() = _geographicGroups.value
+    fun getActiveChannelsValue() = _activeChannels.value
     fun getGroupNicknamesValue() = _groupNicknames.value
     fun getUnreadMeshCountValue() = _unreadMeshCount.value
     fun getContactsValue() = _contacts.value
@@ -422,6 +427,10 @@ class ChatState(
 
     fun setGeographicGroups(groups: Set<String>) {
         _geographicGroups.value = groups
+    }
+
+    fun setActiveChannels(channels: Set<String>) {
+        _activeChannels.value = channels
     }
 
     fun setGroupNicknames(nicknames: Map<String, String>) {

@@ -455,6 +455,10 @@ fun ChatScreen(viewModel: ChatViewModel, isBluetoothEnabled: Boolean = true, onB
                 onDetails = { msg -> detailsMessage = msg },
                 onPin = handleMessagePin,
                 onBlock = handleMessageBlock,
+                onGeohashLink = { token ->
+                    // A channel named in the message: it keeps its own name
+                    viewModel.openChannelFromLink(token)
+                },
                 onVuzolLink = { code ->
                     val joined = viewModel.joinGroupByCode(code)
                     viewModel.navigateToGeohashGroup(code)
@@ -923,7 +927,7 @@ fun ChatScreen(viewModel: ChatViewModel, isBluetoothEnabled: Boolean = true, onB
         val actionIsSelf = actionMessage.sender == nickname ||
             actionMessage.sender.startsWith("$nickname#") ||
             actionMessage.senderPeerID == viewModel.meshService.myPeerID
-        MessageActionsSheet(
+        MessageActionsMenu(
             message = actionMessage,
             authorName = actionBaseName + actionSuffix,
             authorColor = getPeerColor(actionMessage, colorScheme.background.red + colorScheme.background.green + colorScheme.background.blue < 1.5f),

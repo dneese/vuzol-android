@@ -44,10 +44,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -59,14 +57,15 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.core.content.FileProvider
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberPermissionState
 import com.roman.zemzeme.R
-import com.roman.zemzeme.wifi.LanTransport
 import com.roman.zemzeme.wifi.RoomMessage
 import com.roman.zemzeme.wifi.RoomProtocol
 import com.roman.zemzeme.wifi.WifiDirectTransport
+import com.roman.zemzeme.wifi.WifiRoomManager
 import kotlinx.coroutines.delay
 import java.io.File
 import java.text.SimpleDateFormat
@@ -81,6 +80,9 @@ import java.util.Locale
  *
  * The local network mode works with any WiFi router, the phones of the room
  * find each other by themselves and talk over TCP.
+ *
+ * The room is remembered, so the code and the password are typed only once.
+ * The room stays in the chat list until the user leaves it.
  */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalPermissionsApi::class)
 @Composable
@@ -92,26 +94,24 @@ fun WifiDirectSheet(
     if (!isPresented) return
 
     val context = LocalContext.current
-    val scope = rememberCoroutineScope()
-    val transport = remember { WifiDirectTransport(context, scope) }
-    val lanTransport = remember { LanTransport(context, scope) }
-    val messages = remember { mutableStateListOf<RoomMessage>() }
-    var lanMode by remember { mutableStateOf(false) }
-    var roomCode by remember { mutableStateOf("") }
-    var password by remember { mutableStateOf("") }
-    var started by remember { mutableStateOf(false) }
+    val manager = WifiRoomManager
+    val savedRoom by manager.savedRoom.collectAsStateWithLifecycle()
+    val messages by manager.messages.collectAsStateWithLifecycle()
+    val status by manager.status.collectAsStateWithLifecycle()
+    val peers by manager.peers.collectAsStateWithLifecycle()
+    val activeMode by manager.activeMode.collectAsStateWithLifecycle()
+
+    var lanMode by remember { mutableStateOf(WifiRoomManager.savedRoom.value?.mode == WifiRoomManager.Mode.LAN) }
+    var roomCode by remember { mutableStateOf(WifiRoomManager.savedCode()) }
+    var password by remember { mutableStateOf(WifiRoomManager.savedRoom.value?.password ?: "") }
+    var started by remember { mutableStateOf(activeMode != null) }
     var input by remember { mutableStateOf("") }
-    var status by remember { mutableStateOf(transport.status) }
-    var peers by remember { mutableStateOf(0) }
     var incomingCall by remember { mutableStateOf<RoomProtocol.CallSignal?>(null) }
     var activeCall by remember { mutableStateOf<RoomProtocol.CallSignal?>(null) }
     var callSeconds by remember { mutableStateOf(0) }
-    var callTargets by remember { mutableStateOf<List<LanTransport.PeerInfo>>(emptyList()) }
+    var callTargets by remember { mutableStateOf<List<com.roman.zemzeme.wifi.LanTransport.PeerInfo>>(emptyList()) }
     val timeFormatter = remember { SimpleDateFormat("HH:mm", Locale.getDefault()) }
     val supported = WifiDirectTransport.isSupported
-
-    val micPermission = rememberPermissionState(Manifest.permission.RECORD_AUDIO)
-    val micGranted = micPermission.status.isGranted
 
     val nearbyPermission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
         Manifest.permission.NEARBY_WIFI_DEVICES
@@ -121,26 +121,33 @@ fun WifiDirectSheet(
     val permissionState = rememberPermissionState(nearbyPermission)
     val permissionGranted = permissionState.status.isGranted
 
+    val micPermission = rememberPermissionState(Manifest.permission.RECORD_AUDIO)
+    val micGranted = micPermission.status.isGranted
+
     val filePicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument()
     ) { uri ->
         if (uri != null) {
-            lanTransport.sendFile(uri, myNickname ?: "me")
+            manager.sendFile(uri, myNickname ?: "me")
         }
     }
 
-    DisposableEffect(isPresented) {
-        transport.onMessage = { message ->
-            messages.add(message)
+    LaunchedEffect(isPresented) {
+        if (isPresented) {
+            val room = manager.savedRoom.value
+            if (room != null) {
+                roomCode = room.code
+                password = room.password
+                lanMode = room.mode == WifiRoomManager.Mode.LAN
+            }
+            if (activeMode == null && room != null) {
+                manager.rejoin(context, myNickname ?: "me")
+            }
         }
-        transport.onStatusChanged = { value -> status = value }
-        transport.onPeersChanged = { value -> peers = value }
-        lanTransport.onMessage = { message ->
-            messages.add(message)
-        }
-        lanTransport.onStatusChanged = { value -> status = value }
-        lanTransport.onPeersChanged = { value -> peers = value }
-        lanTransport.onCallSignal = { signal ->
+    }
+
+    LaunchedEffect(Unit) {
+        manager.callSignals.collect { signal ->
             when (signal.action) {
                 "ring" -> incomingCall = signal
                 "accept" -> activeCall = signal
@@ -152,17 +159,11 @@ fun WifiDirectSheet(
                 else -> Unit
             }
         }
-        onDispose {
-            transport.onMessage = null
-            transport.onStatusChanged = null
-            transport.onPeersChanged = null
-            lanTransport.onMessage = null
-            lanTransport.onStatusChanged = null
-            lanTransport.onPeersChanged = null
-            lanTransport.onCallSignal = null
-            transport.stop()
-            lanTransport.stop()
-        }
+    }
+
+    // The room can be started from the chat list, so the screen follows it
+    LaunchedEffect(activeMode) {
+        if (activeMode != null) started = true
     }
 
     LaunchedEffect(permissionGranted, lanMode) {
@@ -177,6 +178,12 @@ fun WifiDirectSheet(
         while (activeCall != null) {
             delay(1000)
             callSeconds++
+        }
+    }
+
+    DisposableEffect(isPresented) {
+        onDispose {
+            // The room keeps running in the background, only the screen closes
         }
     }
 
@@ -237,7 +244,6 @@ fun WifiDirectSheet(
                         onClick = {
                             if (lanMode) {
                                 lanMode = false
-                                lanTransport.stop()
                                 started = false
                             }
                         },
@@ -248,7 +254,6 @@ fun WifiDirectSheet(
                         onClick = {
                             if (!lanMode) {
                                 lanMode = true
-                                transport.stop()
                                 started = false
                             }
                         },
@@ -294,7 +299,13 @@ fun WifiDirectSheet(
                         if (lanMode) {
                             Button(
                                 onClick = {
-                                    lanTransport.start(roomCode, password.ifBlank { null }, myNickname ?: "me")
+                                    manager.join(
+                                        context,
+                                        roomCode,
+                                        password.ifBlank { null },
+                                        WifiRoomManager.Mode.LAN,
+                                        myNickname ?: "me"
+                                    )
                                     started = true
                                 },
                                 enabled = roomCode.isNotBlank(),
@@ -306,7 +317,13 @@ fun WifiDirectSheet(
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 Button(
                                     onClick = {
-                                        transport.startRoom(roomCode, password.ifBlank { null }, asHost = true)
+                                        manager.join(
+                                            context,
+                                            roomCode,
+                                            password.ifBlank { null },
+                                            WifiRoomManager.Mode.DIRECT,
+                                            myNickname ?: "me"
+                                        )
                                         started = true
                                     },
                                     enabled = roomCode.isNotBlank() && permissionGranted && supported,
@@ -316,7 +333,13 @@ fun WifiDirectSheet(
                                 }
                                 OutlinedButton(
                                     onClick = {
-                                        transport.startRoom(roomCode, password.ifBlank { null }, asHost = false)
+                                        manager.join(
+                                            context,
+                                            roomCode,
+                                            password.ifBlank { null },
+                                            WifiRoomManager.Mode.DIRECT,
+                                            myNickname ?: "me"
+                                        )
                                         started = true
                                     },
                                     enabled = roomCode.isNotBlank() && permissionGranted && supported,
@@ -331,6 +354,18 @@ fun WifiDirectSheet(
                                     fontSize = 12.sp,
                                     color = MaterialTheme.colorScheme.error
                                 )
+                            }
+                        }
+                        if (savedRoom != null) {
+                            TextButton(
+                                onClick = {
+                                    manager.leave(context)
+                                    started = false
+                                    roomCode = ""
+                                    password = ""
+                                }
+                            ) {
+                                Text(stringResource(R.string.wifi_direct_leave_room))
                             }
                         }
                     }
@@ -348,8 +383,7 @@ fun WifiDirectSheet(
                         verticalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
                         items(messages) { message ->
-                            val mine = message.from == transport.localPeerId ||
-                                message.from == lanTransport.localPeerId
+                            val mine = message.from == manager.localPeerId
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = if (mine) Arrangement.End else Arrangement.Start
@@ -413,7 +447,12 @@ fun WifiDirectSheet(
                                     color = MaterialTheme.colorScheme.onPrimaryContainer
                                 )
                                 Text(
-                                    text = String.format(Locale.getDefault(), "%02d:%02d", callSeconds / 60, callSeconds % 60),
+                                    text = String.format(
+                                        Locale.getDefault(),
+                                        "%02d:%02d",
+                                        callSeconds / 60,
+                                        callSeconds % 60
+                                    ),
                                     fontSize = 12.sp,
                                     color = MaterialTheme.colorScheme.onPrimaryContainer
                                 )
@@ -421,7 +460,7 @@ fun WifiDirectSheet(
                             IconButton(onClick = {
                                 activeCall = null
                                 callSeconds = 0
-                                lanTransport.endCall()
+                                manager.endCall()
                             }) {
                                 Icon(
                                     Icons.Filled.CallEnd,
@@ -464,10 +503,10 @@ fun WifiDirectSheet(
                                         micPermission.launchPermissionRequest()
                                         return@IconButton
                                     }
-                                    val targets = lanTransport.peers()
+                                    val targets = manager.peersForCall()
                                     if (targets.isEmpty()) return@IconButton
                                     if (targets.size == 1) {
-                                        lanTransport.startCall(targets.first())
+                                        manager.startCall(targets.first())
                                     } else {
                                         callTargets = targets
                                     }
@@ -494,11 +533,7 @@ fun WifiDirectSheet(
                             onClick = {
                                 val text = input
                                 input = ""
-                                if (lanMode) {
-                                    lanTransport.sendText(text, myNickname ?: "me")
-                                } else {
-                                    transport.sendText(text, transport.localPeerId, myNickname ?: "me")
-                                }
+                                manager.sendText(text, myNickname ?: "me")
                             },
                             enabled = input.isNotBlank()
                         ) {
@@ -518,7 +553,7 @@ fun WifiDirectSheet(
         AlertDialog(
             onDismissRequest = {
                 incomingCall = null
-                lanTransport.declineCall(call.callId)
+                manager.declineCall(call.callId)
             },
             title = { Text(call.nickname) },
             text = { Text(stringResource(R.string.wifi_direct_lan_incoming_call)) },
@@ -528,7 +563,7 @@ fun WifiDirectSheet(
                     if (!micGranted) {
                         micPermission.launchPermissionRequest()
                     } else {
-                        lanTransport.acceptCall(call)
+                        manager.acceptCall(call)
                         activeCall = call
                     }
                 }) {
@@ -538,7 +573,7 @@ fun WifiDirectSheet(
             dismissButton = {
                 TextButton(onClick = {
                     incomingCall = null
-                    lanTransport.declineCall(call.callId)
+                    manager.declineCall(call.callId)
                 }) {
                     Text(stringResource(R.string.wifi_direct_lan_call_decline))
                 }
@@ -555,7 +590,7 @@ fun WifiDirectSheet(
                     callTargets.forEach { peer ->
                         TextButton(onClick = {
                             callTargets = emptyList()
-                            lanTransport.startCall(peer)
+                            manager.startCall(peer)
                         }) {
                             Text(peer.nickname, modifier = Modifier.fillMaxWidth())
                         }

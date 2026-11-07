@@ -8,7 +8,7 @@
 
 <p align="center">
   <a href="../../releases/latest"><img src="https://img.shields.io/badge/Завантажити-APK-00C851?style=for-the-badge&logo=android" alt="Завантажити APK"/></a>
-  <a href="../../releases/latest"><img src="https://img.shields.io/badge/Релізи-v1.7.2-00C851?style=for-the-badge" alt="Останній реліз"/></a>
+  <a href="../../releases/latest"><img src="https://img.shields.io/badge/Релізи-v1.9.0-00C851?style=for-the-badge" alt="Останній реліз"/></a>
   <img src="https://img.shields.io/badge/Android-8.0%2B-3DDC84?style=for-the-badge" alt="Android 8.0+"/>
   <img src="https://img.shields.io/badge/Ліцензія-MIT-blue?style=for-the-badge" alt="MIT License"/>
 </p>

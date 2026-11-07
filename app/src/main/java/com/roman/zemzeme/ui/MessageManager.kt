@@ -395,6 +395,9 @@ class MessageManager(private val state: ChatState) {
             }
             if (changed) state.setChannelMessages(chans)
         }
+        // The persistent store: without this the deleted message comes back
+        // with the next message of the same chat
+        try { com.roman.zemzeme.services.AppStateStore.removeMessage(messageID) } catch (_: Exception) { }
     }
     
     // MARK: - Utility Functions

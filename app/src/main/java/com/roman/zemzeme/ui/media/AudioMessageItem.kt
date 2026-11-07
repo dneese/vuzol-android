@@ -65,7 +65,12 @@ fun AudioMessageItem(
             fontFamily = NunitoFontFamily,
             color = colorScheme.onSurface,
             modifier = Modifier.pointerInput(message.id) {
-                detectTapGestures(onTap = { pos ->
+                detectTapGestures(
+                    onLongPress = {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        onMessageLongPress?.invoke(message)
+                    },
+                    onTap = { pos ->
                     val layout = headerLayout ?: return@detectTapGestures
                     val offset = layout.getOffsetForPosition(pos)
                     val ann = headerText.getStringAnnotations("nickname_click", offset, offset)

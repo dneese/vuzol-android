@@ -32,6 +32,9 @@ class VuzolApplication : Application() {
             com.roman.zemzeme.favorites.FavoritesPersistenceService.initialize(this)
         } catch (_: Exception) { }
 
+        // Remember the offline room, so it shows up in the chat list right away
+        try { com.roman.zemzeme.wifi.WifiRoomManager.init(this) } catch (_: Exception) { }
+
         // Warm up Nostr identity to ensure npub is available for favorite notifications
         try {
             com.roman.zemzeme.nostr.NostrIdentityBridge.getCurrentNostrIdentity(this)

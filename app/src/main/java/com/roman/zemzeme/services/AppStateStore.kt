@@ -140,6 +140,36 @@ object AppStateStore {
     }
 
     /**
+     * Removes a message from the store. Without this the deleted message comes
+     * back as soon as the next message of the same chat arrives, because the
+     * store sends the whole list again.
+     */
+    fun removeMessage(messageID: String) {
+        synchronized(this) {
+            val public = _publicMessages.value
+            if (public.any { it.id == messageID }) {
+                _publicMessages.value = public.filterNot { it.id == messageID }
+            }
+
+            val privateChats = _privateMessages.value
+            if (privateChats.values.any { list -> list.any { it.id == messageID } }) {
+                val updated = privateChats.mapValues { (_, list) ->
+                    list.filterNot { it.id == messageID }
+                }
+                _privateMessages.value = updated
+            }
+
+            val channels = _channelMessages.value
+            if (channels.values.any { list -> list.any { it.id == messageID } }) {
+                val updated = channels.mapValues { (_, list) ->
+                    list.filterNot { it.id == messageID }
+                }
+                _channelMessages.value = updated
+            }
+        }
+    }
+
+    /**
      * Restores persisted history into the in-memory store. Called once at startup.
      * Existing (live) messages win, so late relay traffic is never overwritten.
      */

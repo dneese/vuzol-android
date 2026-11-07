@@ -770,7 +770,16 @@
     <string name="search_chats">Пошук чатів і людей</string>
     <string name="nav_chats">Чати</string>
     <string name="nav_people">Люди</string>
+    <string name="nav_calls">Дзвінки</string>
     <string name="nav_settings">Налаштування</string>
+    <string name="chat_filter_all">Усі</string>
+    <string name="chat_filter_unread">Непрочитані</string>
+    <string name="chat_filter_groups">Групи</string>
+    <string name="chat_filter_people">Люди</string>
+    <string name="calls_empty">Дзвінків ще не було. Відкрийте офлайн-кімнату, щоб зателефонувати іншому телефону.</string>
+    <string name="calls_outgoing">Вихідний</string>
+    <string name="calls_incoming">Вхідний</string>
+    <string name="calls_missed">Пропущений</string>
     <string name="action_pin">Закріпити вгорі</string>
     <string name="action_unpin">Відкріпити</string>
     <string name="action_about_app">Про застосунок</string>
@@ -922,4 +931,19 @@
   <string name="wifi_direct_lan_call_decline">Відхилити</string>
   <string name="wifi_direct_lan_call_end">Завершити</string>
   <string name="wifi_direct_lan_peers_title">Кого дзвонити</string>
+  <string name="menu_reply">Відповідь</string>
+  <string name="menu_edit">Змінити</string>
+  <string name="menu_copy">Копіювати</string>
+  <string name="menu_share">Поділитись</string>
+  <string name="menu_forward">Переслати</string>
+  <string name="menu_save">Зберегти</string>
+  <string name="menu_pin">Закріпити</string>
+  <string name="menu_select">Обрати</string>
+  <string name="menu_details">Деталі</string>
+  <string name="menu_mute">Без звуку</string>
+  <string name="menu_auto">Авто</string>
+  <string name="menu_delete">Видалити</string>
+  <string name="menu_block">Блок</string>
+  <string name="wifi_direct_leave_room">Покинути кімнату</string>
+  <string name="cd_open_menu">Відкрити меню</string>
 </resources>
