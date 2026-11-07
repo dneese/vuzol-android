@@ -20,8 +20,8 @@ android {
         applicationId = "app.vuzol.messenger"
         minSdk = libs.versions.minSdk.get().toInt()
         targetSdk = libs.versions.targetSdk.get().toInt()
-        versionCode = 19
-        versionName = "1.8.0"
+        versionCode = 20
+        versionName = "1.9.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
