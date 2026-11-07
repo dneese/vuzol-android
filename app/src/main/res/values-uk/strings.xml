@@ -908,4 +908,12 @@
   <string name="wifi_direct_message_hint">Повідомлення</string>
   <string name="wifi_direct_send">Надіслати</string>
   <string name="wifi_direct_open">Кімната WiFi Direct</string>
+  <string name="wifi_direct_mode_p2p">WiFi Direct</string>
+  <string name="wifi_direct_mode_lan">Локальна мережа</string>
+  <string name="wifi_direct_lan_intro">Телефони в одній мережі WiFi знаходять один одного самі, налаштовувати роутер та мати інтернет не потрібно. Трафік шифрується паролем кімнати.</string>
+  <string name="wifi_direct_lan_connect">Під\'єднатися до кімнати</string>
+  <string name="wifi_direct_lan_no_peers">Очікуємо інші телефони кімнати</string>
+  <string name="wifi_direct_lan_peers_found">Телефонів у кімнаті</string>
+  <string name="wifi_direct_lan_attach">Прикріпити файл</string>
+  <string name="wifi_direct_lan_open_file">Відкрити файл</string>
 </resources>

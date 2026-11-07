@@ -1,8 +1,13 @@
 package com.roman.zemzeme.ui
 
 import android.Manifest
+import android.content.Context
+import android.content.Intent
 import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -17,11 +22,13 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.AttachFile
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material.icons.filled.Wifi
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -47,18 +54,27 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.core.content.FileProvider
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberPermissionState
 import com.roman.zemzeme.R
+import com.roman.zemzeme.wifi.LanTransport
+import com.roman.zemzeme.wifi.RoomMessage
 import com.roman.zemzeme.wifi.WifiDirectTransport
+import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
 /**
- * Offline room over WiFi Direct. Works without router and internet, the host
- * phone relays the messages so every phone in range sees them.
+ * Offline room. Two ways to meet:
+ *
+ * WiFi Direct works without router and internet, one phone creates the room
+ * and relays the messages, so everybody in range hears everybody.
+ *
+ * The local network mode works with any WiFi router, the phones of the room
+ * find each other by themselves and talk over TCP.
  */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalPermissionsApi::class)
 @Composable
@@ -72,7 +88,9 @@ fun WifiDirectSheet(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val transport = remember { WifiDirectTransport(context, scope) }
-    val messages = remember { mutableStateListOf<WifiDirectTransport.RoomMessage>() }
+    val lanTransport = remember { LanTransport(context, scope) }
+    val messages = remember { mutableStateListOf<RoomMessage>() }
+    var lanMode by remember { mutableStateOf(false) }
     var roomCode by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var started by remember { mutableStateOf(false) }
@@ -90,22 +108,39 @@ fun WifiDirectSheet(
     val permissionState = rememberPermissionState(nearbyPermission)
     val permissionGranted = permissionState.status.isGranted
 
+    val filePicker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        if (uri != null) {
+            lanTransport.sendFile(uri, myNickname ?: "me")
+        }
+    }
+
     DisposableEffect(isPresented) {
         transport.onMessage = { message ->
             messages.add(message)
         }
         transport.onStatusChanged = { value -> status = value }
         transport.onPeersChanged = { value -> peers = value }
+        lanTransport.onMessage = { message ->
+            messages.add(message)
+        }
+        lanTransport.onStatusChanged = { value -> status = value }
+        lanTransport.onPeersChanged = { value -> peers = value }
         onDispose {
             transport.onMessage = null
             transport.onStatusChanged = null
             transport.onPeersChanged = null
+            lanTransport.onMessage = null
+            lanTransport.onStatusChanged = null
+            lanTransport.onPeersChanged = null
             transport.stop()
+            lanTransport.stop()
         }
     }
 
-    LaunchedEffect(permissionGranted) {
-        if (!permissionGranted) permissionState.launchPermissionRequest()
+    LaunchedEffect(permissionGranted, lanMode) {
+        if (!lanMode && !permissionGranted) permissionState.launchPermissionRequest()
     }
 
     Dialog(
@@ -139,7 +174,9 @@ fun WifiDirectSheet(
                     )
                     Column(modifier = Modifier.padding(start = 8.dp)) {
                         Text(
-                            text = stringResource(R.string.wifi_direct_title),
+                            text = stringResource(
+                                if (lanMode) R.string.wifi_direct_mode_lan else R.string.wifi_direct_title
+                            ),
                             fontSize = 17.sp,
                             fontWeight = FontWeight.SemiBold,
                             color = MaterialTheme.colorScheme.onSurface
@@ -152,6 +189,36 @@ fun WifiDirectSheet(
                     }
                 }
 
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    FilterChip(
+                        selected = !lanMode,
+                        onClick = {
+                            if (lanMode) {
+                                lanMode = false
+                                lanTransport.stop()
+                                started = false
+                            }
+                        },
+                        label = { Text(stringResource(R.string.wifi_direct_mode_p2p)) }
+                    )
+                    FilterChip(
+                        selected = lanMode,
+                        onClick = {
+                            if (!lanMode) {
+                                lanMode = true
+                                transport.stop()
+                                started = false
+                            }
+                        },
+                        label = { Text(stringResource(R.string.wifi_direct_mode_lan)) }
+                    )
+                }
+
                 if (!started) {
                     Column(
                         modifier = Modifier
@@ -160,11 +227,13 @@ fun WifiDirectSheet(
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         Text(
-                            text = stringResource(R.string.wifi_direct_intro),
+                            text = stringResource(
+                                if (lanMode) R.string.wifi_direct_lan_intro else R.string.wifi_direct_intro
+                            ),
                             fontSize = 14.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
-                        if (!supported) {
+                        if (!lanMode && !supported) {
                             Text(
                                 text = stringResource(R.string.wifi_direct_needs_android9),
                                 fontSize = 13.sp,
@@ -185,34 +254,47 @@ fun WifiDirectSheet(
                             singleLine = true,
                             modifier = Modifier.fillMaxWidth()
                         )
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        if (lanMode) {
                             Button(
                                 onClick = {
-                                    transport.startRoom(roomCode, password.ifBlank { null }, asHost = true)
+                                    lanTransport.start(roomCode, password.ifBlank { null }, myNickname ?: "me")
                                     started = true
                                 },
-                                enabled = roomCode.isNotBlank() && permissionGranted && supported,
-                                modifier = Modifier.weight(1f)
+                                enabled = roomCode.isNotBlank(),
+                                modifier = Modifier.fillMaxWidth()
                             ) {
-                                Text(stringResource(R.string.wifi_direct_host))
+                                Text(stringResource(R.string.wifi_direct_lan_connect))
                             }
-                            OutlinedButton(
-                                onClick = {
-                                    transport.startRoom(roomCode, password.ifBlank { null }, asHost = false)
-                                    started = true
-                                },
-                                enabled = roomCode.isNotBlank() && permissionGranted && supported,
-                                modifier = Modifier.weight(1f)
-                            ) {
-                                Text(stringResource(R.string.wifi_direct_join))
+                        } else {
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Button(
+                                    onClick = {
+                                        transport.startRoom(roomCode, password.ifBlank { null }, asHost = true)
+                                        started = true
+                                    },
+                                    enabled = roomCode.isNotBlank() && permissionGranted && supported,
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Text(stringResource(R.string.wifi_direct_host))
+                                }
+                                OutlinedButton(
+                                    onClick = {
+                                        transport.startRoom(roomCode, password.ifBlank { null }, asHost = false)
+                                        started = true
+                                    },
+                                    enabled = roomCode.isNotBlank() && permissionGranted && supported,
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Text(stringResource(R.string.wifi_direct_join))
+                                }
                             }
-                        }
-                        if (!permissionGranted) {
-                            Text(
-                                text = stringResource(R.string.wifi_direct_permission_needed),
-                                fontSize = 12.sp,
-                                color = MaterialTheme.colorScheme.error
-                            )
+                            if (!permissionGranted) {
+                                Text(
+                                    text = stringResource(R.string.wifi_direct_permission_needed),
+                                    fontSize = 12.sp,
+                                    color = MaterialTheme.colorScheme.error
+                                )
+                            }
                         }
                     }
                 } else {
@@ -229,7 +311,8 @@ fun WifiDirectSheet(
                         verticalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
                         items(messages) { message ->
-                            val mine = message.from == transport.localPeerId
+                            val mine = message.from == transport.localPeerId ||
+                                message.from == lanTransport.localPeerId
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = if (mine) Arrangement.End else Arrangement.Start
@@ -242,6 +325,9 @@ fun WifiDirectSheet(
                                             else MaterialTheme.colorScheme.surfaceVariant,
                                             RoundedCornerShape(12.dp)
                                         )
+                                        .clickable(enabled = message.filePath != null) {
+                                            message.filePath?.let { openRoomFile(context, it) }
+                                        }
                                         .padding(horizontal = 12.dp, vertical = 8.dp)
                                 ) {
                                     if (!mine) {
@@ -257,6 +343,13 @@ fun WifiDirectSheet(
                                         fontSize = 15.sp,
                                         color = MaterialTheme.colorScheme.onSurface
                                     )
+                                    if (message.fileName != null) {
+                                        Text(
+                                            text = stringResource(R.string.wifi_direct_lan_open_file),
+                                            fontSize = 11.sp,
+                                            color = MaterialTheme.colorScheme.primary
+                                        )
+                                    }
                                     Text(
                                         text = timeFormatter.format(Date(message.timestamp)),
                                         fontSize = 10.sp,
@@ -280,6 +373,20 @@ fun WifiDirectSheet(
                             tint = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.size(16.dp)
                         )
+                        if (lanMode) {
+                            IconButton(
+                                onClick = {
+                                    filePicker.launch(arrayOf("*/*"))
+                                },
+                                enabled = peers > 0
+                            ) {
+                                Icon(
+                                    Icons.Filled.AttachFile,
+                                    contentDescription = stringResource(R.string.wifi_direct_lan_attach),
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                        }
                         OutlinedTextField(
                             value = input,
                             onValueChange = { input = it },
@@ -293,7 +400,11 @@ fun WifiDirectSheet(
                             onClick = {
                                 val text = input
                                 input = ""
-                                transport.sendText(text, transport.localPeerId, myNickname ?: "me")
+                                if (lanMode) {
+                                    lanTransport.sendText(text, myNickname ?: "me")
+                                } else {
+                                    transport.sendText(text, transport.localPeerId, myNickname ?: "me")
+                                }
                             },
                             enabled = input.isNotBlank()
                         ) {
@@ -307,5 +418,24 @@ fun WifiDirectSheet(
                 }
             }
         }
+    }
+}
+
+/** Opens a file that was received in an offline room. */
+private fun openRoomFile(context: Context, path: String) {
+    try {
+        val file = File(path)
+        if (!file.exists()) return
+        val uri = FileProvider.getUriForFile(
+            context,
+            "${context.packageName}.fileprovider",
+            file
+        )
+        val intent = Intent(Intent.ACTION_VIEW).apply {
+            setDataAndType(uri, "*/*")
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+        context.startActivity(intent)
+    } catch (_: Exception) {
     }
 }

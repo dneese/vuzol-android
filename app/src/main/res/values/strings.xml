@@ -1014,4 +1014,12 @@
   <string name="wifi_direct_message_hint">Message</string>
   <string name="wifi_direct_send">Send</string>
   <string name="wifi_direct_open">WiFi Direct room</string>
+  <string name="wifi_direct_mode_p2p">WiFi Direct</string>
+  <string name="wifi_direct_mode_lan">Local network</string>
+  <string name="wifi_direct_lan_intro">Phones on the same WiFi network find each other by themselves, no router setup and no internet needed. The traffic is encrypted with the room password.</string>
+  <string name="wifi_direct_lan_connect">Join the room</string>
+  <string name="wifi_direct_lan_no_peers">Waiting for the other phones of the room</string>
+  <string name="wifi_direct_lan_peers_found">Phones in the room</string>
+  <string name="wifi_direct_lan_attach">Attach a file</string>
+  <string name="wifi_direct_lan_open_file">Open the file</string>
 </resources>

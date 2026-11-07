@@ -10,17 +10,13 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.io.ByteArrayOutputStream
 import java.io.DataInputStream
-import java.io.DataOutputStream
 import java.net.InetSocketAddress
 import java.net.ServerSocket
 import java.net.Socket
 import java.security.MessageDigest
 import java.util.UUID
 import java.util.concurrent.CopyOnWriteArrayList
-import javax.crypto.Mac
-import javax.crypto.spec.SecretKeySpec
 
 /**
  * WiFi Direct transport for offline conversations.
@@ -42,21 +38,12 @@ class WifiDirectTransport(
     companion object {
         private const val TAG = "WifiDirectTransport"
         private const val PORT = 45678
-        private const val FRAME_TEXT = 1
-        private const val MAX_FRAME = 64 * 1024
+        private const val FRAME_TEXT = RoomProtocol.FRAME_TEXT
         private const val NETWORK_NAME_PREFIX = "Vuzol-"
 
         /** WiFi Direct rooms work from Android 9 upwards. */
         val isSupported: Boolean = android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P
     }
-
-    data class RoomMessage(
-        val id: String,
-        val from: String,
-        val nickname: String,
-        val text: String,
-        val timestamp: Long
-    )
 
     enum class Role { IDLE, HOST, CLIENT }
 
@@ -109,10 +96,8 @@ class WifiDirectTransport(
         val code = roomCode.trim().lowercase()
         if (code.isEmpty() || !isSupported) return
         currentRoom = code
-        roomKey = deriveRoomKey(code, password.orEmpty())
-        roomId = MessageDigest.getInstance("SHA-256")
-            .digest((code + "|room-id").toByteArray())
-            .copyOf(16)
+        roomKey = RoomCrypto.deriveKey(code, password.orEmpty(), "vuzol-wifi-room-v1")
+        roomId = RoomCrypto.roomId(code)
         passphrase = passphraseFor(code, password.orEmpty())
         setStatus(if (asHost) "starting the room" else "searching for room \"$code\"")
         link?.start(NETWORK_NAME_PREFIX + code, passphrase ?: return, asHost)
@@ -139,30 +124,28 @@ class WifiDirectTransport(
     fun sendText(text: String, fromPeerId: String, nickname: String): Boolean {
         val trimmed = text.trim()
         if (trimmed.isEmpty()) return false
-        val payload = org.json.JSONObject().apply {
-            put("id", UUID.randomUUID().toString())
-            put("from", fromPeerId)
-            put("name", nickname)
-            put("text", trimmed)
-            put("ts", System.currentTimeMillis())
-        }.toString().toByteArray(Charsets.UTF_8)
-
+        val key = roomKey ?: return false
         val id = roomId ?: return false
-        val ciphertext = encryptPayload(id, payload) ?: return false
+        val payload = RoomProtocol.encodeText(
+            id = UUID.randomUUID().toString(),
+            from = fromPeerId,
+            nickname = nickname,
+            text = trimmed,
+            timestamp = System.currentTimeMillis()
+        )
+        val ciphertext = RoomCrypto.encrypt(key, id, payload) ?: return false
 
         var delivered = false
         clientSockets.forEach { socket -> delivered = writeFrame(socket, FRAME_TEXT, id, ciphertext) || delivered }
-        if (role == Role.HOST) {
-            onMessage?.invoke(
-                RoomMessage(
-                    id = "local",
-                    from = fromPeerId,
-                    nickname = nickname,
-                    text = trimmed,
-                    timestamp = System.currentTimeMillis()
-                )
+        onMessage?.invoke(
+            RoomMessage(
+                id = "local-${System.currentTimeMillis()}",
+                from = fromPeerId,
+                nickname = nickname,
+                text = trimmed,
+                timestamp = System.currentTimeMillis()
             )
-        }
+        )
         return delivered || role == Role.HOST
     }
 
@@ -216,42 +199,23 @@ class WifiDirectTransport(
         try {
             val input = DataInputStream(socket.getInputStream())
             while (currentCoroutineContext().isActive && !socket.isClosed) {
-                val frameLength = input.readInt()
-                if (frameLength <= 0 || frameLength > MAX_FRAME) break
-                val frame = ByteArray(frameLength)
-                input.readFully(frame)
-                val buffer = java.io.ByteArrayInputStream(frame)
-                val data = DataInputStream(buffer)
-                val type = data.readInt()
-                if (type <= 0 || type > 16) continue
-                val id = ByteArray(16)
-                data.readFully(id)
-                val length = data.readInt()
-                if (length <= 0 || length > MAX_FRAME) continue
-                val ciphertext = ByteArray(length)
-                data.readFully(ciphertext)
+                val frame = RoomProtocol.readFrame(input) ?: break
 
                 // Frames of a different room are ignored
                 val ownId = roomId ?: continue
-                if (!id.contentEquals(ownId)) continue
+                if (!frame.roomId.contentEquals(ownId)) continue
 
-                val payload = decryptPayload(id, ciphertext) ?: continue
-                if (type == FRAME_TEXT) {
-                    val json = org.json.JSONObject(String(payload, Charsets.UTF_8))
-                    val message = RoomMessage(
-                        id = json.optString("id"),
-                        from = json.optString("from"),
-                        nickname = json.optString("name", "anon"),
-                        text = json.optString("text"),
-                        timestamp = json.optLong("ts", System.currentTimeMillis())
-                    )
+                val key = roomKey ?: continue
+                val payload = RoomCrypto.decrypt(key, ownId, frame.ciphertext) ?: continue
+                if (frame.type == FRAME_TEXT) {
+                    val message = RoomProtocol.decodeText(payload) ?: continue
                     withContext(Dispatchers.Main) { onMessage?.invoke(message) }
                 }
 
                 // Relay to every other phone: this is the mesh hop
                 if (role == Role.HOST) {
                     clientSockets.forEach { other ->
-                        if (other != socket) writeFrame(other, type, id, ciphertext)
+                        if (other != socket) writeFrame(other, frame.type, frame.roomId, frame.ciphertext)
                     }
                 }
             }
@@ -264,76 +228,17 @@ class WifiDirectTransport(
         }
     }
 
-    private fun writeFrame(socket: Socket, type: Int, id: ByteArray, ciphertext: ByteArray): Boolean = try {
-        val out = ByteArrayOutputStream()
-        val data = DataOutputStream(out)
-        data.writeInt(type)
-        data.write(id)
-        data.writeInt(ciphertext.size)
-        data.write(ciphertext)
-        data.flush()
-        val frame = out.toByteArray()
-        val output = DataOutputStream(socket.getOutputStream())
-        output.writeInt(frame.size)
-        output.write(frame)
-        output.flush()
-        true
-    } catch (e: Exception) {
-        false
-    }
-
-    private fun encryptPayload(id: ByteArray, payload: ByteArray): ByteArray? = try {
-        val key = roomKey ?: return null
-        com.google.crypto.tink.subtle.XChaCha20Poly1305(key).encrypt(payload, id)
-    } catch (_: Exception) {
-        null
-    }
-
-    private fun decryptPayload(id: ByteArray, ciphertext: ByteArray): ByteArray? = try {
-        val key = roomKey ?: return null
-        com.google.crypto.tink.subtle.XChaCha20Poly1305(key).decrypt(ciphertext, id)
-    } catch (_: Exception) {
-        null
-    }
+    private fun writeFrame(socket: Socket, type: Int, id: ByteArray, ciphertext: ByteArray): Boolean =
+        RoomProtocol.writeFrame(socket, type, id, ciphertext)
 
     /** Derives the room key from the room code and the optional password. */
-    fun deriveRoomKey(roomCode: String, password: String): ByteArray {
-        val salt = MessageDigest.getInstance("SHA-256")
-            .digest(roomCode.lowercase().toByteArray())
-        val prk = hmac(salt, password.toByteArray(Charsets.UTF_8))
-        return hkdfExpand(prk, "vuzol-wifi-room-v1".toByteArray(), 32)
-    }
+    fun deriveRoomKey(roomCode: String, password: String): ByteArray =
+        RoomCrypto.deriveKey(roomCode, password, "vuzol-wifi-room-v1")
 
     private fun passphraseFor(roomCode: String, password: String): String {
         val material = if (password.isBlank()) roomCode else "$password|$roomCode"
         val digest = MessageDigest.getInstance("SHA-256").digest(material.toByteArray())
         return digest.joinToString("") { "%02x".format(it) }.take(32)
-    }
-
-    private fun hmac(key: ByteArray, data: ByteArray): ByteArray {
-        val mac = Mac.getInstance("HmacSHA256")
-        mac.init(SecretKeySpec(key, "HmacSHA256"))
-        return mac.doFinal(data)
-    }
-
-    private fun hkdfExpand(prk: ByteArray, info: ByteArray, length: Int): ByteArray {
-        val result = ByteArray(length)
-        var previous = ByteArray(0)
-        var offset = 0
-        var counter = 1
-        while (offset < length) {
-            val mac = Mac.getInstance("HmacSHA256")
-            mac.init(SecretKeySpec(prk, "HmacSHA256"))
-            mac.update(previous)
-            mac.update(info)
-            mac.update(counter.toByte())
-            previous = mac.doFinal()
-            val take = minOf(previous.size, length - offset)
-            System.arraycopy(previous, 0, result, offset, take)
-            offset += take
-            counter++
-        }
-        return result
     }
 
     private fun setPeers(value: Int) {
