@@ -65,15 +65,23 @@ def update_landing(version: str, items, items_uk) -> bool:
     changed = False
 
     # The version under the name of the app
-    if 'id="appVersion"' not in html:
-        marker = "<h1>Vuzol</h1>"
+    marker = "<h1>Vuzol</h1>"
+    version_tag = f'<p class="version" id="appVersion">{escape(version)}</p>'
+    if 'id="appVersion"' in html:
+        # The old line is taken away and the new one goes to the right place
+        html = re.sub(
+            r'\s*<p class="version" id="appVersion">.*?</p>',
+            "",
+            html,
+            count=1,
+            flags=re.S,
+        )
         if marker in html:
-            html = html.replace(
-                marker,
-                marker + f'\n      <p class="version" id="appVersion">{escape(version)}</p>',
-                1,
-            )
+            html = html.replace(marker, marker + "\n      " + version_tag, 1)
             changed = True
+    elif marker in html:
+        html = html.replace(marker, marker + "\n      " + version_tag, 1)
+        changed = True
 
     # The block with the changes of the release
     if items:
