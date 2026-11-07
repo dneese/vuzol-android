@@ -55,7 +55,7 @@ object WifiRoomManager {
     val messages: StateFlow<List<RoomMessage>> = _messages.asStateFlow()
 
     private val _callSignals = MutableSharedFlow<RoomProtocol.CallSignal>(extraBufferCapacity = 8)
-    val callSignals: SharedFlow<RoomProtocol.CallSignal> = _callSignals.asSharedFlow()
+    internal val callSignals: SharedFlow<RoomProtocol.CallSignal> = _callSignals.asSharedFlow()
 
     private var appContext: Context? = null
     private var direct: WifiDirectTransport? = null
@@ -155,13 +155,13 @@ object WifiRoomManager {
         lan?.sendFile(uri, nickname) ?: false
 
     /** The phones of the room that can be called. */
-    fun peersForCall(): List<LanTransport.PeerInfo> = lan?.peers() ?: emptyList()
+    internal fun peersForCall(): List<LanTransport.PeerInfo> = lan?.peers() ?: emptyList()
 
     /** Starts a call to one phone of the room. */
-    fun startCall(peer: LanTransport.PeerInfo): Boolean = lan?.startCall(peer) ?: false
+    internal fun startCall(peer: LanTransport.PeerInfo): Boolean = lan?.startCall(peer) ?: false
 
     /** Answers a call of the room. */
-    fun acceptCall(signal: RoomProtocol.CallSignal): Boolean = lan?.acceptCall(signal) ?: false
+    internal fun acceptCall(signal: RoomProtocol.CallSignal): Boolean = lan?.acceptCall(signal) ?: false
 
     /** Rejects an incoming call. */
     fun declineCall(callId: String) {

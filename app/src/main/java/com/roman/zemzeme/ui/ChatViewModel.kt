@@ -336,6 +336,7 @@ class ChatViewModel(
     val teleportedGeo: StateFlow<Set<String>> = state.teleportedGeo
     val geohashParticipantCounts: StateFlow<Map<String, Int>> = state.geohashParticipantCounts
     val customGroups: StateFlow<Set<String>> = state.customGroups
+    val activeChannels: StateFlow<Set<String>> = state.activeChannels
     val geographicGroups: StateFlow<Set<String>> = state.geographicGroups
     val groupNicknames: StateFlow<Map<String, String>> = state.groupNicknames
     val unreadMeshCount: StateFlow<Int> = state.unreadMeshCount
