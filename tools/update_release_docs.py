@@ -102,38 +102,52 @@ def update_landing(version: str, items, items_uk) -> bool:
         changed = True
 
     # The heading and the list in both languages
-    html = re.sub(
-        r"(\n\s*)whatsNewTitle:.*?,(\n)",
-        lambda m: m.group(1)
-        + "whatsNewTitle: \"What's new\","
-        + m.group(2)
-        + m.group(1)
-        + "whatsNewItems: "
-        + js_list(items)
-        + ","
-        + m.group(2),
-        html,
-        count=1,
-    )
+    def replace_block(text: str, title: str, entries) -> str:
+        if "whatsNewTitle:" in text:
+            return re.sub(
+                r"(\n\s*)whatsNewTitle:.*?,(\n)",
+                lambda m: m.group(1)
+                + "whatsNewTitle: "
+                + title
+                + ","
+                + m.group(2)
+                + m.group(1)
+                + "whatsNewItems: "
+                + js_list(entries)
+                + ","
+                + m.group(2),
+                text,
+                count=1,
+                flags=re.S,
+            )
+        # The keys are not there yet: they go right after allReleases
+        match = re.search(r"(\n\s*)allReleases:.*?,(\n)", text)
+        if not match:
+            return text
+        return (
+            text[: match.end()]
+            + match.group(1)
+            + "whatsNewTitle: "
+            + title
+            + ","
+            + match.group(2)
+            + match.group(1)
+            + "whatsNewItems: "
+            + js_list(entries)
+            + ","
+            + match.group(2)
+            + text[match.end() :]
+        )
+
+    html = replace_block(html, '"What\'s new"', items)
 
     uk_items = items_uk or items
-    uk_block = re.search(r"\n(\s*)uk: \{", html)
-    if uk_block:
-        indent = uk_block.group(1)
-        html = re.sub(
-            r"(\n\s*)whatsNewTitle:.*?,(\n)",
-            lambda m: m.group(1)
-            + "whatsNewTitle: 'Що нового',"
-            + m.group(2)
-            + m.group(1)
-            + "whatsNewItems: "
-            + js_list(uk_items)
-            + ","
-            + m.group(2),
-            html,
-            count=1,
-            flags=re.S,
-        )
+    uk_start = html.find("uk: {")
+    if uk_start >= 0:
+        head = html[:uk_start]
+        tail = html[uk_start:]
+        tail = replace_block(tail, "'Що нового'", uk_items)
+        html = head + tail
 
     # The list is filled from the dictionary when the language changes
     if "whatsNewItems" in html and "getElementById('whatsNewList')" not in html:

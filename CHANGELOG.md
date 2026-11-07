@@ -1,5 +1,15 @@
 # Changelog
 
+## v1.10.0
+
+- The chat list looks like Telegram: the folders all, unread, groups and people, a side menu with the profile, the calls and the settings, and a separate tab with the history of the calls.
+- The menu of a message is compact now: a small grid of buttons over the chat, the long press works on the whole message and not only on the time of the message.
+- A channel that is opened from a link keeps its own name, the name of the place is not shown instead of the name of the group.
+- Channels and private chats where you wrote stay in the chat list, they do not disappear after you leave them.
+- Deleted messages do not come back with the next message of the chat.
+- The offline room is remembered and shows up in the chat list, you can leave it right there.
+- The landing page and the README are updated automatically with every release.
+
 ## v1.9.0
 
 - Offline room inside the local WiFi network: the phones of the room find each other by themselves, without router setup and without internet. Text messages and files are encrypted with the room password.

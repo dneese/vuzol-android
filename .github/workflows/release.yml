@@ -123,3 +123,18 @@ jobs:
           body_path: ${{ runner.temp }}/release-body.md
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Update the landing page and the README
+        run: |
+          python3 tools/update_release_docs.py "${{ github.ref_name }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add README.md docs/index.html
+          if git diff --staged --quiet; then
+            echo "nothing to update"
+          else
+            git commit -m "Update the landing page for ${{ github.ref_name }}"
+            git push origin HEAD:main
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
