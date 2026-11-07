@@ -9,6 +9,7 @@ import android.net.wifi.p2p.WifiP2pDevice
 import android.net.wifi.p2p.WifiP2pDeviceList
 import android.net.wifi.p2p.WifiP2pInfo
 import android.net.wifi.p2p.WifiP2pManager
+import android.os.Parcelable
 import android.util.Log
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -73,7 +74,7 @@ internal class WifiP2pLinkLegacy(
                 }
                 ACTION_PEERS_CHANGED -> {
                     @Suppress("DEPRECATION")
-                    val raw = intent.getParcelableExtra(EXTRA_DEVICE_LIST)
+                    val raw: Parcelable? = intent.getParcelableExtra(EXTRA_DEVICE_LIST)
                     // Android 13 and older deliver a plain list of devices
                     val devices: List<WifiP2pDevice> = when (raw) {
                         is WifiP2pDeviceList -> raw.deviceList.toList()
@@ -103,7 +104,7 @@ internal class WifiP2pLinkLegacy(
                 }
                 ACTION_GROUP_CHANGED -> {
                     @Suppress("DEPRECATION")
-                    val group = intent.getParcelableExtra("WifiP2pGroup")
+                    val group: Parcelable? = intent.getParcelableExtra("WifiP2pGroup")
                     if (group == null) {
                         onRole?.invoke(WifiP2pLinkRole.IDLE)
                         status("room closed")
